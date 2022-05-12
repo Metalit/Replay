@@ -44,6 +44,11 @@
       "id": "questui",
       "versionRange": "^0.15.2",
       "additionalData": {}
+    },
+    {
+      "id": "sombrero",
+      "versionRange": "^0.1.30",
+      "additionalData": {}
     }
   ],
   "additionalData": {}
