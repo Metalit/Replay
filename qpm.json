@@ -1,0 +1,50 @@
+{
+  "sharedDir": "shared",
+  "dependenciesDir": "extern",
+  "info": {
+    "name": "Replay",
+    "id": "replay",
+    "version": "0.1.0",
+    "url": null,
+    "additionalData": {
+      "overrideSoName": "libreplay.so"
+    }
+  },
+  "dependencies": [
+    {
+      "id": "beatsaber-hook",
+      "versionRange": "^3.8.0",
+      "additionalData": {
+        "extraFiles": [
+          "src/inline-hook"
+        ]
+      }
+    },
+    {
+      "id": "modloader",
+      "versionRange": "=1.2.3",
+      "additionalData": {}
+    },
+    {
+      "id": "codegen",
+      "versionRange": "^0.23.0",
+      "additionalData": {}
+    },
+    {
+      "id": "paper",
+      "versionRange": "^1.1.0",
+      "additionalData": {}
+    },
+    {
+      "id": "custom-types",
+      "versionRange": "^0.15.9",
+      "additionalData": {}
+    },
+    {
+      "id": "questui",
+      "versionRange": "^0.15.2",
+      "additionalData": {}
+    }
+  ],
+  "additionalData": {}
+}
