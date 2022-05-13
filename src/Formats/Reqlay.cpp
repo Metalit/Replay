@@ -145,10 +145,11 @@ FrameReplay ReadFromV1(std::ifstream& input) {
     ret.info.modifiers = ConvertModifiers(modifiers);
     ret.info.reached0Energy = modifiers.noFail;
 
+    ret.info.hasYOffset = false;
     auto frame = V1KeyFrame();
     while(READ_TO(frame)) {
         frame.head.rotation = frame.head.rotation * 90;
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, 0,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
@@ -164,9 +165,10 @@ FrameReplay ReadFromV2(std::ifstream& input) {
     ret.info.modifiers = ConvertModifiers(modifiers);
     ret.info.reached0Energy = modifiers.noFail;
 
+    ret.info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
@@ -187,9 +189,10 @@ FrameReplay ReadFromV3(std::ifstream& input) {
     ret.info.modifiers = ConvertModifiers(modifiers);
     ret.info.reached0Energy = modifiers.noFail;
 
+    ret.info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
@@ -214,9 +217,10 @@ FrameReplay ReadFromV4(std::ifstream& input) {
     ret.info.reached0Energy = reached0.failed;
     ret.info.reached0Time = reached0.time;
 
+    ret.info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
@@ -241,9 +245,10 @@ FrameReplay ReadFromV5(std::ifstream& input) {
     ret.info.reached0Energy = reached0.failed;
     ret.info.reached0Time = reached0.time;
 
+    ret.info.hasYOffset = true;
     auto frame = V5KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
@@ -268,16 +273,17 @@ FrameReplay ReadFromV6(std::ifstream& input) {
     ret.info.reached0Energy = reached0.failed;
     ret.info.reached0Time = reached0.time;
 
+    ret.info.hasYOffset = true;
     auto frame = V5KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy,
+        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
 
     return ret;
 }
 
-FrameReplay ReadReqlay(const std::string& path) {
+FrameReplay _ReadReqlay(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
 
     if(!input.is_open()) {
@@ -313,4 +319,13 @@ FrameReplay ReadReqlay(const std::string& path) {
         LOG_ERROR("Unsupported version! Found version {} in file {}", version, path);
         return {};
     }
+}
+
+FrameReplay ReadReqlay(const std::string& path) {
+    FrameReplay ret = _ReadReqlay(path);
+    
+    auto modified = std::filesystem::last_write_time(path);
+    ret.info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
+
+    return ret;
 }
