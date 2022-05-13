@@ -26,7 +26,9 @@ struct ReplayModifiers {
 
 struct ReplayInfo {
     ReplayModifiers modifiers;
+    std::time_t timestamp;
     float jumpDistance = -1;
+    bool hasYOffset = false;
 
     bool practice = false;
     float startTime = 0;
@@ -55,10 +57,11 @@ struct ScoreFrame {
     float percent;
     int combo;
     float energy;
+    float offset;
 
     constexpr ScoreFrame() = default;
-    constexpr ScoreFrame(float time, int score, float percent, int combo, float energy, const Transform& head, const Transform& leftHand, const Transform& rightHand) : 
-        time(time), score(score), percent(percent), combo(combo), energy(energy), head(head), leftHand(leftHand), rightHand(rightHand) {}
+    constexpr ScoreFrame(float time, int score, float percent, int combo, float energy, float offset, const Transform& head, const Transform& leftHand, const Transform& rightHand) : 
+        time(time), score(score), percent(percent), combo(combo), energy(energy), offset(offset), head(head), leftHand(leftHand), rightHand(rightHand) {}
 };
 
 struct FrameReplay {

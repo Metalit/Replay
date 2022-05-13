@@ -35,8 +35,6 @@ struct BSORInfo {
     float startTime = 0;
     float failTime = 0;
     float speed = 0;
-
-    void Read(std::ifstream& input);
 };
 
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
@@ -133,6 +131,7 @@ EventReplay ReadBSOR(const std::string& path) {
     auto info = ReadInfo(input);
     ret.info.modifiers = ParseModifierString(info.modifiers);
     ret.info.modifiers.leftHanded = info.leftHanded;
+    ret.info.timestamp = std::stol(info.timestamp);
     // infer reached 0 energy because no fail is only listed if it did
     ret.info.reached0Energy = ret.info.modifiers.noFail;
     ret.info.jumpDistance = info.jumpDistance;
@@ -193,6 +192,7 @@ EventReplay ReadBSOR(const std::string& path) {
         auto height = ret.heights.emplace_back(HeightEvent());
         READ_TO(height);
     }
+    ret.info.hasYOffset = true;
     
     READ_TO(section);
     if (section != 5) {
