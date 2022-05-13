@@ -27,7 +27,7 @@ if ($qmodName -eq "") {
     $qmodName = $modJson.name
 }
 
-$filelist = @("$mod)
+$filelist = @($mod)
 
 $cover = "./" + $modJson.coverImage
 if ((-not ($cover -eq "./")) -and (Test-Path $cover)) {
