@@ -2,7 +2,12 @@
 #include "Utils.hpp"
 
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
+#include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
+#include "System/Threading/Tasks/Task_1.hpp"
+
+#include "custom-types/shared/coroutine.hpp"
 
 #include "questui/shared/BeatSaberUI.hpp"
 
@@ -36,7 +41,7 @@ const std::string reqlaySuffix1 = ".reqlay";
 const std::string reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
 const std::string bsorSuffix = ".bsor";
 
-std::unordered_map<std::string, ReplayType> GetReplays(CustomDifficultyBeatmap* beatmap) {
+std::unordered_map<std::string, ReplayType> GetReplays(IDifficultyBeatmap* beatmap) {
     std::unordered_map<std::string, ReplayType> replays;
 
     std::vector<std::string> tests;
@@ -169,9 +174,26 @@ std::string GetModifierString(const ReplayModifiers& modifiers, bool includeNoFa
     if(modifiers.noBombs) s << "NB, ";
     if(modifiers.noFail && includeNoFail) s << "NF, ";
     if(modifiers.noObstacles) s << "NO, ";
+    if(modifiers.leftHanded) s << "LH, ";
     auto str = s.str();
     if(str.length() == 0)
         return "None";
     str.erase(str.end() - 2);
     return str;
+}
+
+custom_types::Helpers::Coroutine GetBeatmapDataCoro(IDifficultyBeatmap* beatmap, std::function<void(IReadonlyBeatmapData*)> callback) {
+    auto envInfo = ((IPreviewBeatmapLevel*) beatmap->get_level())->get_environmentInfo();
+
+    auto result = beatmap->GetBeatmapDataAsync(envInfo, nullptr);
+
+    while(!result->get_IsCompleted())
+        co_yield nullptr;
+
+    callback(result->get_ResultOnSuccess());
+    co_return;
+}
+
+void GetBeatmapData(IDifficultyBeatmap* beatmap, std::function<void(IReadonlyBeatmapData*)> callback) {
+    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(GetBeatmapDataCoro(beatmap, callback)));
 }

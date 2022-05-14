@@ -1,9 +1,9 @@
 #pragma once
 
-#include "GlobalNamespace/CustomDifficultyBeatmap.hpp"
+#include "GlobalNamespace/IDifficultyBeatmap.hpp"
 
 namespace Manager {
-    void SetLevel(GlobalNamespace::CustomDifficultyBeatmap* level);
+    void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);
     
     void RefreshLevelReplays();
 }
