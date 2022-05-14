@@ -2,6 +2,7 @@
 
 #include "GlobalNamespace/LevelBar.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
+#include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "HMUI/ViewController.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
@@ -35,8 +36,8 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         GlobalNamespace::LevelBar* levelBar;
         TMPro::TextMeshProUGUI* sourceText;
         TMPro::TextMeshProUGUI* dateText;
-        TMPro::TextMeshProUGUI* scoreText;
         TMPro::TextMeshProUGUI* modifiersText;
+        TMPro::TextMeshProUGUI* scoreText;
         TMPro::TextMeshProUGUI* failText;
         UnityEngine::UI::Button* deleteButton;
         UnityEngine::UI::Button* watchButton;
@@ -45,4 +46,5 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         std::vector<ReplayInfo*> replayInfos;
         std::vector<std::string> replayPaths;
         int currentReplay;
+        GlobalNamespace::IReadonlyBeatmapData* beatmapData;
 )

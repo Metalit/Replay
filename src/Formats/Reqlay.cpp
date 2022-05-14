@@ -29,16 +29,12 @@ struct V2Modifiers {
     bool noFail;
     bool oneLife;
     bool ghostNotes;
-    bool fasterSong;
-    bool leftHanded;
+    bool fasterSong; // problematic
+    bool leftHanded; // problematic
 };
 
+// last three bools problematic
 typedef ReplayModifiers V6Modifiers;
-
-struct FailInfo {
-    bool failed;
-    float time = 0;
-};
 
 struct EulerTransform {
     Vector3 position;
@@ -90,22 +86,18 @@ ReplayModifiers ConvertModifiers(const T& modifiers) {
     ret.disappearingArrows = modifiers.disappearingArrows;
     ret.fasterSong = modifiers.fasterSong;
     ret.slowerSong = modifiers.slowerSong;
-    if constexpr(std::is_same_v<T, V6Modifiers>) {
-        ret.superFastSong = modifiers.superFastSong;
-        ret.strictAngles = modifiers.strictAngles;
-        ret.proMode = modifiers.proMode;
-        ret.smallNotes = modifiers.smallNotes;
-    } else {
-        ret.superFastSong = false;
-        ret.strictAngles = false;
-        ret.proMode = false;
-        ret.smallNotes = false;
-    }
     ret.ghostNotes = modifiers.ghostNotes;
     ret.noArrows = modifiers.noArrows;
     ret.noBombs = modifiers.noBombs;
     ret.noObstacles = modifiers.noObstacles;
     ret.noFail = modifiers.noFail;
+    ret.oneLife = modifiers.oneLife;
+    ret.fourLives = modifiers.fourLives;
+    ret.leftHanded = modifiers.leftHanded;
+    ret.superFastSong = false;
+    ret.strictAngles = false;
+    ret.proMode = false;
+    ret.smallNotes = false;
     return ret;
 }
 
@@ -116,8 +108,6 @@ Transform ConvertEulerTransform(EulerTransform& trans) {
 }
 
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
-
-unsigned char fileHeader[3] = { 0xa1, 0xd2, 0x45 };
 
 FrameReplay ReadFromV1(std::ifstream& input) {
     FrameReplay ret;
@@ -165,10 +155,8 @@ FrameReplay ReadFromV2(std::ifstream& input) {
 FrameReplay ReadFromV3(std::ifstream& input) {
     FrameReplay ret;
 
-    FailInfo fail;
-    READ_TO(fail);
-    ret.info.failed = fail.failed;
-    ret.info.failTime = fail.time;
+    READ_TO(ret.info.failed);
+    READ_TO(ret.info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
@@ -190,19 +178,15 @@ FrameReplay ReadFromV3(std::ifstream& input) {
 FrameReplay ReadFromV4(std::ifstream& input) {
     FrameReplay ret;
 
-    FailInfo fail;
-    READ_TO(fail);
-    ret.info.failed = fail.failed;
-    ret.info.failTime = fail.time;
+    READ_TO(ret.info.failed);
+    READ_TO(ret.info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
     ret.info.modifiers = ConvertModifiers(modifiers);
     
-    FailInfo reached0;
-    READ_TO(reached0);
-    ret.info.reached0Energy = reached0.failed;
-    ret.info.reached0Time = reached0.time;
+    READ_TO(ret.info.reached0Energy);
+    READ_TO(ret.info.reached0Time);
 
     ret.info.hasYOffset = true;
     auto frame = V2KeyFrame();
@@ -219,19 +203,15 @@ FrameReplay ReadFromV4(std::ifstream& input) {
 FrameReplay ReadFromV5(std::ifstream& input) {
     FrameReplay ret;
 
-    FailInfo fail;
-    READ_TO(fail);
-    ret.info.failed = fail.failed;
-    ret.info.failTime = fail.time;
+    READ_TO(ret.info.failed);
+    READ_TO(ret.info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
     ret.info.modifiers = ConvertModifiers(modifiers);
     
-    FailInfo reached0;
-    READ_TO(reached0);
-    ret.info.reached0Energy = reached0.failed;
-    ret.info.reached0Time = reached0.time;
+    READ_TO(ret.info.reached0Energy);
+    READ_TO(ret.info.reached0Time);
 
     ret.info.hasYOffset = true;
     auto frame = V5KeyFrame();
@@ -248,19 +228,15 @@ FrameReplay ReadFromV5(std::ifstream& input) {
 FrameReplay ReadFromV6(std::ifstream& input) {
     FrameReplay ret;
 
-    FailInfo fail;
-    READ_TO(fail);
-    ret.info.failed = fail.failed;
-    ret.info.failTime = fail.time;
+    READ_TO(ret.info.failed);
+    READ_TO(ret.info.failTime);
     
     auto modifiers = V6Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
+    ret.info.modifiers = modifiers;
     
-    FailInfo reached0;
-    READ_TO(reached0);
-    ret.info.reached0Energy = reached0.failed;
-    ret.info.reached0Time = reached0.time;
+    READ_TO(ret.info.reached0Energy);
+    READ_TO(ret.info.reached0Time);
 
     ret.info.hasYOffset = true;
     auto frame = V5KeyFrame();
@@ -272,6 +248,8 @@ FrameReplay ReadFromV6(std::ifstream& input) {
 
     return ret;
 }
+
+unsigned char fileHeader[3] = { 0xa1, 0xd2, 0x45 };
 
 FrameReplay _ReadReqlay(const std::string& path) {
     std::ifstream input(path, std::ios::binary);

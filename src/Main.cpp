@@ -23,7 +23,7 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView
     StandardLevelDetailView_RefreshContent(self);
     
     Menu::EnsureSetup(self);
-    Manager::SetLevel((CustomDifficultyBeatmap*) self->selectedDifficultyBeatmap);
+    Manager::SetLevel(self->selectedDifficultyBeatmap);
 }
 
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange, &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,

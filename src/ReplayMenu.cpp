@@ -5,8 +5,10 @@
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
 
-#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
+#include "GlobalNamespace/ScoreModel.hpp"
+#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
 
@@ -133,8 +135,8 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     layout2->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
 
     dateText = CreateCenteredText(layout1);
-    scoreText = CreateCenteredText(layout2);
-    modifiersText = CreateCenteredText(layout1);
+    modifiersText = CreateCenteredText(layout2);
+    scoreText = CreateCenteredText(layout1);
     failText = CreateCenteredText(layout2);
 
     BeatSaberUI::CreateUIButton(layout1, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
@@ -146,6 +148,13 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
     replayInfos = infos;
     replayPaths = paths;
+    beatmapData = nullptr;
+    GetBeatmapData(levelView->selectedDifficultyBeatmap, [this, infos](IReadonlyBeatmapData* data) {
+        beatmapData = data;
+        if(replayInfos == infos && increment) {
+            UpdateUI();
+        }
+    });
     if(increment) {
         increment->MaxValue = infos.size();
         increment->CurrentValue = 0;
@@ -164,17 +173,24 @@ void Menu::ReplayViewController::UpdateUI() {
     auto characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic();
     auto difficulty = beatmap->get_difficulty();
     levelBar->Setup(level, characteristic, difficulty);
+    float songLength = level->get_songDuration();
 
     auto info = replayInfos[currentReplay];
 
     sourceText->set_text(GetLayeredText("Replay Source:  ", info->source, false));
     std::string date = GetStringForTimeSinceNow(info->timestamp);
-    std::string score = std::to_string(info->score);
     std::string modifiers = GetModifierString(info->modifiers, info->reached0Energy);
-    std::string fail = info->failed ? "True" : "False";
+    std::string score = std::to_string(info->score);
+    if(beatmapData) {
+        float percent = info->score * 100.0f / ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
+        score = fmt::format("{} <size=80%>(<color=#1dbcd1>{:.2f}%</color>)</size>", info->score, percent);
+    }
+    std::string fail = info->failed ? "<color=#cc1818>True</color>" : "<color=#2adb44>False</color>";
+    if(info->failed && info->failTime > 0.001)
+        fail = fmt::format("<color=#cc1818>{}</color> / {}", SecondsToString(info->failTime), SecondsToString(songLength));
 
     dateText->set_text(GetLayeredText("Date Played", date));
-    scoreText->set_text(GetLayeredText("Score", score));
     modifiersText->set_text(GetLayeredText("Modifiers", modifiers));
+    scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
 }

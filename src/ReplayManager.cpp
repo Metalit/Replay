@@ -9,7 +9,7 @@
 
 using namespace GlobalNamespace;
 
-CustomDifficultyBeatmap* beatmap = nullptr;
+IDifficultyBeatmap* beatmap = nullptr;
 std::unordered_map<std::string, ReplayType> currentReplays;
 
 ReplayType currentReplayType;
@@ -17,7 +17,7 @@ std::unordered_map<std::string, FrameReplay> currentFrameReplays;
 std::unordered_map<std::string, EventReplay> currentEventReplays;
 
 namespace Manager {
-    void SetLevel(CustomDifficultyBeatmap* level) {
+    void SetLevel(IDifficultyBeatmap* level) {
         beatmap = level;
         RefreshLevelReplays();
     }
