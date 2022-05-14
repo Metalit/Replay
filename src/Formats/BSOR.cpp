@@ -51,18 +51,18 @@ std::string ReadString(std::ifstream& input) {
 
 ReplayModifiers ParseModifierString(const std::string& modifiers) {
     ReplayModifiers ret;
-    ret.disappearingArrows = modifiers.find("DA");
-    ret.fasterSong = modifiers.find("FS");
-    ret.slowerSong = modifiers.find("SS");
-    ret.superFastSong = modifiers.find("SF");
-    ret.strictAngles = modifiers.find("SA");
-    ret.proMode = modifiers.find("PM");
-    ret.smallNotes = modifiers.find("SC");
-    ret.ghostNotes = modifiers.find("GN");
-    ret.noArrows = modifiers.find("NA");
-    ret.noBombs = modifiers.find("NB");
-    ret.noFail = modifiers.find("NF");
-    ret.noObstacles = modifiers.find("NO");
+    ret.disappearingArrows = modifiers.find("DA") != std::string::npos;
+    ret.fasterSong = modifiers.find("FS") != std::string::npos;
+    ret.slowerSong = modifiers.find("SS") != std::string::npos;
+    ret.superFastSong = modifiers.find("SF") != std::string::npos;
+    ret.strictAngles = modifiers.find("SA") != std::string::npos;
+    ret.proMode = modifiers.find("PM") != std::string::npos;
+    ret.smallNotes = modifiers.find("SC") != std::string::npos;
+    ret.ghostNotes = modifiers.find("GN") != std::string::npos;
+    ret.noArrows = modifiers.find("NA") != std::string::npos;
+    ret.noBombs = modifiers.find("NB") != std::string::npos;
+    ret.noFail = modifiers.find("NF") != std::string::npos;
+    ret.noObstacles = modifiers.find("NO") != std::string::npos;
     return ret;
 }
 
@@ -107,6 +107,8 @@ EventReplay ReadBSOR(const std::string& path) {
         return {};
     }
 
+    LOG_INFO("Reading bsor file");
+
     int header;
     char version;
     char section;
@@ -132,15 +134,17 @@ EventReplay ReadBSOR(const std::string& path) {
     ret.info.modifiers = ParseModifierString(info.modifiers);
     ret.info.modifiers.leftHanded = info.leftHanded;
     ret.info.timestamp = std::stol(info.timestamp);
+    ret.info.score = info.score;
+    ret.info.source = "Beatleader";
     // infer reached 0 energy because no fail is only listed if it did
     ret.info.reached0Energy = ret.info.modifiers.noFail;
     ret.info.jumpDistance = info.jumpDistance;
     // infer practice because these values are only non 0 (defaults) when it is
-    ret.info.practice = info.speed > 0 && info.startTime > 0;
+    ret.info.practice = info.speed > 0.001 && info.startTime > 0.001;
     ret.info.startTime = info.startTime;
     ret.info.speed = info.speed;
     // infer whether or not the player failed
-    ret.info.failed = info.failTime > 0;
+    ret.info.failed = info.failTime > 0.001;
     ret.info.failTime = info.failTime;
 
     READ_TO(section);

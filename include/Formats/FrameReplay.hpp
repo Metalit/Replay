@@ -27,6 +27,8 @@ struct ReplayModifiers {
 struct ReplayInfo {
     ReplayModifiers modifiers;
     std::time_t timestamp;
+    int score;
+    std::string source;
     float jumpDistance = -1;
     bool hasYOffset = false;
 
