@@ -12,6 +12,8 @@
 
 #include "questui/shared/BeatSaberUI.hpp"
 
+#include <filesystem>
+
 DEFINE_TYPE(Menu, ReplayViewController);
 
 using namespace GlobalNamespace;
@@ -25,6 +27,19 @@ void OnReplayButtonClick() {
     auto flowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<SinglePlayerLevelSelectionFlowCoordinator*>().First();
     flowCoordinator->showBackButton = true;
     flowCoordinator->PresentViewController(viewController, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
+    viewController->UpdateUI();
+}
+
+void OnDeleteButtonClick() {
+
+}
+
+void OnWatchButtonClick() {
+
+}
+
+void OnIncrementChanged(float value) {
+    viewController->SelectReplay(value - 1);
 }
 
 namespace Menu {
@@ -53,7 +68,7 @@ namespace Menu {
             auto buttonTransform = (UnityEngine::RectTransform*) replayButton->get_transform();
             UnityEngine::Object::Destroy(buttonTransform->Find("Content")->GetComponent<UnityEngine::UI::LayoutElement*>());
             auto icon = BeatSaberUI::CreateImage(buttonTransform, GetReplayIcon());
-            icon->get_transform()->set_localScale({0.5, 0.5, 0.5});
+            icon->get_transform()->set_localScale({0.6, 0.6, 0.6});
             icon->set_preserveAspect(true);
             buttonTransform->set_anchoredPosition({0, 0});
             buttonTransform->set_sizeDelta({10, 10});
@@ -70,6 +85,10 @@ namespace Menu {
         float xpos = enabled ? 4.2 : -1.8;
         ((UnityEngine::RectTransform*) canvas->get_transform()->GetParent())->set_anchoredPosition({xpos, -55});
     }
+
+    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths) {
+        viewController->SetReplays(replayInfos, replayPaths);
+    }
 }
 
 TMPro::TextMeshProUGUI* CreateCenteredText(UnityEngine::UI::VerticalLayoutGroup* parent) {
@@ -80,47 +99,63 @@ TMPro::TextMeshProUGUI* CreateCenteredText(UnityEngine::UI::VerticalLayoutGroup*
     return text;
 }
 
-std::string GetLayeredText(const std::string& label, const std::string& text) {
-    return "<i><uppercase><color=#bdbdbd>" + label + "</color></uppercase>\n" + text + "</i>";
+std::string GetLayeredText(const std::string& label, const std::string& text, bool newline = true) {
+    return fmt::format("<i><uppercase><color=#bdbdbd>{}</color></uppercase>{}{}</i>", label, newline ? "\n" : "", text);
 }
 
 void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
         
-    get_gameObject()->GetComponent<VRUIControls::VRGraphicRaycaster*>()->physicsRaycaster = BeatSaberUI::GetPhysicsRaycasterWithCache();
-    
-    levelBar = UnityEngine::Resources::FindObjectsOfTypeAll<LevelBar*>().First([](LevelBar* x) {
+    auto levelBarTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<LevelBar*>().First([](LevelBar* x) {
         return x->get_transform()->GetParent()->get_name() == "PracticeViewController";
     });
-
+    levelBar = UnityEngine::Object::Instantiate(levelBarTemplate->get_gameObject(), get_transform())->GetComponent<LevelBar*>();
     levelBar->set_name("ReplayLevelBarSimple");
-    levelBar->get_transform()->SetParent(get_transform(), false);
     levelBar->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({0, -5});
 
+    sourceText = BeatSaberUI::CreateText(get_transform(), "", {0, 14});
+    sourceText->set_fontSize(4.5);
+    sourceText->set_alignment(TMPro::TextAlignmentOptions::Center);
+
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(get_transform());
-    horizontal->set_spacing(0);
+    horizontal->set_spacing(5);
     horizontal->set_childControlWidth(false);
     horizontal->set_childForceExpandWidth(false);
-    horizontal->get_rectTransform()->set_anchoredPosition({34.0f, -1});
+    horizontal->get_rectTransform()->set_anchoredPosition({38.5, -12});
     
     auto layout1 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout1->set_spacing(2.5);
-    layout1->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(43);
+    layout1->set_spacing(4);
+    layout1->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
     
     auto layout2 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout2->set_spacing(2.5);
-    layout2->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(43);
+    layout2->set_spacing(4);
+    layout2->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
 
     dateText = CreateCenteredText(layout1);
     scoreText = CreateCenteredText(layout2);
     modifiersText = CreateCenteredText(layout1);
     failText = CreateCenteredText(layout2);
-    UpdateUI();
+
+    BeatSaberUI::CreateUIButton(layout1, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
+    BeatSaberUI::CreateUIButton(layout2, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
+
+    increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
 }
 
-void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths) {
+void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
+    replayInfos = infos;
+    replayPaths = paths;
+    if(increment) {
+        increment->MaxValue = infos.size();
+        increment->CurrentValue = 0;
+        increment->UpdateValue();
+    }
+}
 
+void Menu::ReplayViewController::SelectReplay(int index) {
+    currentReplay = index;
+    UpdateUI();
 }
 
 void Menu::ReplayViewController::UpdateUI() {
@@ -130,8 +165,16 @@ void Menu::ReplayViewController::UpdateUI() {
     auto difficulty = beatmap->get_difficulty();
     levelBar->Setup(level, characteristic, difficulty);
 
-    dateText->set_text(GetLayeredText("Date Played", "test date"));
-    scoreText->set_text(GetLayeredText("Score", "infinity (1%)"));
-    modifiersText->set_text(GetLayeredText("Modifiers", "ESFS"));
-    failText->set_text(GetLayeredText("Failed", "of course not"));
+    auto info = replayInfos[currentReplay];
+
+    sourceText->set_text(GetLayeredText("Replay Source:  ", info->source, false));
+    std::string date = GetStringForTimeSinceNow(info->timestamp);
+    std::string score = std::to_string(info->score);
+    std::string modifiers = GetModifierString(info->modifiers, info->reached0Energy);
+    std::string fail = info->failed ? "True" : "False";
+
+    dateText->set_text(GetLayeredText("Date Played", date));
+    scoreText->set_text(GetLayeredText("Score", score));
+    modifiersText->set_text(GetLayeredText("Modifiers", modifiers));
+    failText->set_text(GetLayeredText("Failed", fail));
 }

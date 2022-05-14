@@ -1,10 +1,14 @@
 #include "Main.hpp"
 #include "Utils.hpp"
 
+#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+
 #include "questui/shared/BeatSaberUI.hpp"
 
 #include <filesystem>
 #include <chrono>
+#include <sstream>
 
 using namespace GlobalNamespace;
 
@@ -49,13 +53,37 @@ std::unordered_map<std::string, ReplayType> GetReplays(CustomDifficultyBeatmap* 
         if(fileexists(path))
             replays.insert({path, ReplayType::REQLAY});
     }
+
+    std::string bsorDiffName;
+    switch ((int) beatmap->get_difficulty()) {
+    case 0:
+        bsorDiffName = "Easy";
+        break;
+    case 1:
+        bsorDiffName = "Normal";
+        break;
+    case 2:
+        bsorDiffName = "Hard";
+        break;
+    case 3:
+        bsorDiffName = "Expert";
+        break;
+    case 4:
+        bsorDiffName = "ExpertPlus";
+        break;
+    default:
+        bsorDiffName = "Error";
+        break;
+    }
+    std::string characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
     
     std::transform(hash.begin(), hash.end(), hash.begin(), toupper);
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
+    std::string search = fmt::format("{}-{}-{}", bsorDiffName, characteristic, hash);
     for(const auto& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if(!entry.is_directory()) {
             auto path = entry.path();
-            if(path.extension() == bsorSuffix && path.stem().string().find(hash) != std::string::npos) {
+            if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
                 replays.insert({path.string(), ReplayType::BSOR});
             }
         }
@@ -125,4 +153,25 @@ std::string SecondsToString(int value) {
     }
     
     return minutesString + ":" + secondsString;
+}
+
+std::string GetModifierString(const ReplayModifiers& modifiers, bool includeNoFail) {
+    std::stringstream s;
+    if(modifiers.disappearingArrows) s << "DA, ";
+    if(modifiers.fasterSong) s << "FS, ";
+    if(modifiers.slowerSong) s << "SS, ";
+    if(modifiers.superFastSong) s << "SF, ";
+    if(modifiers.strictAngles) s << "SA, ";
+    if(modifiers.proMode) s << "PM, ";
+    if(modifiers.smallNotes) s << "SC, ";
+    if(modifiers.ghostNotes) s << "GN, ";
+    if(modifiers.noArrows) s << "NA, ";
+    if(modifiers.noBombs) s << "NB, ";
+    if(modifiers.noFail && includeNoFail) s << "NF, ";
+    if(modifiers.noObstacles) s << "NO, ";
+    auto str = s.str();
+    if(str.length() == 0)
+        return "None";
+    str.erase(str.end() - 2);
+    return str;
 }

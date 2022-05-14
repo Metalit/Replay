@@ -2,7 +2,6 @@
 #include "Formats/FrameReplay.hpp"
 
 #include <fstream>
-#include <sstream>
 
 // loading code for henwill's old replay versions
 
@@ -86,28 +85,6 @@ struct V5KeyFrame {
 };
 
 template<class T>
-std::string GetModifierString(const T& modifiers, bool includeNoFail) {
-    std::stringstream s;
-    if(modifiers.disappearingArrows) s << "DA,";
-    if(modifiers.fasterSong) s << "FS,";
-    if(modifiers.slowerSong) s << "SS,";
-    if constexpr(std::is_same_v<T, ReplayModifiers>) {
-        if(modifiers.superFastSong) s << "SF,";
-        if(modifiers.strictAngles) s << "SA,";
-        if(modifiers.proMode) s << "PM,";
-        if(modifiers.smallNotes) s << "SC,";
-    }
-    if(modifiers.ghostNotes) s << "GN,";
-    if(modifiers.noArrows) s << "NA,";
-    if(modifiers.noBombs) s << "NB,";
-    if(modifiers.noFail && includeNoFail) s << "NF,";
-    if(modifiers.noObstacles) s << "NO,";
-    auto str = s.str();
-    str.erase(str.end() - 1);
-    return str;
-}
-
-template<class T>
 ReplayModifiers ConvertModifiers(const T& modifiers) {
     ReplayModifiers ret;
     ret.disappearingArrows = modifiers.disappearingArrows;
@@ -118,6 +95,11 @@ ReplayModifiers ConvertModifiers(const T& modifiers) {
         ret.strictAngles = modifiers.strictAngles;
         ret.proMode = modifiers.proMode;
         ret.smallNotes = modifiers.smallNotes;
+    } else {
+        ret.superFastSong = false;
+        ret.strictAngles = false;
+        ret.proMode = false;
+        ret.smallNotes = false;
     }
     ret.ghostNotes = modifiers.ghostNotes;
     ret.noArrows = modifiers.noArrows;
@@ -144,6 +126,7 @@ FrameReplay ReadFromV1(std::ifstream& input) {
     READ_TO(modifiers);
     ret.info.modifiers = ConvertModifiers(modifiers);
     ret.info.reached0Energy = modifiers.noFail;
+    ret.info.failed = false;
 
     ret.info.hasYOffset = false;
     auto frame = V1KeyFrame();
@@ -152,6 +135,7 @@ FrameReplay ReadFromV1(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, 0,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -164,6 +148,7 @@ FrameReplay ReadFromV2(std::ifstream& input) {
     READ_TO(modifiers);
     ret.info.modifiers = ConvertModifiers(modifiers);
     ret.info.reached0Energy = modifiers.noFail;
+    ret.info.failed = false;
 
     ret.info.hasYOffset = true;
     auto frame = V2KeyFrame();
@@ -171,6 +156,7 @@ FrameReplay ReadFromV2(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -195,6 +181,7 @@ FrameReplay ReadFromV3(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -223,6 +210,7 @@ FrameReplay ReadFromV4(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -251,6 +239,7 @@ FrameReplay ReadFromV5(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -279,6 +268,7 @@ FrameReplay ReadFromV6(std::ifstream& input) {
         ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
             ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
+    ret.info.score = frame.score;
 
     return ret;
 }
@@ -326,6 +316,7 @@ FrameReplay ReadReqlay(const std::string& path) {
     
     auto modified = std::filesystem::last_write_time(path);
     ret.info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
+    ret.info.source = "Replay Mod (Old)";
 
     return ret;
 }

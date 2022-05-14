@@ -22,9 +22,7 @@ Logger& getLogger() {
 MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
     StandardLevelDetailView_RefreshContent(self);
     
-    LOG_INFO("setting up ui");
     Menu::EnsureSetup(self);
-    LOG_INFO("setting level in ui");
     Manager::SetLevel((CustomDifficultyBeatmap*) self->selectedDifficultyBeatmap);
 }
 

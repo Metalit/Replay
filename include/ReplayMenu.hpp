@@ -6,12 +6,18 @@
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
 
+#include "questui/shared/CustomTypes/Components/Settings/IncrementSetting.hpp"
+
 #include "custom-types/shared/macros.hpp"
 
 struct ReplayInfo;
 
 namespace Menu {
     void EnsureSetup(GlobalNamespace::StandardLevelDetailView* view);
+
+    void SetButtonEnabled(bool enabled);
+
+    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
 }
 
 DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
@@ -24,14 +30,17 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
 
     public:
         void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
+        void SelectReplay(int index);
     private:
         GlobalNamespace::LevelBar* levelBar;
+        TMPro::TextMeshProUGUI* sourceText;
         TMPro::TextMeshProUGUI* dateText;
         TMPro::TextMeshProUGUI* scoreText;
         TMPro::TextMeshProUGUI* modifiersText;
         TMPro::TextMeshProUGUI* failText;
         UnityEngine::UI::Button* deleteButton;
         UnityEngine::UI::Button* watchButton;
+        QuestUI::IncrementSetting* increment;
 
         std::vector<ReplayInfo*> replayInfos;
         std::vector<std::string> replayPaths;
