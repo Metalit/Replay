@@ -37,7 +37,8 @@ void OnDeleteButtonClick() {
 }
 
 void OnWatchButtonClick() {
-
+    levelView->actionButton->get_onClick()->Invoke();
+    Manager::ReplayStarted(viewController->GetReplay());
 }
 
 void OnIncrementChanged(float value) {
@@ -140,7 +141,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     failText = CreateCenteredText(layout2);
 
     BeatSaberUI::CreateUIButton(layout1, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
-    BeatSaberUI::CreateUIButton(layout2, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
+    BeatSaberUI::CreateUIButton(layout2, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
 
     increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
 }
@@ -148,6 +149,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
     replayInfos = infos;
     replayPaths = paths;
+    currentReplay = 0;
     beatmapData = nullptr;
     GetBeatmapData(levelView->selectedDifficultyBeatmap, [this, infos](IReadonlyBeatmapData* data) {
         beatmapData = data;
@@ -165,6 +167,10 @@ void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std:
 void Menu::ReplayViewController::SelectReplay(int index) {
     currentReplay = index;
     UpdateUI();
+}
+
+std::string& Menu::ReplayViewController::GetReplay() {
+    return replayPaths[currentReplay];
 }
 
 void Menu::ReplayViewController::UpdateUI() {

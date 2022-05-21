@@ -109,149 +109,155 @@ Transform ConvertEulerTransform(EulerTransform& trans) {
 
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 
-FrameReplay ReadFromV1(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV1(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
     auto modifiers = V1Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
-    ret.info.reached0Energy = modifiers.noFail;
-    ret.info.failed = false;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
+    replay->info.failed = false;
 
-    ret.info.hasYOffset = false;
+    replay->info.hasYOffset = false;
     auto frame = V1KeyFrame();
     while(READ_TO(frame)) {
         frame.head.rotation = frame.head.rotation * 90;
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, 0,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, 0));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 // changed modifier order, added version header, added jump offset to keyframes
-FrameReplay ReadFromV2(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV2(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
-    ret.info.reached0Energy = modifiers.noFail;
-    ret.info.failed = false;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
+    replay->info.failed = false;
 
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 // added info for fails in replays (different from reaching 0 energy with no fail)
-FrameReplay ReadFromV3(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV3(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
-    READ_TO(ret.info.failed);
-    READ_TO(ret.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
-    ret.info.reached0Energy = modifiers.noFail;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
 
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 // explicitly added reached 0 energy bool and time to the replay
-FrameReplay ReadFromV4(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV4(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
-    READ_TO(ret.info.failed);
-    READ_TO(ret.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
+    replay->info.modifiers = ConvertModifiers(modifiers);
     
-    READ_TO(ret.info.reached0Energy);
-    READ_TO(ret.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 // added energy to keyframes
-FrameReplay ReadFromV5(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV5(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
-    READ_TO(ret.info.failed);
-    READ_TO(ret.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
     
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = ConvertModifiers(modifiers);
+    replay->info.modifiers = ConvertModifiers(modifiers);
     
-    READ_TO(ret.info.reached0Energy);
-    READ_TO(ret.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     auto frame = V5KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 // reordered modifiers again and added the new ones
-FrameReplay ReadFromV6(std::ifstream& input) {
-    FrameReplay ret;
+ReplayWrapper ReadFromV6(std::ifstream& input) {
+    auto replay = new FrameReplay();
+    ReplayWrapper ret(ReplayType::Frame, replay);
 
-    READ_TO(ret.info.failed);
-    READ_TO(ret.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
     
     auto modifiers = V6Modifiers();
     READ_TO(modifiers);
-    ret.info.modifiers = modifiers;
+    replay->info.modifiers = modifiers;
     
-    READ_TO(ret.info.reached0Energy);
-    READ_TO(ret.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     auto frame = V5KeyFrame();
     while(READ_TO(frame)) {
-        ret.frames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset,
-            ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset));
+        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
     }
-    ret.info.score = frame.score;
+    replay->info.score = frame.score;
 
     return ret;
 }
 
 unsigned char fileHeader[3] = { 0xa1, 0xd2, 0x45 };
 
-FrameReplay _ReadReqlay(const std::string& path) {
+ReplayWrapper _ReadReqlay(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
 
     if(!input.is_open()) {
@@ -289,12 +295,12 @@ FrameReplay _ReadReqlay(const std::string& path) {
     }
 }
 
-FrameReplay ReadReqlay(const std::string& path) {
-    FrameReplay ret = _ReadReqlay(path);
+ReplayWrapper ReadReqlay(const std::string& path) {
+    ReplayWrapper ret = _ReadReqlay(path);
     
     auto modified = std::filesystem::last_write_time(path);
-    ret.info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
-    ret.info.source = "Replay Mod (Old)";
+    ret.replay->info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
+    ret.replay->info.source = "Replay Mod (Old)";
 
     return ret;
 }

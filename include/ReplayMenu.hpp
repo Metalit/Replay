@@ -32,6 +32,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
     public:
         void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
         void SelectReplay(int index);
+        std::string& GetReplay();
     private:
         GlobalNamespace::LevelBar* levelBar;
         TMPro::TextMeshProUGUI* sourceText;

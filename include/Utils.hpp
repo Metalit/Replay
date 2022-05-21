@@ -1,16 +1,11 @@
 #pragma once
 
-#include "Formats/FrameReplay.hpp"
+#include "Replay.hpp"
 
 #include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "UnityEngine/Sprite.hpp"
-
-enum struct ReplayType {
-    REQLAY,
-    BSOR
-};
 
 std::string GetReqlaysPath();
 
@@ -18,7 +13,7 @@ std::string GetBSORsPath();
 
 std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
 
-std::unordered_map<std::string, ReplayType> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
+std::unordered_map<std::string, ReplayWrapper> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
 
 UnityEngine::Sprite* GetReplayIcon();
 

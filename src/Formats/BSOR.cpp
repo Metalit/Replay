@@ -99,7 +99,7 @@ BSORInfo ReadInfo(std::ifstream& input) {
     return info;
 }
 
-EventReplay ReadBSOR(const std::string& path) {
+ReplayWrapper ReadBSOR(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
 
     if(!input.is_open()) {
@@ -128,24 +128,25 @@ EventReplay ReadBSOR(const std::string& path) {
         return {};
     }
 
-    EventReplay ret;
+    auto replay = new EventReplay();
+    ReplayWrapper ret(ReplayType::Event, replay);
     
     auto info = ReadInfo(input);
-    ret.info.modifiers = ParseModifierString(info.modifiers);
-    ret.info.modifiers.leftHanded = info.leftHanded;
-    ret.info.timestamp = std::stol(info.timestamp);
-    ret.info.score = info.score;
-    ret.info.source = "Beatleader";
+    replay->info.modifiers = ParseModifierString(info.modifiers);
+    replay->info.modifiers.leftHanded = info.leftHanded;
+    replay->info.timestamp = std::stol(info.timestamp);
+    replay->info.score = info.score;
+    replay->info.source = "Beatleader";
     // infer reached 0 energy because no fail is only listed if it did
-    ret.info.reached0Energy = ret.info.modifiers.noFail;
-    ret.info.jumpDistance = info.jumpDistance;
+    replay->info.reached0Energy = replay->info.modifiers.noFail;
+    replay->info.jumpDistance = info.jumpDistance;
     // infer practice because these values are only non 0 (defaults) when it is
-    ret.info.practice = info.speed > 0.001 && info.startTime > 0.001;
-    ret.info.startTime = info.startTime;
-    ret.info.speed = info.speed;
+    replay->info.practice = info.speed > 0.001 && info.startTime > 0.001;
+    replay->info.startTime = info.startTime;
+    replay->info.speed = info.speed;
     // infer whether or not the player failed
-    ret.info.failed = info.failTime > 0.001;
-    ret.info.failTime = info.failTime;
+    replay->info.failed = info.failTime > 0.001;
+    replay->info.failTime = info.failTime;
 
     READ_TO(section);
     if (section != 1) {
@@ -155,7 +156,7 @@ EventReplay ReadBSOR(const std::string& path) {
     int framesCount;
     READ_TO(framesCount);
     for(int i = 0; i < framesCount; i++) {
-        auto frame = ret.frames.emplace_back(Frame());
+        auto frame = replay->frames.emplace_back(Frame());
         READ_TO(frame);
     }
     
@@ -167,7 +168,7 @@ EventReplay ReadBSOR(const std::string& path) {
     int notesCount;
     READ_TO(notesCount);
     for(int i = 0; i < notesCount; i++) {
-        auto note = ret.notes.emplace_back(NoteEvent());
+        auto note = replay->notes.emplace_back(NoteEvent());
         READ_TO(note.info);
         if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD)
             READ_TO(note.noteCutInfo);
@@ -181,7 +182,7 @@ EventReplay ReadBSOR(const std::string& path) {
     int wallsCount;
     READ_TO(wallsCount);
     for(int i = 0; i < wallsCount; i++) {
-        auto wall = ret.walls.emplace_back(WallEvent());
+        auto wall = replay->walls.emplace_back(WallEvent());
         READ_TO(wall);
     }
     
@@ -193,10 +194,10 @@ EventReplay ReadBSOR(const std::string& path) {
     int heightCount;
     READ_TO(heightCount);
     for(int i = 0; i < heightCount; i++) {
-        auto height = ret.heights.emplace_back(HeightEvent());
+        auto height = replay->heights.emplace_back(HeightEvent());
         READ_TO(height);
     }
-    ret.info.hasYOffset = true;
+    replay->info.hasYOffset = true;
     
     READ_TO(section);
     if (section != 5) {
@@ -206,7 +207,7 @@ EventReplay ReadBSOR(const std::string& path) {
     int pauseCount;
     READ_TO(pauseCount);
     for(int i = 0; i < pauseCount; i++) {
-        auto pause = ret.pauses.emplace_back(Pause());
+        auto pause = replay->pauses.emplace_back(Pause());
         READ_TO(pause);
     }
 
