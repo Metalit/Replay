@@ -1,6 +1,9 @@
 #include "Main.hpp"
 #include "Utils.hpp"
 
+#include "Formats/FrameReplay.hpp"
+#include "Formats/EventReplay.hpp"
+
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
@@ -41,22 +44,23 @@ const std::string reqlaySuffix1 = ".reqlay";
 const std::string reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
 const std::string bsorSuffix = ".bsor";
 
-std::unordered_map<std::string, ReplayType> GetReplays(IDifficultyBeatmap* beatmap) {
-    std::unordered_map<std::string, ReplayType> replays;
+std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* beatmap) {
+    std::unordered_map<std::string, ReplayWrapper> replays;
 
     std::vector<std::string> tests;
 
     std::string hash = GetHash((IPreviewBeatmapLevel*) beatmap->get_level());
     std::string diff = std::to_string((int) beatmap->get_difficulty());
-    std::string reqlay1 = GetReqlaysPath() + hash + diff;
-    std::string reqlay2 = GetReqlaysPath() + "custom_level_" + hash + diff;
+    std::string mode = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->compoundIdPartName;
+    std::string reqlay1 = GetReqlaysPath() + hash + diff + mode;
+    std::string reqlay2 = GetReqlaysPath() + "custom_level_" + hash + diff + mode;
     tests.emplace_back(reqlay1 + reqlaySuffix1);
     tests.emplace_back(reqlay1 + reqlaySuffix2);
     tests.emplace_back(reqlay2 + reqlaySuffix1);
     tests.emplace_back(reqlay2 + reqlaySuffix2);
     for(auto& path : tests) {
         if(fileexists(path))
-            replays.insert({path, ReplayType::REQLAY});
+            replays.insert({path, ReadReqlay(path)});
     }
 
     std::string bsorDiffName;
@@ -88,9 +92,8 @@ std::unordered_map<std::string, ReplayType> GetReplays(IDifficultyBeatmap* beatm
     for(const auto& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if(!entry.is_directory()) {
             auto path = entry.path();
-            if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
-                replays.insert({path.string(), ReplayType::BSOR});
-            }
+            if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos)
+                replays.insert({path.string(), ReadBSOR(path.string())});
         }
     }
     

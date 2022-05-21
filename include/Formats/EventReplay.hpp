@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FrameReplay.hpp"
+#include "Replay.hpp"
 
 struct ReplayNoteCutInfo {
     bool speedOK;
@@ -56,25 +56,11 @@ struct Pause {
     float time;
 };
 
-struct Frame {
-    float time;
-    int fps;
-    Transform head;
-    Transform leftHand;
-    Transform rightHand;
-
-    constexpr Frame() = default;
-    constexpr Frame(float time, int fps, const Transform& head, const Transform& leftHand, const Transform& rightHand) : 
-        time(time), fps(fps), head(head), leftHand(leftHand), rightHand(rightHand) {}
-};
-
-struct EventReplay {
-    ReplayInfo info;
-    std::vector<Frame> frames;
+struct EventReplay : public Replay {
     std::vector<NoteEvent> notes;
     std::vector<WallEvent> walls;
     std::vector<HeightEvent> heights;
     std::vector<Pause> pauses;
 };
 
-EventReplay ReadBSOR(const std::string& path);
+ReplayWrapper ReadBSOR(const std::string& path);

@@ -12,7 +12,7 @@
 
 using namespace GlobalNamespace;
 
-static ModInfo modInfo;
+ModInfo modInfo;
 
 Logger& getLogger() {
     static Logger* logger = new Logger(modInfo);
