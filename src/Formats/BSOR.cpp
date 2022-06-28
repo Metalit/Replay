@@ -156,7 +156,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int framesCount;
     READ_TO(framesCount);
     for(int i = 0; i < framesCount; i++) {
-        auto frame = replay->frames.emplace_back(Frame());
+        auto& frame = replay->frames.emplace_back(Frame());
         READ_TO(frame);
     }
     
@@ -168,7 +168,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int notesCount;
     READ_TO(notesCount);
     for(int i = 0; i < notesCount; i++) {
-        auto note = replay->notes.emplace_back(NoteEvent());
+        auto& note = replay->notes.emplace_back(NoteEvent());
         READ_TO(note.info);
         if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD)
             READ_TO(note.noteCutInfo);
@@ -182,7 +182,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int wallsCount;
     READ_TO(wallsCount);
     for(int i = 0; i < wallsCount; i++) {
-        auto wall = replay->walls.emplace_back(WallEvent());
+        auto& wall = replay->walls.emplace_back(WallEvent());
         READ_TO(wall);
     }
     
@@ -194,7 +194,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int heightCount;
     READ_TO(heightCount);
     for(int i = 0; i < heightCount; i++) {
-        auto height = replay->heights.emplace_back(HeightEvent());
+        auto& height = replay->heights.emplace_back(HeightEvent());
         READ_TO(height);
     }
     replay->info.hasYOffset = true;
@@ -207,7 +207,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int pauseCount;
     READ_TO(pauseCount);
     for(int i = 0; i < pauseCount; i++) {
-        auto pause = replay->pauses.emplace_back(Pause());
+        auto& pause = replay->pauses.emplace_back(Pause());
         READ_TO(pause);
     }
 
