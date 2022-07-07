@@ -1,15 +1,6 @@
+
 # include some defines automatically made by qpm
 include(qpm_defines.cmake)
-
-# override mod id
-set(MOD_ID "replay")
-
-# Enable link time optimization
-# In my experience, this can be highly unstable but it nets a huge size optimization and likely performance
-# However, the instability was seen using Android.mk/ndk-build builds. With Ninja + CMake, this problem seems to have been solved.
-# As always, test thoroughly
-# - Fern
-# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 cmake_minimum_required(VERSION 3.21)
 project(${COMPILE_ID})
@@ -54,6 +45,8 @@ target_include_directories(${COMPILE_ID} PRIVATE ${INCLUDE_DIR})
 target_include_directories(${COMPILE_ID} PUBLIC ${SHARED_DIR})
 # codegen includes 
 target_include_directories(${COMPILE_ID} PRIVATE ${EXTERN_DIR}/includes/${CODEGEN_ID}/include)
+# rapidjson includes 
+target_include_directories(${COMPILE_ID} PRIVATE ${EXTERN_DIR}/includes/beatsaber-hook/shared/rapidjson/include)
 
 target_link_libraries(${COMPILE_ID} PRIVATE -llog)
 # add extern stuff like libs and other includes
@@ -66,7 +59,7 @@ add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
 
 add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory debug
-        COMMENT "Make directory for debug symbols"
+        COMMENT "Rename the lib to debug_ since it has debug symbols"
         )
 
 add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
@@ -74,11 +67,11 @@ add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
         COMMENT "Rename the lib to debug_ since it has debug symbols"
         )
 
-# strip debug symbols from the .so and all dependencies
 add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rename stripped_lib${COMPILE_ID}.so lib${COMPILE_ID}.so
         COMMENT "Rename the stripped lib to regular"
         )
+
         foreach(so_file ${so_list})
         cmake_path(GET so_file FILENAME file)
         
