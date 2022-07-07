@@ -11,6 +11,7 @@
 #include "GlobalNamespace/CutScoreBuffer.hpp"
 #include "GlobalNamespace/ComboController.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
+#include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/GameEnergyCounter.hpp"
@@ -18,6 +19,10 @@
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/GameNoteController.hpp"
+#include "GlobalNamespace/BombNoteController.hpp"
+#include "GlobalNamespace/BurstSliderGameNoteController.hpp"
+#include "GlobalNamespace/BeatmapObjectManager.hpp"
 #include "GlobalNamespace/HapticFeedbackController.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
@@ -176,6 +181,59 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
     GameEnergyCounter_ProcessEnergyChange(self, energyChange);
 }
 
+// disable real cuts for event replays
+MAKE_HOOK_MATCH(GameNoteController_Awake, &GameNoteController::Awake, void, GameNoteController* self) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
+        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
+        il2cpp_utils::RunMethodRethrow(self, method);
+        return;
+    }
+
+    GameNoteController_Awake(self);
+}
+MAKE_HOOK_MATCH(BombNoteController_Awake, &BombNoteController::Awake, void, BombNoteController* self) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
+        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
+        il2cpp_utils::RunMethodRethrow(self, method);
+        return;
+    }
+
+    BombNoteController_Awake(self);
+}
+MAKE_HOOK_MATCH(BurstSliderGameNoteController_Awake, &BurstSliderGameNoteController::Awake, void, BurstSliderGameNoteController* self) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
+        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
+        il2cpp_utils::RunMethodRethrow(self, method);
+        return;
+    }
+
+    BurstSliderGameNoteController_Awake(self);
+}
+
+// have cuts actually finish for event replays
+MAKE_HOOK_MATCH(CutScoreBuffer_Init, &CutScoreBuffer::Init, bool, CutScoreBuffer* self, ByRef<NoteCutInfo> noteCutInfo) {
+
+    bool unfinished = CutScoreBuffer_Init(self, noteCutInfo);
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        unfinished = false;
+    
+    return unfinished;
+}
+
+// keep track of all notes for event replays
+MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectManager::AddSpawnedNoteController,
+        void, BeatmapObjectManager* self, NoteController* noteController, BeatmapObjectSpawnMovementData::NoteSpawnData noteSpawnData, float rotation) {
+    
+    BeatmapObjectManager_AddSpawnedNoteController(self, noteController, noteSpawnData, rotation);
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event && noteController->noteData->gameplayType != NoteData::GameplayType::Bomb)
+        Manager::Events::AddNoteController(noteController);
+}
+
 // disable vibrations during replays
 MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackController::PlayHapticFeedback,
         void, HapticFeedbackController* self, UnityEngine::XR::XRNode node, Libraries::HM::HMLib::VR::HapticPresetSO* hapticPreset) {
@@ -216,6 +274,11 @@ namespace Hooks {
         INSTALL_HOOK(logger, ComboController_HandleNoteWasCut);
         INSTALL_HOOK(logger, ComboController_HandleNoteWasMissed);
         INSTALL_HOOK(logger, GameEnergyCounter_ProcessEnergyChange);
+        INSTALL_HOOK(logger, GameNoteController_Awake);
+        INSTALL_HOOK(logger, BombNoteController_Awake);
+        INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
+        INSTALL_HOOK(logger, CutScoreBuffer_Init);
+        INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
         INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
         INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
         INSTALL_HOOK(logger, PauseMenuManager_MenuButtonPressed);
