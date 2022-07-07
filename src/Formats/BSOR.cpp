@@ -37,6 +37,20 @@ struct BSORInfo {
     float speed = 0;
 };
 
+struct BSORNoteEventInfo {
+    int noteID;
+    float eventTime;
+    float spawnTime;
+    NoteEventInfo::Type eventType = NoteEventInfo::Type::GOOD;
+};
+
+struct BSORWallEvent {
+    int wallID;
+    float energy;
+    float time;
+    float spawnTime;
+};
+
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 #define READ_STRING(name) name = ReadString(input)
 
@@ -167,9 +181,24 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int notesCount;
     READ_TO(notesCount);
+    BSORNoteEventInfo noteInfo;
     for(int i = 0; i < notesCount; i++) {
         auto& note = replay->notes.emplace_back(NoteEvent());
-        READ_TO(note.info);
+        READ_TO(noteInfo);
+        note.info.lineIndex = noteInfo.noteID / 1000;
+        noteInfo.noteID -= note.info.lineIndex * 1000;
+
+        note.info.lineLayer = noteInfo.noteID / 100;
+        noteInfo.noteID -= note.info.lineLayer * 100;
+
+        note.info.colorType = noteInfo.noteID / 10;
+        noteInfo.noteID -= note.info.colorType * 10;
+
+        note.info.cutDirection = noteInfo.noteID;
+
+        note.info.eventTime = noteInfo.eventTime;
+        note.info.eventType = noteInfo.eventType;
+        
         if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD)
             READ_TO(note.noteCutInfo);
     }
@@ -181,9 +210,20 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int wallsCount;
     READ_TO(wallsCount);
+    BSORWallEvent wallEvent;
     for(int i = 0; i < wallsCount; i++) {
         auto& wall = replay->walls.emplace_back(WallEvent());
-        READ_TO(wall);
+        READ_TO(wallEvent);
+        wall.lineIndex = wallEvent.wallID / 100;
+        wallEvent.wallID -= wall.lineIndex * 100;
+        
+        wall.obstacleType = wallEvent.wallID / 10;
+        wallEvent.wallID -= wall.obstacleType * 10;
+        
+        wall.width = wallEvent.wallID;
+
+        wall.energy = wallEvent.energy;
+        wall.time = wallEvent.time;
     }
     
     READ_TO(section);

@@ -28,9 +28,11 @@ struct NoteEventInfo {
         BOMB = 3
     };
 
-    int noteID;
+    short lineIndex;
+    short lineLayer;
+    short colorType;
+    short cutDirection;
     float eventTime;
-    float spawnTime;
     Type eventType = Type::GOOD;
 };
 
@@ -40,10 +42,11 @@ struct NoteEvent {
 };
 
 struct WallEvent {
-    int wallID;
+    short lineIndex;
+    short obstacleType;
+    short width;
     float energy;
     float time;
-    float spawnTime;
 };
 
 struct HeightEvent {

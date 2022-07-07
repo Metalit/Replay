@@ -14,8 +14,6 @@
 
 #include "questui/shared/BeatSaberUI.hpp"
 
-#include <filesystem>
-
 DEFINE_TYPE(Menu, ReplayViewController);
 
 using namespace GlobalNamespace;

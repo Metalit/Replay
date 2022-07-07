@@ -24,7 +24,6 @@ namespace Manager {
         RefreshLevelReplays();
     }
 
-    // man I really should have used an inheritance kind of thing huh
     void RefreshLevelReplays() {
         currentReplays = GetReplays(beatmap);
         if(currentReplays.size() > 0) {
