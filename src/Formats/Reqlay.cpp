@@ -33,7 +33,6 @@ struct V2Modifiers {
     bool leftHanded; // problematic
 };
 
-// last three bools problematic
 typedef ReplayModifiers V6Modifiers;
 
 struct EulerTransform {
