@@ -3,6 +3,7 @@
 #include "Utils.hpp"
 
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
+#include "GlobalNamespace/NoteController.hpp"
 
 struct ScoreFrame;
 struct NoteEvent;
@@ -11,6 +12,15 @@ struct HeightEvent;
 struct Pause;
 
 namespace Manager {
+    
+    namespace Frames {
+        ScoreFrame* GetScoreFrame();
+    }
+    
+    namespace Events {
+        void AddNoteController(GlobalNamespace::NoteController* note);
+    }
+    
     void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);
     
     void RefreshLevelReplays();
@@ -27,12 +37,4 @@ namespace Manager {
     Frame& GetFrame();
     Frame& GetNextFrame();
     float GetFrameProgress();
-    
-    namespace Frames {
-        ScoreFrame* GetScoreFrame();
-    }
-    
-    namespace Events {
-        
-    }
 }
