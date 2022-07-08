@@ -185,6 +185,10 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     for(int i = 0; i < notesCount; i++) {
         auto& note = replay->notes.emplace_back(NoteEvent());
         READ_TO(noteInfo);
+        note.info.scoringType = noteInfo.noteID / 10000;
+        noteInfo.noteID -= note.info.scoringType * 10000;
+        note.info.scoringType -= 2;
+
         note.info.lineIndex = noteInfo.noteID / 1000;
         noteInfo.noteID -= note.info.lineIndex * 1000;
 
@@ -196,7 +200,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
         note.info.cutDirection = noteInfo.noteID;
 
-        note.info.eventTime = noteInfo.eventTime;
+        note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
         
         if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD)
