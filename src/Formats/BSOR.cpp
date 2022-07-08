@@ -197,6 +197,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
         note.info.colorType = noteInfo.noteID / 10;
         noteInfo.noteID -= note.info.colorType * 10;
+        if(note.info.colorType == 3) note.info.colorType = -1;
 
         note.info.cutDirection = noteInfo.noteID;
 

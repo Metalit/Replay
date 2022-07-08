@@ -25,6 +25,7 @@
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 #include "GlobalNamespace/HapticFeedbackController.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "System/Action_1.hpp"
@@ -213,6 +214,15 @@ MAKE_HOOK_MATCH(BurstSliderGameNoteController_Awake, &BurstSliderGameNoteControl
     BurstSliderGameNoteController_Awake(self);
 }
 
+// disable misses for frame replays
+MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        return;
+
+    NoteController_HandleNoteDidPassMissedMarkerEvent(self);
+}
+
 // have cuts actually finish for event replays
 MAKE_HOOK_MATCH(CutScoreBuffer_Init, &CutScoreBuffer::Init, bool, CutScoreBuffer* self, ByRef<NoteCutInfo> noteCutInfo) {
 
@@ -224,14 +234,42 @@ MAKE_HOOK_MATCH(CutScoreBuffer_Init, &CutScoreBuffer::Init, bool, CutScoreBuffer
     return unfinished;
 }
 
+// disable real obstacle interactions for event replays
+MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &PlayerHeadAndObstacleInteraction::RefreshIntersectingObstacles,
+        void, PlayerHeadAndObstacleInteraction* self, UnityEngine::Vector3 worldPos) {
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        return;
+    
+    PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles(self, worldPos);
+}
+
 // keep track of all notes for event replays
 MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectManager::AddSpawnedNoteController,
         void, BeatmapObjectManager* self, NoteController* noteController, BeatmapObjectSpawnMovementData::NoteSpawnData noteSpawnData, float rotation) {
     
     BeatmapObjectManager_AddSpawnedNoteController(self, noteController, noteSpawnData, rotation);
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event && noteController->noteData->gameplayType != NoteData::GameplayType::Bomb)
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         Manager::Events::AddNoteController(noteController);
+}
+// keep track of all walls for event replays
+MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedObstacleController, &BeatmapObjectManager::AddSpawnedObstacleController,
+        void, BeatmapObjectManager* self, ObstacleController* obstacleController, BeatmapObjectSpawnMovementData::ObstacleSpawnData obstacleSpawnData, float rotation) {
+    
+    BeatmapObjectManager_AddSpawnedObstacleController(self, obstacleController, obstacleSpawnData, rotation);
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        Manager::Events::AddObstacleController(obstacleController);
+}
+MAKE_HOOK_MATCH(ObstacleController_ManualUpdate, &ObstacleController::ManualUpdate, void, ObstacleController* self) {
+
+    bool hadPassedAvoided = self->passedAvoidedMarkReported;
+
+    ObstacleController_ManualUpdate(self);
+
+    if(self->passedAvoidedMarkReported && !hadPassedAvoided && Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        Manager::Events::ObstacleControllerFinished(self);
 }
 
 // disable vibrations during replays
@@ -277,8 +315,11 @@ namespace Hooks {
         INSTALL_HOOK(logger, GameNoteController_Awake);
         INSTALL_HOOK(logger, BombNoteController_Awake);
         INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
+        INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
         INSTALL_HOOK(logger, CutScoreBuffer_Init);
         INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
+        INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedObstacleController);
+        INSTALL_HOOK(logger, ObstacleController_ManualUpdate);
         INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
         INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
         INSTALL_HOOK(logger, PauseMenuManager_MenuButtonPressed);

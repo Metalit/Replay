@@ -10,9 +10,12 @@
 
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
+#include "GlobalNamespace/ObstacleData.hpp"
 #include "GlobalNamespace/Saber.hpp"
+#include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "System/Collections/Generic/HashSet_1.hpp"
 
 using namespace GlobalNamespace;
 
@@ -53,6 +56,14 @@ namespace Manager {
     float lerpAmount = 0;
 
     Saber *leftSaber, *rightSaber;
+    PlayerHeadAndObstacleInteraction* obstacleChecker;
+
+    void GetObjects() {
+        auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
+        leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
+        rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
+        obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
+    }
 
     namespace Frames {
         ScoreFrame* GetScoreFrame() {
@@ -63,15 +74,32 @@ namespace Manager {
     namespace Events {
         std::vector<NoteController*> notes;
         std::vector<NoteEvent>::iterator noteEvent;
+        std::vector<ObstacleController*> walls;
+        std::vector<WallEvent>::iterator wallEvent;
+        std::set<ObstacleController*> currentWalls;
 
         void ReplayStarted() {
             notes.clear();
             noteEvent = ((EventReplay*) currentReplay.replay.get())->notes.begin();
+            walls.clear();
+            currentWalls.clear();
+            wallEvent = ((EventReplay*) currentReplay.replay.get())->walls.begin();
         }
 
         void AddNoteController(NoteController* note) {
             notes.push_back(note);
         }
+        void AddObstacleController(ObstacleController* wall) {
+            walls.push_back(wall);
+        }
+        void ObstacleControllerFinished(ObstacleController* wall) {
+            auto iter = currentWalls.find(wall);
+            if(iter != currentWalls.end()) {
+                currentWalls.erase(iter);
+                obstacleChecker->intersectingObstacles->Remove(wall);
+            }
+        }
+        
         void UpdateTime() {
             while(noteEvent != ((EventReplay*) currentReplay.replay.get())->notes.end() && noteEvent->time < songTime) {
                 auto& info = noteEvent->info;
@@ -83,13 +111,34 @@ namespace Manager {
                             && noteData->colorType == info.colorType
                             && noteData->cutDirection == info.cutDirection) {
                         auto saber = noteEvent->noteCutInfo.saberType == SaberType::SaberA ? leftSaber : rightSaber;
-                        auto cutInfo = GetNoteCutInfo(*iter, saber, noteEvent->noteCutInfo);
-                        il2cpp_utils::RunMethodUnsafe(*iter, "SendNoteWasCutEvent", byref(cutInfo));
+                        if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
+                            auto cutInfo = GetNoteCutInfo(*iter, saber, noteEvent->noteCutInfo);
+                            il2cpp_utils::RunMethodUnsafe(*iter, "SendNoteWasCutEvent", byref(cutInfo));
+                        } else if(info.eventType == NoteEventInfo::Type::MISS) {
+                            (*iter)->SendNoteWasMissedEvent();
+                        } else if(info.eventType == NoteEventInfo::Type::BOMB) {
+                            il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,
+                                (*iter)->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
+                        }
                         notes.erase(iter);
                         break;
                     }
                 }
                 noteEvent++;
+            }
+            while(wallEvent != ((EventReplay*) currentReplay.replay.get())->walls.end() && wallEvent->time < songTime) {
+                for(auto iter = walls.begin(); iter != walls.end(); iter++) {
+                    auto wallData = (*iter)->obstacleData;
+                    if(wallData->lineIndex == wallEvent->lineIndex
+                            && wallData->type == wallEvent->obstacleType
+                            && wallData->width == wallEvent->width) {
+                        obstacleChecker->intersectingObstacles->AddIfNotPresent(*iter);
+                        currentWalls.insert(*iter);
+                        walls.erase(iter);
+                        break;
+                    }
+                }
+                wallEvent++;
             }
         }
     }
@@ -148,11 +197,8 @@ namespace Manager {
     }
     
     void UpdateTime(float time) {
-        if(songTime == 0) {
-            auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
-            leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
-            rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
-        }
+        if(songTime == 0)
+            GetObjects();
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 

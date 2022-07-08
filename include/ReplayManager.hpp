@@ -4,6 +4,7 @@
 
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/NoteController.hpp"
+#include "GlobalNamespace/ObstacleController.hpp"
 
 struct ScoreFrame;
 struct NoteEvent;
@@ -19,8 +20,10 @@ namespace Manager {
     
     namespace Events {
         void AddNoteController(GlobalNamespace::NoteController* note);
+        void AddObstacleController(GlobalNamespace::ObstacleController* wall);
+        void ObstacleControllerFinished(GlobalNamespace::ObstacleController* wall);
     }
-    
+
     void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);
     
     void RefreshLevelReplays();
