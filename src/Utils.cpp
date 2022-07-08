@@ -59,8 +59,13 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
     tests.emplace_back(reqlay2 + reqlaySuffix1);
     tests.emplace_back(reqlay2 + reqlaySuffix2);
     for(auto& path : tests) {
-        if(fileexists(path))
-            replays.insert({path, ReadReqlay(path)});
+        if(fileexists(path)) {
+            auto replay = ReadReqlay(path);
+            if(replay.replay) {
+                replays.insert({path, replay});
+                LOG_INFO("Read reqlay from {}", path);
+            }
+        }
     }
 
     std::string bsorDiffName;
@@ -92,8 +97,13 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
     for(const auto& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if(!entry.is_directory()) {
             auto path = entry.path();
-            if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos)
-                replays.insert({path.string(), ReadBSOR(path.string())});
+            if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
+                auto replay = ReadBSOR(path.string());
+                if(replay.replay) {
+                    replays.insert({path.string(), replay});
+                    LOG_INFO("Read reqlay from {}", path.string());
+                }
+            }
         }
     }
     
