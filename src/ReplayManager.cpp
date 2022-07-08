@@ -73,11 +73,12 @@ namespace Manager {
             notes.push_back(note);
         }
         void UpdateTime() {
-            while(noteEvent->info.eventTime < songTime && noteEvent != ((EventReplay*) currentReplay.replay.get())->notes.end()) {
+            while(noteEvent != ((EventReplay*) currentReplay.replay.get())->notes.end() && noteEvent->time < songTime) {
                 auto& info = noteEvent->info;
                 for(auto iter = notes.begin(); iter != notes.end(); iter++) {
                     auto noteData = (*iter)->noteData;
-                    if(noteData->lineIndex == info.lineIndex
+                    if((noteData->scoringType == info.scoringType || info.scoringType == -2)
+                            && noteData->lineIndex == info.lineIndex
                             && noteData->noteLineLayer == info.lineLayer
                             && noteData->colorType == info.colorType
                             && noteData->cutDirection == info.cutDirection) {

@@ -28,17 +28,18 @@ struct NoteEventInfo {
         BOMB = 3
     };
 
+    short scoringType;
     short lineIndex;
     short lineLayer;
     short colorType;
     short cutDirection;
-    float eventTime;
     Type eventType = Type::GOOD;
 };
 
 struct NoteEvent {
     NoteEventInfo info;
     ReplayNoteCutInfo noteCutInfo;
+    float time;
 };
 
 struct WallEvent {
