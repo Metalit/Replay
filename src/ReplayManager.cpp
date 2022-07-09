@@ -167,6 +167,18 @@ namespace Manager {
             Menu::SetButtonEnabled(false);
     }
 
+    void ReplayStarted(ReplayWrapper replay) {
+        currentReplay = replay;
+        frameCount = currentReplay.replay->frames.size();
+        bs_utils::Submission::disable(modInfo);
+        replaying = true;
+        paused = false;
+        currentFrame = 0;
+        songTime = 0;
+        if(currentReplay.type == ReplayType::Event)
+            Events::ReplayStarted();
+    }
+
     void ReplayStarted(const std::string& path) {
         auto replay = currentReplays.find(path);
         if(replay != currentReplays.end()) {

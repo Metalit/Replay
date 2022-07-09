@@ -29,6 +29,7 @@ namespace Manager {
     void RefreshLevelReplays();
     
     void ReplayStarted(const std::string& path);
+    void ReplayStarted(ReplayWrapper replay);
     void ReplayRestarted();
     void ReplayEnded();
 
