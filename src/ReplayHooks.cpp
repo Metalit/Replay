@@ -223,17 +223,6 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteControll
     NoteController_HandleNoteDidPassMissedMarkerEvent(self);
 }
 
-// have cuts actually finish for event replays
-MAKE_HOOK_MATCH(CutScoreBuffer_Init, &CutScoreBuffer::Init, bool, CutScoreBuffer* self, ByRef<NoteCutInfo> noteCutInfo) {
-
-    bool unfinished = CutScoreBuffer_Init(self, noteCutInfo);
-
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        unfinished = false;
-    
-    return unfinished;
-}
-
 // disable real obstacle interactions for event replays
 MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &PlayerHeadAndObstacleInteraction::RefreshIntersectingObstacles,
         void, PlayerHeadAndObstacleInteraction* self, UnityEngine::Vector3 worldPos) {
@@ -316,7 +305,6 @@ namespace Hooks {
         INSTALL_HOOK(logger, BombNoteController_Awake);
         INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
         INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
-        INSTALL_HOOK(logger, CutScoreBuffer_Init);
         INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
         INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedObstacleController);
         INSTALL_HOOK(logger, ObstacleController_ManualUpdate);
