@@ -202,14 +202,12 @@ namespace Manager {
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 
-        while(frames[currentFrame].time < songTime && currentFrame < frameCount)
+        while(frames[currentFrame].time <= songTime && currentFrame < frameCount)
             currentFrame++;
         
         if(currentFrame == frameCount - 1)
             lerpAmount = 0;
         else {
-            if(currentReplay.type == ReplayType::Frame)
-                currentFrame++;
             float timeDiff = songTime - frames[currentFrame].time;
             float frameDur = frames[currentFrame + 1].time - frames[currentFrame].time;
             lerpAmount = timeDiff / frameDur;
