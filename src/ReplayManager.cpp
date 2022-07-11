@@ -1,10 +1,12 @@
 #include "Main.hpp"
 #include "ReplayManager.hpp"
+#include "MathUtils.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
 
 #include "ReplayMenu.hpp"
+#include "CustomTypes/MovementData.hpp"
 
 #include "bs-utils/shared/utils.hpp"
 
@@ -15,6 +17,7 @@
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "UnityEngine/Time.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
 
 using namespace GlobalNamespace;
@@ -22,37 +25,11 @@ using namespace GlobalNamespace;
 IDifficultyBeatmap* beatmap = nullptr;
 std::unordered_map<std::string, ReplayWrapper> currentReplays;
 
-// TODO: move this and event resolution code
-#include "CustomTypes/MovementData.hpp"
-
-NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo info) {
-    return NoteCutInfo(note->noteData,
-        info.speedOK,
-        info.directionOK,
-        info.saberTypeOK,
-        info.wasCutTooSoon,
-        info.saberSpeed,
-        info.saberDir,
-        info.saberType,
-        info.timeDeviation,
-        info.cutDirDeviation,
-        info.cutPoint,
-        info.cutNormal,
-        info.cutAngle,
-        info.cutDistanceToCenter,
-        note->get_worldRotation(),
-        note->get_inverseWorldRotation(),
-        note->noteTransform->get_rotation(),
-        note->noteTransform->get_position(),
-        MakeFakeMovementData((ISaberMovementData*) saber->movementData, info.beforeCutRating, info.afterCutRating)
-    );
-}
-
 namespace Manager {
 
     int currentFrame = 0;
     int frameCount = 0;
-    float songTime = 0;
+    float songTime = -1;
     float lerpAmount = 0;
 
     Saber *leftSaber, *rightSaber;
@@ -63,6 +40,31 @@ namespace Manager {
         leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
         rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
         obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
+    }
+
+    namespace Camera {
+        Mode mode = Mode::SMOOTH;
+        float zOffset = -0.5;
+        float smoothing = 1;
+
+        Vector3 smoothPosition;
+        Quaternion smoothRotation;
+
+        const Vector3& GetHeadPosition() {
+            float deltaTime = UnityEngine::Time::get_deltaTime();
+            smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position + UnityEngine::Vector3{0, 0, zOffset}, UnityEngine::Time::get_time(), deltaTime * 2 / smoothing);
+            return smoothPosition;
+        }
+        const Quaternion& GetHeadRotation() {
+            float deltaTime = UnityEngine::Time::get_deltaTime();
+            smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / smoothing);
+            return smoothRotation;
+        }
+
+        void ReplayStarted() {
+            smoothPosition = GetFrame().head.position + UnityEngine::Vector3{0, 0, zOffset};
+            smoothRotation = GetFrame().head.rotation;
+        }
     }
 
     namespace Frames {
@@ -99,45 +101,76 @@ namespace Manager {
                 obstacleChecker->intersectingObstacles->Remove(wall);
             }
         }
+
+        NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo info) {
+            return NoteCutInfo(note->noteData,
+                info.speedOK,
+                info.directionOK,
+                info.saberTypeOK,
+                info.wasCutTooSoon,
+                info.saberSpeed,
+                info.saberDir,
+                info.saberType,
+                info.timeDeviation,
+                info.cutDirDeviation,
+                info.cutPoint,
+                info.cutNormal,
+                info.cutAngle,
+                info.cutDistanceToCenter,
+                note->get_worldRotation(),
+                note->get_inverseWorldRotation(),
+                note->noteTransform->get_rotation(),
+                note->noteTransform->get_position(),
+                MakeFakeMovementData((ISaberMovementData*) saber->movementData, info.beforeCutRating, info.afterCutRating)
+            );
+        }
+
+        void ProcessNoteEvent(const NoteEvent& event) {
+            auto& info = event.info;
+            for(auto iter = notes.begin(); iter != notes.end(); iter++) {
+                auto noteData = (*iter)->noteData;
+                if((noteData->scoringType == info.scoringType || info.scoringType == -2)
+                        && noteData->lineIndex == info.lineIndex
+                        && noteData->noteLineLayer == info.lineLayer
+                        && noteData->colorType == info.colorType
+                        && noteData->cutDirection == info.cutDirection) {
+                    auto saber = event.noteCutInfo.saberType == SaberType::SaberA ? leftSaber : rightSaber;
+                    if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
+                        auto cutInfo = GetNoteCutInfo(*iter, saber, event.noteCutInfo);
+                        il2cpp_utils::RunMethodUnsafe(*iter, "SendNoteWasCutEvent", byref(cutInfo));
+                    } else if(info.eventType == NoteEventInfo::Type::MISS) {
+                        (*iter)->SendNoteWasMissedEvent();
+                    } else if(info.eventType == NoteEventInfo::Type::BOMB) {
+                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,
+                            (*iter)->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
+                    }
+                    notes.erase(iter);
+                    break;
+                }
+            }
+        }
+
+        void ProcessWallEvent(const WallEvent& event) {
+            for(auto iter = walls.begin(); iter != walls.end(); iter++) {
+                auto wallData = (*iter)->obstacleData;
+                if(wallData->lineIndex == event.lineIndex
+                        && wallData->type == event.obstacleType
+                        && wallData->width == event.width) {
+                    obstacleChecker->intersectingObstacles->AddIfNotPresent(*iter);
+                    currentWalls.insert(*iter);
+                    walls.erase(iter);
+                    break;
+                }
+            }
+        }
         
         void UpdateTime() {
             while(noteEvent != ((EventReplay*) currentReplay.replay.get())->notes.end() && noteEvent->time < songTime) {
-                auto& info = noteEvent->info;
-                for(auto iter = notes.begin(); iter != notes.end(); iter++) {
-                    auto noteData = (*iter)->noteData;
-                    if((noteData->scoringType == info.scoringType || info.scoringType == -2)
-                            && noteData->lineIndex == info.lineIndex
-                            && noteData->noteLineLayer == info.lineLayer
-                            && noteData->colorType == info.colorType
-                            && noteData->cutDirection == info.cutDirection) {
-                        auto saber = noteEvent->noteCutInfo.saberType == SaberType::SaberA ? leftSaber : rightSaber;
-                        if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
-                            auto cutInfo = GetNoteCutInfo(*iter, saber, noteEvent->noteCutInfo);
-                            il2cpp_utils::RunMethodUnsafe(*iter, "SendNoteWasCutEvent", byref(cutInfo));
-                        } else if(info.eventType == NoteEventInfo::Type::MISS) {
-                            (*iter)->SendNoteWasMissedEvent();
-                        } else if(info.eventType == NoteEventInfo::Type::BOMB) {
-                            il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,
-                                (*iter)->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
-                        }
-                        notes.erase(iter);
-                        break;
-                    }
-                }
+                ProcessNoteEvent(*noteEvent);
                 noteEvent++;
             }
             while(wallEvent != ((EventReplay*) currentReplay.replay.get())->walls.end() && wallEvent->time < songTime) {
-                for(auto iter = walls.begin(); iter != walls.end(); iter++) {
-                    auto wallData = (*iter)->obstacleData;
-                    if(wallData->lineIndex == wallEvent->lineIndex
-                            && wallData->type == wallEvent->obstacleType
-                            && wallData->width == wallEvent->width) {
-                        obstacleChecker->intersectingObstacles->AddIfNotPresent(*iter);
-                        currentWalls.insert(*iter);
-                        walls.erase(iter);
-                        break;
-                    }
-                }
+                ProcessWallEvent(*wallEvent);
                 wallEvent++;
             }
         }
@@ -167,26 +200,31 @@ namespace Manager {
             Menu::SetButtonEnabled(false);
     }
 
-    void ReplayStarted(const std::string& path) {
-        auto replay = currentReplays.find(path);
-        if(replay != currentReplays.end()) {
-            currentReplay = replay->second;
-            frameCount = currentReplay.replay->frames.size();
-        } else
-            return;
+    void ReplayStarted(ReplayWrapper& wrapper) {
+        currentReplay = wrapper;
+        frameCount = currentReplay.replay->frames.size();
         bs_utils::Submission::disable(modInfo);
         replaying = true;
         paused = false;
         currentFrame = 0;
-        songTime = 0;
+        songTime = -1;
         if(currentReplay.type == ReplayType::Event)
             Events::ReplayStarted();
+        Camera::ReplayStarted();
+    }
+
+    void ReplayStarted(const std::string& path) {
+        auto replay = currentReplays.find(path);
+        if(replay != currentReplays.end())
+            ReplayStarted(replay->second);
+        else
+            return;
     }
 
     void ReplayRestarted() {
         paused = false;
         currentFrame = 0;
-        songTime = 0;
+        songTime = -1;
         if(currentReplay.type == ReplayType::Event)
             Events::ReplayStarted();
     }
@@ -197,7 +235,7 @@ namespace Manager {
     }
     
     void UpdateTime(float time) {
-        if(songTime == 0)
+        if(songTime < 0)
             GetObjects();
         songTime = time;
         auto& frames = currentReplay.replay->frames;
@@ -214,6 +252,10 @@ namespace Manager {
         }
         if(currentReplay.type == ReplayType::Event)
             Events::UpdateTime();
+    }
+
+    float GetSongTime() {
+        return songTime;
     }
 
     Frame& GetFrame() {

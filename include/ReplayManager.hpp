@@ -13,6 +13,19 @@ struct HeightEvent;
 struct Pause;
 
 namespace Manager {
+
+    namespace Camera {
+        enum struct Mode {
+            HEADSET,
+            SMOOTH,
+            THIRDPERSON
+        };
+
+        extern Mode mode;
+
+        const Vector3& GetHeadPosition();
+        const Quaternion& GetHeadRotation();
+    }
     
     namespace Frames {
         ScoreFrame* GetScoreFrame();
@@ -28,6 +41,7 @@ namespace Manager {
     
     void RefreshLevelReplays();
     
+    void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);
     void ReplayRestarted();
     void ReplayEnded();
@@ -37,6 +51,7 @@ namespace Manager {
     extern ReplayWrapper currentReplay;
 
     void UpdateTime(float songTime);
+    float GetSongTime();
     Frame& GetFrame();
     Frame& GetNextFrame();
     float GetFrameProgress();

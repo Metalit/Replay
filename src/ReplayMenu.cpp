@@ -23,6 +23,11 @@ UnityEngine::GameObject* canvas;
 Menu::ReplayViewController* viewController;
 StandardLevelDetailView* levelView;
 
+const std::vector<std::string> dropdownStrings = {
+    "Normal",
+    "Smooth Camera"
+};
+
 void OnReplayButtonClick() {
     auto flowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<SinglePlayerLevelSelectionFlowCoordinator*>().First();
     flowCoordinator->showBackButton = true;
@@ -37,6 +42,19 @@ void OnDeleteButtonClick() {
 void OnWatchButtonClick() {
     levelView->actionButton->get_onClick()->Invoke();
     Manager::ReplayStarted(viewController->GetReplay());
+}
+
+void OnCameraModeSet(StringW value) {
+    for(int i = 0; i < dropdownStrings.size(); i++) {
+        if(dropdownStrings[i] == value) {
+            Manager::Camera::mode = (Manager::Camera::Mode) i;
+            return;
+        }
+    }
+}
+
+void OnRenderButtonClick() {
+
 }
 
 void OnIncrementChanged(float value) {
@@ -113,9 +131,9 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     });
     levelBar = UnityEngine::Object::Instantiate(levelBarTemplate->get_gameObject(), get_transform())->GetComponent<LevelBar*>();
     levelBar->set_name("ReplayLevelBarSimple");
-    levelBar->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({0, -5});
+    levelBar->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({0, -2});
 
-    sourceText = BeatSaberUI::CreateText(get_transform(), "", {0, 14});
+    sourceText = BeatSaberUI::CreateText(get_transform(), "", {0, 19});
     sourceText->set_fontSize(4.5);
     sourceText->set_alignment(TMPro::TextAlignmentOptions::Center);
 
@@ -123,14 +141,14 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     horizontal->set_spacing(5);
     horizontal->set_childControlWidth(false);
     horizontal->set_childForceExpandWidth(false);
-    horizontal->get_rectTransform()->set_anchoredPosition({38.5, -12});
+    horizontal->get_rectTransform()->set_anchoredPosition({38.5, -10});
     
     auto layout1 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout1->set_spacing(4);
+    layout1->set_spacing(3);
     layout1->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
     
     auto layout2 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout2->set_spacing(4);
+    layout2->set_spacing(3);
     layout2->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
 
     dateText = CreateCenteredText(layout1);
@@ -138,8 +156,17 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     scoreText = CreateCenteredText(layout1);
     failText = CreateCenteredText(layout2);
 
-    BeatSaberUI::CreateUIButton(layout1, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
-    BeatSaberUI::CreateUIButton(layout2, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
+    auto layout3 = BeatSaberUI::CreateVerticalLayoutGroup(layout1);
+    layout3->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
+    auto layout4 = BeatSaberUI::CreateVerticalLayoutGroup(layout2);
+    layout4->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
+
+    BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
+    BeatSaberUI::CreateUIButton(layout4, "Render Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
+    std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
+    BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[0], dropdownWs, OnCameraModeSet)
+        ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);
+    BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
 
     increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
 }
