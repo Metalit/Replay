@@ -50,6 +50,7 @@ namespace Manager {
     extern bool replaying;
     extern bool paused;
     extern ReplayWrapper currentReplay;
+    extern GlobalNamespace::IDifficultyBeatmap* beatmap;
 
     void UpdateTime(float songTime);
     float GetSongTime();

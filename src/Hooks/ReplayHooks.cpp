@@ -125,6 +125,30 @@ MAKE_HOOK_MATCH(PauseMenuManager_MenuButtonPressed, &PauseMenuManager::MenuButto
         Manager::ReplayEnded();
 }
 
+#include "GlobalNamespace/CoreGameHUDController.hpp"
+#include "UnityEngine/Transform.hpp"
+#include "UnityEngine/GameObject.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
+
+MAKE_HOOK_MATCH(CoreGameHUDController_Start, &GlobalNamespace::CoreGameHUDController::Start, void, GlobalNamespace::CoreGameHUDController* self) {
+    CoreGameHUDController_Start(self);
+
+    if(Manager::replaying && Manager::currentReplay.replay->info.playerName != std::nullopt) {
+        auto comboPanel = UnityEngine::GameObject::Find("ComboPanel");
+
+        IPreviewBeatmapLevel* levelData = reinterpret_cast<IPreviewBeatmapLevel*>(Manager::beatmap->get_level());
+        auto songName = (std::string)levelData->get_songName();
+        auto mapper = (std::string)levelData->get_levelAuthorName();
+
+        auto text = QuestUI::BeatSaberUI::CreateText(comboPanel->get_transform(), 
+        "<color=red>REPLAY</color>    " + 
+        mapper + " - " + songName + 
+        "    Player: " + Manager::currentReplay.replay->info.playerName.value(), {300, 140});
+        text->set_fontSize(20);
+        text->set_alignment(TMPro::TextAlignmentOptions::Center);
+    }
+}
+
 HOOK_FUNC(
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
@@ -135,4 +159,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, PauseMenuManager_MenuButtonPressed);
+    INSTALL_HOOK(logger, CoreGameHUDController_Start);
 )

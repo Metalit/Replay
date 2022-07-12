@@ -35,6 +35,7 @@ struct ReplayInfo {
     std::string source;
     float jumpDistance = -1;
     bool hasYOffset = false;
+    std::optional<std::string> playerName;
 
     bool practice = false;
     float startTime = 0;
