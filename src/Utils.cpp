@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <chrono>
 #include <sstream>
+#include <regex>
 
 using namespace GlobalNamespace;
 
@@ -91,9 +92,9 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
     }
     std::string characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
     
-    std::transform(hash.begin(), hash.end(), hash.begin(), toupper);
+    std::string bsorHash = regex_replace((std::string)((IPreviewBeatmapLevel*)beatmap->get_level())->get_levelID(), std::basic_regex("custom_level_"), "");
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
-    std::string search = fmt::format("{}-{}-{}", bsorDiffName, characteristic, hash);
+    std::string search = fmt::format("{}-{}-{}", bsorDiffName, characteristic, bsorHash);
     for(const auto& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if(!entry.is_directory()) {
             auto path = entry.path();
