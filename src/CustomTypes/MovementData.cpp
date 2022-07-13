@@ -10,7 +10,7 @@ using namespace ReplayHelpers;
 using namespace GlobalNamespace;
 
 BladeMovementDataElement MovementData::get_lastAddedData() {
-    return baseElement;
+    return baseData->get_lastAddedData();
 }
 
 void MovementData::AddDataProcessor(ISaberMovementDataProcessor* dataProcessor) {
@@ -24,12 +24,14 @@ void MovementData::RemoveDataProcessor(ISaberMovementDataProcessor* dataProcesso
 void MovementData::RequestLastDataProcessing(ISaberMovementDataProcessor* dataProcessor) {
     // set notePlaneWasCut and other values so AfterCutStepRating is calculated properly
     // that way overswing counting will "work" (only if the replay stores the overswing, of course)
+    auto baseElement = get_lastAddedData();
     auto counter = (SaberSwingRatingCounter*) dataProcessor;
     counter->notePlaneWasCut = true;
     counter->cutPlaneNormal = baseElement.segmentNormal;
     baseElement.segmentAngle = afterCutRating * 60;
     counter->ProcessNewData(baseElement, baseElement, true);
-    counter->Finish();
+    // register as a data processor and wait for the next data so that the counter can finish properly
+    baseData->AddDataProcessor((ISaberMovementDataProcessor*) this);
 }
 
 float MovementData::ComputeSwingRating(float overrideSegmentAngle) {
@@ -40,9 +42,16 @@ float MovementData::ComputeSwingRatingOverload() {
     return beforeCutRating;
 }
 
+void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovementDataElement prevData, bool prevDataAreValid) {
+    auto counter = (SaberSwingRatingCounter*) dataProcessor;
+    if(counter)
+        counter->Finish();
+    baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
+}
+
 ISaberMovementData* MakeFakeMovementData(ISaberMovementData* baseData, float beforeCutRating, float afterCutRating) {
     auto movementData = CRASH_UNLESS(il2cpp_utils::New<MovementData*>());
-    movementData->baseElement = baseData->get_lastAddedData();
+    movementData->baseData = baseData;
     movementData->beforeCutRating = beforeCutRating;
     movementData->afterCutRating = afterCutRating;
     return (ISaberMovementData*) movementData;

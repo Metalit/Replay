@@ -29,8 +29,8 @@ struct V2Modifiers {
     bool noFail;
     bool oneLife;
     bool ghostNotes;
-    bool fasterSong; // problematic
-    bool leftHanded; // problematic
+    bool fasterSong;
+    bool leftHanded;
 };
 
 typedef ReplayModifiers V6Modifiers;
