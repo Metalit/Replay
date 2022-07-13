@@ -54,6 +54,11 @@
       "id": "bs-utils",
       "versionRange": "^0.7.0",
       "additionalData": {}
+    },
+    {
+      "id": "conditional-dependencies",
+      "versionRange": "*",
+      "additionalData": {}
     }
   ],
   "additionalData": {}
