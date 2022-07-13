@@ -43,7 +43,6 @@ namespace Manager {
     
     void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);
-    void ReplayStarted(ReplayWrapper replay);
     void ReplayRestarted();
     void ReplayEnded();
 
