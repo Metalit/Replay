@@ -29,7 +29,8 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
             self->multipliedScore = frame->score;
             float multiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, frame->energy);
             self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(frame->score, multiplier);
-            self->scoreDidChangeEvent->Invoke(frame->score, self->modifiedScore);
+            if(!self->scoreDidChangeEvent->Equals(nullptr))
+                self->scoreDidChangeEvent->Invoke(frame->score, self->modifiedScore);
         }
     }
 }
@@ -43,7 +44,7 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
 // override combo
 MAKE_HOOK_MATCH(ComboController_HandlePlayerHeadDidEnterObstacles, &ComboController::HandlePlayerHeadDidEnterObstacles, void, ComboController* self) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && Manager::Frames::GetScoreFrame()->combo > 0)
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
         return;
 
     ComboController_HandlePlayerHeadDidEnterObstacles(self);
@@ -56,9 +57,8 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
     bool wasCutTooSoon = noteCutInfo->wasCutTooSoon;
 
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
-        int combo = Manager::Frames::GetScoreFrame()->combo;
-        if(combo > 0) {
-            self->combo = combo - 1;
+        if(!Manager::Frames::AllowComboDrop()) {
+            self->combo = Manager::Frames::GetScoreFrame()->combo - 1;
             noteCutInfo->speedOK = true;
             noteCutInfo->directionOK = true;
             noteCutInfo->saberTypeOK = true;
@@ -79,19 +79,13 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
 }
 MAKE_HOOK_MATCH(ComboController_HandleNoteWasMissed, &ComboController::HandleNoteWasMissed, void, ComboController* self, NoteController* noteController) {
     
-    auto gameplayType = noteController->noteData->gameplayType;
-
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
-        int combo = Manager::Frames::GetScoreFrame()->combo;
-        if(combo > 0) {
-            self->combo = combo;
-            noteController->noteData->gameplayType = NoteData::GameplayType::Bomb;
-            self->comboDidChangeEvent->Invoke(combo);
-        }
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop()) {
+        self->combo = Manager::Frames::GetScoreFrame()->combo;
+        if(!self->comboDidChangeEvent->Equals(nullptr))
+            self->comboDidChangeEvent->Invoke(self->combo);
+        return;
     }
     ComboController_HandleNoteWasMissed(self, noteController);
-    
-    noteController->noteData->gameplayType = gameplayType;
 }
 
 #include "GlobalNamespace/GameEnergyCounter.hpp"
