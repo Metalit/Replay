@@ -8,7 +8,7 @@
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
-#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/MainFlowCoordinator.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
 
@@ -29,7 +29,7 @@ const std::vector<std::string> dropdownStrings = {
 };
 
 void OnReplayButtonClick() {
-    auto flowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<SinglePlayerLevelSelectionFlowCoordinator*>().First();
+    auto flowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<MainFlowCoordinator*>().First()->YoungestChildFlowCoordinatorOrSelf();
     flowCoordinator->showBackButton = true;
     flowCoordinator->PresentViewController(viewController, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
     viewController->UpdateUI();
