@@ -62,8 +62,6 @@ extern "C" void setup(ModInfo& info) {
 
 extern "C" void load() {
     il2cpp_functions::Init();
-    if(!Paper::Logger::IsInited())
-        Paper::Logger::Init("/sdcard/Android/data/com.beatgames.beatsaber/files/logs");
 
     LOG_INFO("Installing hooks...");
     auto& logger = getLogger();
