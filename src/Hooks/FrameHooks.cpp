@@ -105,6 +105,18 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
     GameEnergyCounter_ProcessEnergyChange(self, energyChange);
 }
 
+#include "GlobalNamespace/GameNoteController.hpp"
+
+// avoid fake comnbo hits
+MAKE_HOOK_MATCH(GameNoteController_HandleCut, &GameNoteController::HandleCut,
+        void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
+        allowBadCut = false;
+    
+    GameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
+}
+
 HOOK_FUNC(
     INSTALL_HOOK(logger, ScoreController_DespawnScoringElement);
     INSTALL_HOOK(logger, ScoreController_LateUpdate);
@@ -112,4 +124,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, ComboController_HandleNoteWasCut);
     INSTALL_HOOK(logger, ComboController_HandleNoteWasMissed);
     INSTALL_HOOK(logger, GameEnergyCounter_ProcessEnergyChange);
+    INSTALL_HOOK(logger, GameNoteController_HandleCut);
 )

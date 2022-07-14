@@ -42,15 +42,6 @@ MAKE_HOOK_MATCH(BurstSliderGameNoteController_Awake, &BurstSliderGameNoteControl
     BurstSliderGameNoteController_Awake(self);
 }
 
-// disable misses
-MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
-    
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        return;
-
-    NoteController_HandleNoteDidPassMissedMarkerEvent(self);
-}
-
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 
 // disable real obstacle interactions
@@ -97,7 +88,6 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, GameNoteController_Awake);
     INSTALL_HOOK(logger, BombNoteController_Awake);
     INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
-    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedObstacleController);
     INSTALL_HOOK(logger, ObstacleController_ManualUpdate);

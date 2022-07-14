@@ -29,6 +29,7 @@ namespace Manager {
     
     namespace Frames {
         ScoreFrame* GetScoreFrame();
+        bool AllowComboDrop();
     }
     
     namespace Events {
