@@ -43,6 +43,8 @@ MAKE_HOOK_MATCH(BurstSliderGameNoteController_Awake, &BurstSliderGameNoteControl
 }
 
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
+#include "GlobalNamespace/GameEnergyCounter.hpp"
+#include "UnityEngine/Time.hpp"
 
 // disable real obstacle interactions
 MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &PlayerHeadAndObstacleInteraction::RefreshIntersectingObstacles,
@@ -53,6 +55,25 @@ MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &
     
     PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles(self, worldPos);
 }
+// ensure energy changes for obstacles are accurate
+MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, void, GameEnergyCounter* self) {
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
+        float& actualEnergyLoss = Manager::Events::GetWallEnergyLoss();
+        if(actualEnergyLoss > 0) {
+            float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
+            if(gameEnergyLoss >= actualEnergyLoss) {
+                self->ProcessEnergyChange(-actualEnergyLoss);
+                actualEnergyLoss = 0;
+            } else {
+                self->ProcessEnergyChange(-gameEnergyLoss);
+                actualEnergyLoss -= gameEnergyLoss;
+            }
+        }
+    }
+    GameEnergyCounter_LateUpdate(self);
+}
+
 
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 
@@ -65,30 +86,12 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectMan
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         Manager::Events::AddNoteController(noteController);
 }
-// keep track of all walls
-MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedObstacleController, &BeatmapObjectManager::AddSpawnedObstacleController,
-        void, BeatmapObjectManager* self, ObstacleController* obstacleController, BeatmapObjectSpawnMovementData::ObstacleSpawnData obstacleSpawnData, float rotation) {
-    
-    BeatmapObjectManager_AddSpawnedObstacleController(self, obstacleController, obstacleSpawnData, rotation);
-
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        Manager::Events::AddObstacleController(obstacleController);
-}
-MAKE_HOOK_MATCH(ObstacleController_ManualUpdate, &ObstacleController::ManualUpdate, void, ObstacleController* self) {
-
-    bool hadPassedAvoided = self->passedAvoidedMarkReported;
-
-    ObstacleController_ManualUpdate(self);
-
-    if(self->passedAvoidedMarkReported && !hadPassedAvoided && Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        Manager::Events::ObstacleControllerFinished(self);
-}
 
 HOOK_FUNC(
     INSTALL_HOOK(logger, GameNoteController_Awake);
     INSTALL_HOOK(logger, BombNoteController_Awake);
     INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
+    INSTALL_HOOK(logger, PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles);
+    INSTALL_HOOK(logger, GameEnergyCounter_LateUpdate);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
-    INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedObstacleController);
-    INSTALL_HOOK(logger, ObstacleController_ManualUpdate);
 )

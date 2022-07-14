@@ -34,8 +34,7 @@ namespace Manager {
     
     namespace Events {
         void AddNoteController(GlobalNamespace::NoteController* note);
-        void AddObstacleController(GlobalNamespace::ObstacleController* wall);
-        void ObstacleControllerFinished(GlobalNamespace::ObstacleController* wall);
+        float& GetWallEnergyLoss();
     }
 
     void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);

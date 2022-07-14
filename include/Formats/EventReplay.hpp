@@ -46,8 +46,8 @@ struct WallEvent {
     short lineIndex;
     short obstacleType;
     short width;
-    float energy;
     float time;
+    float endTime;
 };
 
 struct HeightEvent {

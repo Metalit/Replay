@@ -19,6 +19,8 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
+#include "System/Action_1.hpp"
+#include "System/Action.hpp"
 
 using namespace GlobalNamespace;
 
@@ -88,30 +90,23 @@ namespace Manager {
     namespace Events {
         std::vector<NoteController*> notes;
         std::vector<NoteEvent>::iterator noteEvent;
-        std::vector<ObstacleController*> walls;
+        float wallEndTime = 0;
+        float wallEnergyLoss = 0;
         std::vector<WallEvent>::iterator wallEvent;
-        std::set<ObstacleController*> currentWalls;
 
         void ReplayStarted() {
             notes.clear();
             noteEvent = ((EventReplay*) currentReplay.replay.get())->notes.begin();
-            walls.clear();
-            currentWalls.clear();
+            wallEndTime = 0;
+            wallEnergyLoss = 0;
             wallEvent = ((EventReplay*) currentReplay.replay.get())->walls.begin();
         }
 
         void AddNoteController(NoteController* note) {
             notes.push_back(note);
         }
-        void AddObstacleController(ObstacleController* wall) {
-            walls.push_back(wall);
-        }
-        void ObstacleControllerFinished(ObstacleController* wall) {
-            auto iter = currentWalls.find(wall);
-            if(iter != currentWalls.end()) {
-                currentWalls.erase(iter);
-                obstacleChecker->intersectingObstacles->Remove(wall);
-            }
+        float& GetWallEnergyLoss() {
+            return wallEnergyLoss;
         }
 
         NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo info) {
@@ -163,17 +158,11 @@ namespace Manager {
         }
 
         void ProcessWallEvent(const WallEvent& event) {
-            for(auto iter = walls.begin(); iter != walls.end(); iter++) {
-                auto wallData = (*iter)->obstacleData;
-                if(wallData->lineIndex == event.lineIndex
-                        && wallData->type == event.obstacleType
-                        && wallData->width == event.width) {
-                    obstacleChecker->intersectingObstacles->AddIfNotPresent(*iter);
-                    currentWalls.insert(*iter);
-                    walls.erase(iter);
-                    break;
-                }
-            }
+            obstacleChecker->headDidEnterObstacleEvent->Invoke(nullptr);
+            obstacleChecker->headDidEnterObstaclesEvent->Invoke();
+            float diffStartTime = std::max(wallEndTime, event.time);
+            wallEndTime = std::max(wallEndTime, event.endTime);
+            wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
         }
         
         void UpdateTime() {

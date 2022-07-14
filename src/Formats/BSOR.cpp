@@ -51,6 +51,26 @@ struct BSORWallEvent {
     float spawnTime;
 };
 
+#include "GlobalNamespace/NoteData.hpp"
+using namespace GlobalNamespace;
+
+float EnergyForNote(const NoteEventInfo& noteEvent) {
+    if(noteEvent.eventType == NoteEventInfo::Type::BOMB)
+        return -0.15;
+    bool goodCut = noteEvent.eventType == NoteEventInfo::Type::GOOD;
+    bool miss = noteEvent.eventType == NoteEventInfo::Type::MISS;
+    switch(noteEvent.scoringType) {
+        case -2:
+        case NoteData::ScoringType::Normal:
+        case NoteData::ScoringType::BurstSliderHead:
+            return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
+        case NoteData::ScoringType::BurstSliderElement:
+            return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
+        default:
+            return 0;
+    }
+}
+
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 #define READ_STRING(name) name = ReadString(input)
 
@@ -133,8 +153,8 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         LOG_ERROR("Invalid header bytes in bsor file {}", path);
         return {};
     }
-    if (version != 1) {
-        LOG_ERROR("Invalid version in bsor file {}", path);
+    if (version > 1) {
+        LOG_ERROR("Unsupported version in bsor file {}", path);
         return {};
     }
     if (section != 0) {
@@ -216,6 +236,9 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int wallsCount;
     READ_TO(wallsCount);
     BSORWallEvent wallEvent;
+    // oh boy, I get to calculate the end time of wall events based on energy, it's not like anything better could have been done in the recording phase
+    float energy = 0.5;
+    auto notesIter = replay->notes.begin();
     for(int i = 0; i < wallsCount; i++) {
         auto& wall = replay->walls.emplace_back(WallEvent());
         READ_TO(wallEvent);
@@ -227,8 +250,33 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         
         wall.width = wallEvent.wallID;
 
-        wall.energy = wallEvent.energy;
         wall.time = wallEvent.time;
+        if(info.platform == "oculus" || version > 1)
+            wall.endTime = wallEvent.energy;
+        else {
+            // process all note events up to event time
+            while(notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
+                energy += EnergyForNote(notesIter->info);
+                if(energy > 1)
+                    energy = 1;
+                notesIter++;
+            }
+            float diff = energy - wallEvent.energy;
+            // only realistic case for this happening (assuming the recorder is correct)
+            // is for a wall event's time span to be fully contained inside another wall event
+            if(diff < 0) {
+                wall.endTime = wall.time;
+                continue;
+            }
+            float seconds = diff / 1.3;
+            wall.endTime = wallEvent.time + seconds;
+            // now we also correct for any misses that happen during the wall...
+            while(notesIter != replay->notes.end() && notesIter->time < wall.endTime) {
+                wall.endTime -= EnergyForNote(notesIter->info) / 1.3;
+                notesIter++;
+            }
+            energy = wallEvent.energy;
+        }
     }
     
     READ_TO(section);
