@@ -43,7 +43,7 @@ namespace Manager {
     }
 
     namespace Camera {
-        Mode mode = Mode::SMOOTH;
+        Mode mode = Mode::HEADSET;
         float zOffset = -0.5;
         float smoothing = 1;
 
@@ -70,6 +70,18 @@ namespace Manager {
     namespace Frames {
         ScoreFrame* GetScoreFrame() {
             return &((FrameReplay*) currentReplay.replay.get())->scoreFrames[currentFrame];
+        }
+
+        bool AllowComboDrop() {
+            static int searchRange = 3;
+            int combo = 1;
+            auto& frames = ((FrameReplay*) currentReplay.replay.get())->scoreFrames;
+            for(int i = std::max(0, currentFrame - searchRange); i < std::min(frameCount, currentFrame + searchRange); i++) {
+                if(frames[i].combo < combo)
+                    return true;
+                combo = frames[i].combo;
+            }
+            return false;
         }
     }
     
