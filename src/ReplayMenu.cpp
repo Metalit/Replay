@@ -40,8 +40,8 @@ void OnDeleteButtonClick() {
 }
 
 void OnWatchButtonClick() {
-    levelView->actionButton->get_onClick()->Invoke();
     Manager::ReplayStarted(viewController->GetReplay());
+    levelView->actionButton->get_onClick()->Invoke();
 }
 
 void OnCameraModeSet(StringW value) {

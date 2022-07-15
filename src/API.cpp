@@ -16,15 +16,13 @@
 EXPOSE_API(PlayBSORFromFile, bool, std::string filePath) {
     auto replay = ReadBSOR(filePath);
     if (replay.replay) {
-
         auto levelView = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::StandardLevelDetailView*>().First();
 
-        levelView->actionButton->get_onClick()->Invoke();
         Manager::ReplayStarted(replay);
+        levelView->actionButton->get_onClick()->Invoke();
 
         return true;
     }
-
     return false;
 }
 

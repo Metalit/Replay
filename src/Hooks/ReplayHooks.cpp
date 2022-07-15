@@ -6,6 +6,46 @@
 
 using namespace GlobalNamespace;
 
+#include "GlobalNamespace/MenuTransitionsHelper.hpp"
+#include "GlobalNamespace/GameplayModifiers.hpp"
+#include "GlobalNamespace/PlayerSpecificSettings.hpp"
+
+SafePtr<GameplayModifiers> modifierHolder{};
+PlayerSpecificSettings* playerSpecificSettings = nullptr;
+bool wasLeftHanded = false;
+
+// set modifiers on replay start
+MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuTransitionsHelper::*)(StringW, IDifficultyBeatmap*, IPreviewBeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>*)>(&MenuTransitionsHelper::StartStandardLevel),
+        void, MenuTransitionsHelper* self, StringW f1, IDifficultyBeatmap* f2, IPreviewBeatmapLevel* f3, OverrideEnvironmentSettings* f4, ColorScheme* f5, GameplayModifiers* f6, PlayerSpecificSettings* f7, PracticeSettings* f8, StringW f9, bool f10, bool f11, System::Action* f12, System::Action_1<Zenject::DiContainer*>* f13, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>* f14) {
+    
+    if(Manager::replaying) {
+        const auto& modifiers = Manager::currentReplay.replay->info.modifiers;
+        auto energyType = modifiers.fourLives ? GameplayModifiers::EnergyType::Battery : GameplayModifiers::EnergyType::Bar;
+        bool noFail = modifiers.noFail;
+        bool instaFail = modifiers.oneLife;
+        bool saberClash = false;
+        auto obstacleType = modifiers.noObstacles ? GameplayModifiers::EnabledObstacleType::NoObstacles : GameplayModifiers::EnabledObstacleType::All;
+        bool noBombs = modifiers.noBombs;
+        bool fastNotes = false;
+        bool strictAngles = modifiers.strictAngles;
+        bool disappearingArrows = modifiers.disappearingArrows;
+        auto songSpeed = modifiers.superFastSong ? GameplayModifiers::SongSpeed::SuperFast : (
+            modifiers.fasterSong ? GameplayModifiers::SongSpeed::Faster : (
+            modifiers.slowerSong ? GameplayModifiers::SongSpeed::Slower : GameplayModifiers::SongSpeed::Normal));
+        bool noArrows = modifiers.noArrows;
+        bool ghostNotes = modifiers.ghostNotes;
+        bool proMode = modifiers.proMode;
+        bool zenMode = false;
+        bool smallNotes = modifiers.smallNotes;
+        modifierHolder.emplace(CRASH_UNLESS(il2cpp_utils::New<GameplayModifiers*>(energyType, noFail, instaFail, saberClash, obstacleType, noBombs, fastNotes, strictAngles, disappearingArrows, songSpeed, noArrows, ghostNotes, proMode, zenMode, smallNotes)));
+        f6 = static_cast<GameplayModifiers*>(modifierHolder);
+        playerSpecificSettings = f7;
+        wasLeftHanded = f7->leftHanded;
+        f7->leftHanded = modifiers.leftHanded;
+    }
+    MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14);
+}
+
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 
 // keep song time and current frame up to date
@@ -110,6 +150,9 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteControll
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish, &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData, LevelCompletionResults* levelCompletionResults) {
     
+    if(Manager::replaying && playerSpecificSettings)
+        playerSpecificSettings->leftHanded = wasLeftHanded;
+
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
     
     if(Manager::replaying && levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
@@ -119,13 +162,17 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
 }
 MAKE_HOOK_MATCH(PauseMenuManager_MenuButtonPressed, &PauseMenuManager::MenuButtonPressed, void, PauseMenuManager* self) {
 
-    PauseMenuManager_MenuButtonPressed(self);
+    if(Manager::replaying && playerSpecificSettings)
+        playerSpecificSettings->leftHanded = wasLeftHanded;
 
+    PauseMenuManager_MenuButtonPressed(self);
+    
     if(Manager::replaying)
         Manager::ReplayEnded();
 }
 
 HOOK_FUNC(
+    INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish);
