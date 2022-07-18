@@ -141,6 +141,8 @@ MAKE_HOOK_MATCH(LightManager_OnDestroy, &LightManager::OnDestroy, void, LightMan
 
     rendercamera = nullptr;
     playerCamera = nullptr;
+
+    LightManager_OnDestroy(self);
 }
 
 MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, ResultsViewController* self, LevelCompletionResults* levelCompletionResults, IReadonlyBeatmapData* transformedBeatmapData, IDifficultyBeatmap* difficultyBeatmap, bool practice, bool newHighScore) {
