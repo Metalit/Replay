@@ -46,6 +46,7 @@ namespace Manager {
 
     namespace Camera {
         Mode mode = Mode::HEADSET;
+        bool rendering = false;
         float zOffset = -0.5;
         float smoothing = 1;
 

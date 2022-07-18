@@ -10,6 +10,8 @@
 #include "HMUI/ViewController_AnimationType.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 
+#include "hollywood/shared/Hollywood.hpp"
+
 using namespace GlobalNamespace;
 
 ModInfo modInfo;
@@ -56,6 +58,8 @@ extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
     modInfo = info;
+    
+    Hollywood::initialize();
 	
     getLogger().info("Completed setup!");
 }

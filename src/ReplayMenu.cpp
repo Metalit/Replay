@@ -40,6 +40,7 @@ void OnDeleteButtonClick() {
 }
 
 void OnWatchButtonClick() {
+    Manager::Camera::rendering = false;
     Manager::ReplayStarted(viewController->GetReplay());
     levelView->actionButton->get_onClick()->Invoke();
 }
@@ -54,7 +55,9 @@ void OnCameraModeSet(StringW value) {
 }
 
 void OnRenderButtonClick() {
-
+    Manager::Camera::rendering = true;
+    Manager::ReplayStarted(viewController->GetReplay());
+    levelView->actionButton->get_onClick()->Invoke();
 }
 
 void OnIncrementChanged(float value) {

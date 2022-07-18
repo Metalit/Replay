@@ -22,6 +22,7 @@ namespace Manager {
         };
 
         extern Mode mode;
+        extern bool rendering;
 
         const Vector3& GetHeadPosition();
         const Quaternion& GetHeadRotation();

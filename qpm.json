@@ -59,6 +59,11 @@
       "id": "conditional-dependencies",
       "versionRange": "*",
       "additionalData": {}
+    },
+    {
+      "id": "hollywood",
+      "versionRange": "^0.1.0",
+      "additionalData": {}
     }
   ],
   "additionalData": {}
