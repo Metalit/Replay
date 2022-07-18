@@ -27,27 +27,27 @@
     },
     {
       "id": "codegen",
-      "versionRange": "^0.24.0",
+      "versionRange": "^0.25.0",
       "additionalData": {}
     },
     {
       "id": "paper",
-      "versionRange": "^1.2.0",
+      "versionRange": "^1.2.7",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.15.9",
+      "versionRange": "^0.15.13",
       "additionalData": {}
     },
     {
       "id": "questui",
-      "versionRange": "^0.16.0",
+      "versionRange": "^0.16.2",
       "additionalData": {}
     },
     {
       "id": "sombrero",
-      "versionRange": "^0.1.30",
+      "versionRange": "^0.1.33",
       "additionalData": {}
     },
     {
