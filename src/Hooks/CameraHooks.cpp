@@ -4,10 +4,13 @@
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
 
-using namespace GlobalNamespace;
+#include "hollywood/shared/Hollywood.hpp"
+
+
 
 #include "GlobalNamespace/LightManager.hpp"
 #include "GlobalNamespace/CoreGameHUDController.hpp"
+#include "GlobalNamespace/PauseController.hpp"
 
 #include "UnityEngine/Matrix4x4.hpp"
 #include "UnityEngine/Camera.hpp"
@@ -16,11 +19,13 @@ using namespace GlobalNamespace;
 #include "UnityEngine/CameraClearFlags.hpp"
 #include "UnityEngine/HideFlags.hpp"
 #include "UnityEngine/DepthTextureMode.hpp"
-#include "hollywood/shared/Hollywood.hpp"
+
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/AudioListener.hpp"
 #include "UnityEngine/StereoTargetEyeMask.hpp"
+
+using namespace GlobalNamespace;
 
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
@@ -158,7 +163,7 @@ MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, 
     ResultsViewController_Init(self, levelCompletionResults, transformedBeatmapData, difficultyBeatmap, practice, newHighScore);
 }
 
-#include "GlobalNamespace/PauseController.hpp"
+
 
 // prevent pauses during recording
 MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
