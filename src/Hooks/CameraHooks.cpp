@@ -63,7 +63,7 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
     LightManager_OnCameraPreRender(self, camera);
 
 
-    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::mode != Manager::Camera::Mode::HEADSET) {
+    if(camera == renderCamera && Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::mode != Manager::Camera::Mode::HEADSET) {
         renderCameraTransform->set_localPosition(Manager::Camera::GetHeadPosition());
         renderCameraTransform->set_localRotation(Manager::Camera::GetHeadRotation());
     }
