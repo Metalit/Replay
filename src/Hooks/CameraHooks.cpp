@@ -51,6 +51,8 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 UnityEngine::Camera *renderCamera;
 UnityEngine::Camera *playerCamera;
 
+UnityEngine::Transform *renderCameraTransform;
+
 MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender, void, LightManager* self, UnityEngine::Camera* camera) {
     // if (!Manager::replaying || Manager::paused || Manager::Camera::mode != Manager::Camera::Mode::HEADSET)
     //     return LightManager_OnCameraPreRender(self, camera);
@@ -62,8 +64,8 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 
 
     if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::mode != Manager::Camera::Mode::HEADSET) {
-        camera->set_position(Manager::Camera::GetHeadPosition());
-        camera->set_rotation(Manager::Camera::GetHeadRotation());
+        renderCameraTransform->set_localPosition(Manager::Camera::GetHeadPosition());
+        renderCameraTransform->set_localRotation(Manager::Camera::GetHeadRotation());
     }
 }
 
@@ -137,14 +139,13 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 #include "GlobalNamespace/ResultsViewController.hpp"
 
 // undo rendering changes when finishing a level
-MAKE_HOOK_MATCH(LightManager_OnDestroy, &LightManager::OnDestroy, void, LightManager *self)
-{
+MAKE_HOOK_MATCH(LightManager_OnDestroy, &LightManager::OnDestroy, void, LightManager *self) {
     if (playerCamera)
     {
         playerCamera->set_enabled(true);
     }
 
-    rendercamera = nullptr;
+    renderCamera = nullptr;
     playerCamera = nullptr;
 
     LightManager_OnDestroy(self);
@@ -175,7 +176,7 @@ MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bo
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, LightManager_OnDestroy;)
+    INSTALL_HOOK(logger, LightManager_OnDestroy);
     INSTALL_HOOK(logger, LightManager_OnCameraPreRender);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, ResultsViewController_Init);
