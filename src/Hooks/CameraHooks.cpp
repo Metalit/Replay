@@ -84,6 +84,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
     if (Manager::replaying && Manager::Camera::rendering) {
         Hollywood::CameraRecordingSettings settings{};
+        settings.fov = 80; // less zoomed out
 
         // audio
         if (!settings.movieModeRendering)
@@ -147,6 +148,7 @@ MAKE_HOOK_MATCH(LightManager_OnDestroy, &LightManager::OnDestroy, void, LightMan
 
     renderCamera = nullptr;
     playerCamera = nullptr;
+    renderCameraTransform = nullptr;
 
     LightManager_OnDestroy(self);
 }
