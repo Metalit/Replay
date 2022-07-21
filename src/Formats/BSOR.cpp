@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "Formats/EventReplay.hpp"
+#include "MathUtils.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -189,9 +190,17 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int framesCount;
     READ_TO(framesCount);
+    QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
     for(int i = 0; i < framesCount; i++) {
         auto& frame = replay->frames.emplace_back(Frame());
         READ_TO(frame);
+        averageCalc.AddRotation(frame.head.rotation);
+    }
+    replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
+    if(info.mode.find("Degree") != std::string::npos) {
+        auto euler = replay->info.averageOffset.get_eulerAngles();
+        euler.y = 0;
+        replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
     }
     
     READ_TO(section);

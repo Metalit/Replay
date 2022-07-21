@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "Formats/FrameReplay.hpp"
+#include "MathUtils.hpp"
 
 #include <fstream>
 
@@ -300,6 +301,17 @@ ReplayWrapper ReadReqlay(const std::string& path) {
     auto modified = std::filesystem::last_write_time(path);
     ret.replay->info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
     ret.replay->info.source = "Replay Mod (Old)";
+
+    QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
+    for(auto& frame : ret.replay->frames) {
+        
+    }
+    ret.replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
+    if(path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos) {
+        auto euler = ret.replay->info.averageOffset.get_eulerAngles();
+        euler.y = 0;
+        ret.replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
+    }
 
     return ret;
 }

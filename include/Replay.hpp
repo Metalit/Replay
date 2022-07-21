@@ -36,6 +36,8 @@ struct ReplayInfo {
     float jumpDistance = -1;
     bool hasYOffset = false;
 
+    Quaternion averageOffset; // inverse of the average difference from looking forward
+
     bool practice = false;
     float startTime = 0;
     float speed = 0;
