@@ -1,4 +1,5 @@
 #include "Main.hpp"
+#include "Config.hpp"
 #include "ReplayManager.hpp"
 #include "MathUtils.hpp"
 
@@ -15,6 +16,10 @@
 #include "GlobalNamespace/ObstacleData.hpp"
 #include "GlobalNamespace/Saber.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
+#include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/MainSettingsModelSO.hpp"
+#include "GlobalNamespace/IntSO.hpp"
+#include "GlobalNamespace/BoolSO.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
@@ -36,37 +41,70 @@ namespace Manager {
 
     Saber *leftSaber, *rightSaber;
     PlayerHeadAndObstacleInteraction* obstacleChecker;
+    PlayerTransforms* playerTransforms;
+    MainSettingsModelSO* settings;
 
     void GetObjects() {
         auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
         leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
         rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
         obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
+        playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
+        settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
     }
 
     namespace Camera {
         Mode mode = Mode::HEADSET;
         bool rendering = false;
-        float zOffset = -0.5;
-        float smoothing = 1;
 
         Vector3 smoothPosition;
         Quaternion smoothRotation;
 
-        const Vector3& GetHeadPosition() {
+        void UpdateTime() {
             float deltaTime = UnityEngine::Time::get_deltaTime();
-            smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position + UnityEngine::Vector3{0, 0, zOffset}, UnityEngine::Time::get_time(), deltaTime * 2 / smoothing);
-            return smoothPosition;
+            smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
+            smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
         }
-        const Quaternion& GetHeadRotation() {
-            float deltaTime = UnityEngine::Time::get_deltaTime();
-            smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / smoothing);
-            return smoothRotation;
+
+        Vector3 GetHeadPosition() {
+            return GetPosOffset(smoothPosition, true);
+        }
+        Quaternion GetHeadRotation() {
+            return GetRotOffset(smoothRotation, true);
+        }
+
+        Mode GetMode() {
+            if(mode == Mode::HEADSET && rendering)
+                return Mode::SMOOTH;
+            return mode;
+        }
+
+        void SetGraphicsSettings() {
+            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue() ? 2 : 0);
+            settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
+        }
+        void UnsetGraphicsSettings() {
+            settings->maxShockwaveParticles->set_value(0);
+            settings->screenDisplacementEffectsEnabled->set_value(false);
         }
 
         void ReplayStarted() {
-            smoothPosition = GetFrame().head.position + UnityEngine::Vector3{0, 0, zOffset};
+            if(rendering)
+                SetGraphicsSettings();
             smoothRotation = GetFrame().head.rotation;
+            // undo rotation by average rotation offset
+            if(getConfig().Correction.GetValue())
+                smoothRotation = Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
+            // add position offset, potentially relative to rotation
+            auto offset = getConfig().Offset.GetValue();
+            if(getConfig().Relative.GetValue())
+                offset = Sombrero::QuaternionMultiply(smoothRotation, offset);
+            smoothPosition = GetFrame().head.position + offset;
+        }
+
+        void ReplayEnded() {
+            if(rendering)
+                UnsetGraphicsSettings();
         }
     }
 
@@ -232,6 +270,7 @@ namespace Manager {
     }
 
     void ReplayEnded() {
+        Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
     }
@@ -254,6 +293,7 @@ namespace Manager {
         }
         if(currentReplay.type == ReplayType::Event)
             Events::UpdateTime();
+        Camera::UpdateTime();
     }
 
     float GetSongTime() {
@@ -273,5 +313,26 @@ namespace Manager {
 
     float GetFrameProgress() {
         return lerpAmount;
+    }
+
+    Vector3 GetPosOffset(Vector3 pos, bool head) {
+        if(head) {
+            auto offset = getConfig().Offset.GetValue();
+            if(getConfig().Relative.GetValue())
+                offset = Sombrero::QuaternionMultiply(Camera::GetHeadRotation(), offset);
+            pos += offset;
+        }
+        if(playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
+            return playerTransforms->originParentTransform->get_position() + pos;
+        return pos;
+    }
+    Quaternion GetRotOffset(Quaternion rot, bool head) {
+        if(head) {
+            if(getConfig().Correction.GetValue())
+                rot = Sombrero::QuaternionMultiply(rot, currentReplay.replay->info.averageOffset);
+        }
+        if(playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
+            return Sombrero::QuaternionMultiply(playerTransforms->originParentTransform->get_rotation(), rot);
+        return rot;
     }
 }

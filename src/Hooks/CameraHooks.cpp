@@ -1,4 +1,5 @@
 #include "Main.hpp"
+#include "Config.hpp"
 #include "Hooks.hpp"
 
 #include "Replay.hpp"
@@ -11,7 +12,7 @@ using namespace GlobalNamespace;
 #include "UnityEngine/Camera.hpp"
 #include "UnityEngine/Transform.hpp"
 
-UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 vector) {
+constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
     result.m00 = 1;
     result.m01 = 0;
@@ -36,15 +37,14 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 
     LightManager_OnCameraPreRender(self, camera);
 
-    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::mode != Manager::Camera::Mode::HEADSET) {
-        camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
-        camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
-        
-        using cullingMatrixType = function_ptr_t<void, UnityEngine::Camera *, UnityEngine::Matrix4x4>;
-        auto set_cullingMatrix = *((cullingMatrixType) il2cpp_functions::resolve_icall("UnityEngine.Camera::set_cullingMatrix_Injected"));
-
-        set_cullingMatrix(camera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * camera->get_worldToCameraMatrix());
+    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != Manager::Camera::Mode::HEADSET) {
+        if(Manager::currentReplay.type == ReplayType::Frame) {
+            camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
+            camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
+        } else {
+            camera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
+            camera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
+        }
     }
 }
 
@@ -65,9 +65,21 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
     CoreGameHUDController_Start(self);
 
-    if(Manager::replaying && Manager::Camera::rendering) {
+    if(Manager::replaying) {
+        // set culling matrix for moved camera modes and for rendering
+        if(Manager::Camera::GetMode() == Manager::Camera::Mode::HEADSET)
+            return;
+        
+        using cullingMatrixType = function_ptr_t<void, UnityEngine::Camera *, UnityEngine::Matrix4x4>;
+        auto set_cullingMatrix = *((cullingMatrixType) il2cpp_functions::resolve_icall("UnityEngine.Camera::set_cullingMatrix_Injected"));
+
         auto mainCamera = UnityEngine::Camera::get_main();
+        set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
         // mainCamera->set_enabled(false);
+
+        if(!Manager::Camera::rendering)
+            return;
 
         auto customCamera = UnityEngine::Object::Instantiate(mainCamera);
         // UnityEngine::Object::DontDestroyOnLoad(customCamera);
@@ -88,8 +100,17 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
         // Makes the camera render before the main
         customCamera->set_depth(mainCamera->get_depth() - 1);
+
+        set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
         
-        Hollywood::CameraRecordingSettings settings{};
+        Hollywood::CameraRecordingSettings settings{
+            .width = resolutions[getConfig().Resolution.GetValue()].first,
+            .height = resolutions[getConfig().Resolution.GetValue()].second,
+            .fps = getConfig().FPS.GetValue(),
+            .bitrate = getConfig().Bitrate.GetValue(),
+            .fov = getConfig().FOV.GetValue()
+        };
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
         UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);

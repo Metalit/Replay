@@ -1,4 +1,5 @@
 #include "Main.hpp"
+#include "Config.hpp"
 
 #include "ReplayMenu.hpp"
 #include "Hooks.hpp"
@@ -11,6 +12,8 @@
 #include "HMUI/ViewController_AnimationDirection.hpp"
 
 #include "hollywood/shared/Hollywood.hpp"
+
+#include "QuestUI/shared/QuestUI.hpp"
 
 using namespace GlobalNamespace;
 
@@ -60,12 +63,16 @@ extern "C" void setup(ModInfo& info) {
     modInfo = info;
     
     Hollywood::initialize();
+
+    getConfig().Init(info);
 	
     getLogger().info("Completed setup!");
 }
 
 extern "C" void load() {
     il2cpp_functions::Init();
+
+    QuestUI::Register::RegisterModSettingsViewController(modInfo, SettingsDidActivate);
 
     LOG_INFO("Installing hooks...");
     auto& logger = getLogger();

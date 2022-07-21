@@ -53,12 +53,9 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
     std::string hash = GetHash((IPreviewBeatmapLevel*) beatmap->get_level());
     std::string diff = std::to_string((int) beatmap->get_difficulty());
     std::string mode = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->compoundIdPartName;
-    std::string reqlay1 = GetReqlaysPath() + hash + diff + mode;
-    std::string reqlay2 = GetReqlaysPath() + "custom_level_" + hash + diff + mode;
-    tests.emplace_back(reqlay1 + reqlaySuffix1);
-    tests.emplace_back(reqlay1 + reqlaySuffix2);
-    tests.emplace_back(reqlay2 + reqlaySuffix1);
-    tests.emplace_back(reqlay2 + reqlaySuffix2);
+    std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
+    tests.emplace_back(reqlayName + reqlaySuffix1);
+    tests.emplace_back(reqlayName + reqlaySuffix2);
     for(auto& path : tests) {
         if(fileexists(path)) {
             auto replay = ReadReqlay(path);

@@ -89,8 +89,8 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
                 leftRot = Quaternion::Lerp(leftRot, nextTransform.leftHand.rotation, Manager::GetFrameProgress());
                 leftPos = Vector3::Lerp(leftPos, nextTransform.leftHand.position, Manager::GetFrameProgress());
             }
-            saberTransform->set_rotation(leftRot);
-            saberTransform->set_position(leftPos);
+            saberTransform->set_rotation(Manager::GetRotOffset(leftRot));
+            saberTransform->set_position(Manager::GetPosOffset(leftPos));
         } else {
             Quaternion rightRot = transform.rightHand.rotation;
             Vector3 rightPos = transform.rightHand.position;
@@ -99,8 +99,8 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
                 rightRot = Quaternion::Lerp(rightRot, nextTransform.rightHand.rotation, Manager::GetFrameProgress());
                 rightPos = Vector3::Lerp(rightPos, nextTransform.rightHand.position, Manager::GetFrameProgress());
             }
-            saberTransform->set_rotation(rightRot);
-            saberTransform->set_position(rightPos);
+            saberTransform->set_rotation(Manager::GetRotOffset(rightRot));
+            saberTransform->set_position(Manager::GetPosOffset(rightPos));
         }
     }
     Saber_ManualUpdate(self);

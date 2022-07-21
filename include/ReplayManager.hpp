@@ -24,8 +24,9 @@ namespace Manager {
         extern Mode mode;
         extern bool rendering;
 
-        const Vector3& GetHeadPosition();
-        const Quaternion& GetHeadRotation();
+        Vector3 GetHeadPosition();
+        Quaternion GetHeadRotation();
+        Mode GetMode();
     }
     
     namespace Frames {
@@ -56,4 +57,7 @@ namespace Manager {
     Frame& GetFrame();
     Frame& GetNextFrame();
     float GetFrameProgress();
+
+    Vector3 GetPosOffset(Vector3 pos, bool head = false);
+    Quaternion GetRotOffset(Quaternion rot, bool head = false);
 }
