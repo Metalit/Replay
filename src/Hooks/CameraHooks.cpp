@@ -59,6 +59,7 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 #include "UnityEngine/AudioListener.hpp"
 
 Hollywood::AudioCapture* audioCapture = nullptr;
+UnityEngine::Camera* customCamera = nullptr;
 
 // start recording when the level actually loads
 MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void, CoreGameHUDController* self) {
@@ -81,8 +82,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         if(!Manager::Camera::rendering)
             return;
 
-        auto customCamera = UnityEngine::Object::Instantiate(mainCamera);
-        // UnityEngine::Object::DontDestroyOnLoad(customCamera);
+        customCamera = UnityEngine::Object::Instantiate(mainCamera);
         customCamera->set_enabled(true);
 
         while (customCamera->get_transform()->get_childCount() > 0)
@@ -131,6 +131,9 @@ MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, 
     if(audioCapture)
         UnityEngine::Object::Destroy(audioCapture);
     audioCapture = nullptr;
+    if(customCamera)
+        UnityEngine::Object::Destroy(customCamera);
+    customCamera = nullptr;
 
     // UnityEngine::Camera::get_main()->set_enabled(true);
 

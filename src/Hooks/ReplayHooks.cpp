@@ -146,7 +146,7 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteControll
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 
-// watch for the end of a replay
+// watch for restarts
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish, &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData, LevelCompletionResults* levelCompletionResults) {
     
@@ -155,20 +155,24 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
 
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
     
-    if(Manager::replaying && levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
-        Manager::ReplayEnded();
-    else
-        Manager::ReplayRestarted();
+    if(Manager::replaying) {
+        if(levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Restart)
+            Manager::ReplayRestarted();
+        else
+            Manager::ReplayEnded();
+    }
 }
-MAKE_HOOK_MATCH(PauseMenuManager_MenuButtonPressed, &PauseMenuManager::MenuButtonPressed, void, PauseMenuManager* self) {
 
-    if(Manager::replaying && playerSpecificSettings)
-        playerSpecificSettings->leftHanded = wasLeftHanded;
+#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 
-    PauseMenuManager_MenuButtonPressed(self);
+// watch for the end of a replay
+MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &PrepareLevelCompletionResults::FillLevelCompletionResults,
+        LevelCompletionResults*, PrepareLevelCompletionResults* self, LevelCompletionResults::LevelEndStateType levelEndStateType, LevelCompletionResults::LevelEndAction levelEndAction) {
+
+    if(Manager::replaying && levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
+        Manager::EndSceneChangeStarted();
     
-    if(Manager::replaying)
-        Manager::ReplayEnded();
+    return PrepareLevelCompletionResults_FillLevelCompletionResults(self, levelEndStateType, levelEndAction);
 }
 
 HOOK_FUNC(
@@ -181,5 +185,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
-    INSTALL_HOOK(logger, PauseMenuManager_MenuButtonPressed);
+    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults);
 )

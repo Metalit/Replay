@@ -38,11 +38,11 @@ namespace Manager {
     int frameCount = 0;
     float songTime = -1;
     float lerpAmount = 0;
+    bool inTransition = false;
 
     Saber *leftSaber, *rightSaber;
     PlayerHeadAndObstacleInteraction* obstacleChecker;
     PlayerTransforms* playerTransforms;
-    MainSettingsModelSO* settings;
 
     void GetObjects() {
         auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
@@ -50,7 +50,6 @@ namespace Manager {
         rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
         obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
         playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
-        settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
     }
 
     namespace Camera {
@@ -80,10 +79,12 @@ namespace Manager {
         }
 
         void SetGraphicsSettings() {
-            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue() ? 2 : 0);
+            auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
+            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue() ? 1 : 0);
             settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
         }
         void UnsetGraphicsSettings() {
+            auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
             settings->screenDisplacementEffectsEnabled->set_value(false);
         }
@@ -269,10 +270,15 @@ namespace Manager {
             Events::ReplayStarted();
     }
 
+    void EndSceneChangeStarted() {
+        inTransition = true;
+    }
+
     void ReplayEnded() {
         Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
+        inTransition = false;
     }
     
     void UpdateTime(float time) {
@@ -281,7 +287,7 @@ namespace Manager {
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 
-        while(frames[currentFrame].time <= songTime && currentFrame < frameCount)
+        while(frames[currentFrame].time <= songTime && currentFrame < frameCount - 1)
             currentFrame++;
         
         if(currentFrame == frameCount - 1)
@@ -322,7 +328,7 @@ namespace Manager {
                 offset = Sombrero::QuaternionMultiply(Camera::GetHeadRotation(), offset);
             pos += offset;
         }
-        if(playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
+        if(!inTransition && playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
             return playerTransforms->originParentTransform->get_position() + pos;
         return pos;
     }
@@ -331,7 +337,7 @@ namespace Manager {
             if(getConfig().Correction.GetValue())
                 rot = Sombrero::QuaternionMultiply(rot, currentReplay.replay->info.averageOffset);
         }
-        if(playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
+        if(!inTransition && playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
             return Sombrero::QuaternionMultiply(playerTransforms->originParentTransform->get_rotation(), rot);
         return rot;
     }

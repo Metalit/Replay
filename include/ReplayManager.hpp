@@ -46,6 +46,7 @@ namespace Manager {
     void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);
     void ReplayRestarted();
+    void EndSceneChangeStarted();
     void ReplayEnded();
 
     extern bool replaying;
