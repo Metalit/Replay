@@ -172,6 +172,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     replay->info.timestamp = std::stol(info.timestamp);
     replay->info.score = info.score;
     replay->info.source = "Beatleader";
+    replay->info.playerName.emplace(info.playerName);
     // infer reached 0 energy because no fail is only listed if it did
     replay->info.reached0Energy = replay->info.modifiers.noFail;
     replay->info.jumpDistance = info.jumpDistance;

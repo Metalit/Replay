@@ -57,6 +57,7 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/AudioListener.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
 
 Hollywood::AudioCapture* audioCapture = nullptr;
 UnityEngine::Camera* customCamera = nullptr;
@@ -67,6 +68,21 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     CoreGameHUDController_Start(self);
 
     if(Manager::replaying) {
+        if(Manager::currentReplay.replay->info.playerName != std::nullopt) {
+            auto comboPanel = UnityEngine::GameObject::Find("ComboPanel");
+
+            IPreviewBeatmapLevel* levelData = reinterpret_cast<IPreviewBeatmapLevel*>(Manager::beatmap->get_level());
+            auto songName = (std::string)levelData->get_songName();
+            auto mapper = (std::string)levelData->get_levelAuthorName();
+
+            auto text = QuestUI::BeatSaberUI::CreateText(comboPanel->get_transform(), 
+            "<color=red>REPLAY</color>    " + 
+            mapper + " - " + songName + 
+            "    Player: " + Manager::currentReplay.replay->info.playerName.value(), {300, 150});
+            text->set_fontSize(20);
+            text->set_alignment(TMPro::TextAlignmentOptions::Center);
+        }
+
         // set culling matrix for moved camera modes and for rendering
         if(Manager::Camera::GetMode() == Manager::Camera::Mode::HEADSET)
             return;

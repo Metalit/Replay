@@ -29,7 +29,6 @@
 
 using namespace GlobalNamespace;
 
-IDifficultyBeatmap* beatmap = nullptr;
 std::unordered_map<std::string, ReplayWrapper> currentReplays;
 
 namespace Manager {
@@ -220,6 +219,7 @@ namespace Manager {
     bool replaying = false;
     bool paused = false;
     ReplayWrapper currentReplay;
+    IDifficultyBeatmap* beatmap = nullptr;
 
     void SetLevel(IDifficultyBeatmap* level) {
         beatmap = level;
