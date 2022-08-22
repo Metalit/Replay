@@ -9,6 +9,7 @@
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/MainFlowCoordinator.hpp"
+#include "GlobalNamespace/MultiplayerLevelSelectionFlowCoordinator.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
 
@@ -106,6 +107,13 @@ namespace Menu {
         canvas->SetActive(enabled);
         float xpos = enabled ? 4.2 : -1.8;
         ((UnityEngine::RectTransform*) canvas->get_transform()->GetParent())->set_anchoredPosition({xpos, -55});
+    }
+
+    void CheckMultiplayer() {
+        auto flowCoordinator = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
+        auto klass = il2cpp_functions::object_get_class((Il2CppObject*) flowCoordinator);
+        if(il2cpp_functions::class_is_assignable_from(classof(GlobalNamespace::MultiplayerLevelSelectionFlowCoordinator*), klass))
+            SetButtonEnabled(false);
     }
 
     void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths) {

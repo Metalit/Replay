@@ -18,6 +18,8 @@ namespace Menu {
 
     void SetButtonEnabled(bool enabled);
 
+    void CheckMultiplayer();
+
     void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
 }
 
@@ -28,6 +30,8 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
 
     DECLARE_INSTANCE_METHOD(void, UpdateUI);
+
+    DECLARE_DEFAULT_CTOR();
 
     public:
         void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);

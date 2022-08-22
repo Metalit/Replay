@@ -29,6 +29,7 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView
     
     Menu::EnsureSetup(self);
     Manager::SetLevel(self->selectedDifficultyBeatmap);
+    Menu::CheckMultiplayer();
 }
 
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange, &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
@@ -70,6 +71,8 @@ extern "C" void setup(ModInfo& info) {
 }
 
 extern "C" void load() {
+    Paper::Logger::RegisterFileContextId("Replay");
+    
     il2cpp_functions::Init();
 
     QuestUI::Register::RegisterModSettingsViewController(modInfo, SettingsDidActivate);
