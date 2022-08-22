@@ -44,8 +44,11 @@ float MovementData::ComputeSwingRatingOverload() {
 
 void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovementDataElement prevData, bool prevDataAreValid) {
     auto counter = (SaberSwingRatingCounter*) dataProcessor;
-    if(counter)
+    if(counter) {
+        if(counter->beforeCutRating > 1)
+            counter->beforeCutRating = 1;
         counter->Finish();
+    }
     baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
 }
 
@@ -54,5 +57,6 @@ ISaberMovementData* MakeFakeMovementData(ISaberMovementData* baseData, float bef
     movementData->baseData = baseData;
     movementData->beforeCutRating = beforeCutRating;
     movementData->afterCutRating = afterCutRating;
+    movementData->dataProcessor = nullptr;
     return (ISaberMovementData*) movementData;
 }
