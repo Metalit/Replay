@@ -113,8 +113,13 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, Player
 
     if(Manager::replaying) {
         auto& transform = Manager::GetFrame();
-        self->headTransform->set_rotation(transform.head.rotation);
-        self->headTransform->set_position(transform.head.position);
+        if(Manager::currentReplay.type == ReplayType::Frame) {
+            self->headTransform->set_rotation(transform.head.rotation);
+            self->headTransform->set_position(transform.head.position);
+        } else {
+            self->headTransform->set_localRotation(transform.head.rotation);
+            self->headTransform->set_localPosition(transform.head.position);
+        }
     }
     PlayerTransforms_Update(self);
 }

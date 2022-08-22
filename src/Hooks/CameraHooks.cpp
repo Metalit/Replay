@@ -38,13 +38,8 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
     LightManager_OnCameraPreRender(self, camera);
 
     if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != Manager::Camera::Mode::HEADSET) {
-        if(Manager::currentReplay.type == ReplayType::Frame) {
-            camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
-            camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
-        } else {
-            camera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
-            camera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
-        }
+        camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
+        camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
     }
 }
 

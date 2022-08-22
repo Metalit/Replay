@@ -11,35 +11,29 @@ using namespace GlobalNamespace;
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
 
 // disable real cuts
-MAKE_HOOK_MATCH(GameNoteController_Awake, &GameNoteController::Awake, void, GameNoteController* self) {
+MAKE_HOOK_MATCH(GameNoteController_HandleCut_Event, &GameNoteController::HandleCut,
+        void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
     
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
-        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
-        il2cpp_utils::RunMethodRethrow(self, method);
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         return;
-    }
 
-    GameNoteController_Awake(self);
+    GameNoteController_HandleCut_Event(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
 }
-MAKE_HOOK_MATCH(BombNoteController_Awake, &BombNoteController::Awake, void, BombNoteController* self) {
+MAKE_HOOK_MATCH(BombNoteController_HandleWasCutBySaber, &BombNoteController::HandleWasCutBySaber,
+        void, BombNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec) {
     
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
-        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
-        il2cpp_utils::RunMethodRethrow(self, method);
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         return;
-    }
 
-    BombNoteController_Awake(self);
+    BombNoteController_HandleWasCutBySaber(self, saber, cutPoint, orientation, cutDirVec);
 }
-MAKE_HOOK_MATCH(BurstSliderGameNoteController_Awake, &BurstSliderGameNoteController::Awake, void, BurstSliderGameNoteController* self) {
+MAKE_HOOK_MATCH(BurstSliderGameNoteController_HandleCut, &BurstSliderGameNoteController::HandleCut,
+        void, BurstSliderGameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
     
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
-        static auto method = il2cpp_utils::FindMethodUnsafe("", "NoteController", "Awake", 0);
-        il2cpp_utils::RunMethodRethrow(self, method);
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         return;
-    }
 
-    BurstSliderGameNoteController_Awake(self);
+    BurstSliderGameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
 }
 
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
@@ -98,9 +92,9 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectMan
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, GameNoteController_Awake);
-    INSTALL_HOOK(logger, BombNoteController_Awake);
-    INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
+    INSTALL_HOOK(logger, GameNoteController_HandleCut_Event);
+    INSTALL_HOOK(logger, BombNoteController_HandleWasCutBySaber);
+    INSTALL_HOOK(logger, BurstSliderGameNoteController_HandleCut);
     INSTALL_HOOK(logger, PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles);
     INSTALL_HOOK(logger, GameEnergyCounter_LateUpdate);
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Event);
