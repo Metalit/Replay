@@ -74,6 +74,16 @@ MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, vo
     GameEnergyCounter_LateUpdate(self);
 }
 
+#include "GlobalNamespace/NoteController.hpp"
+
+// disable misses
+MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Event, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
+    
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        return;
+
+    NoteController_HandleNoteDidPassMissedMarkerEvent_Event(self);
+}
 
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 
@@ -93,5 +103,6 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, BurstSliderGameNoteController_Awake);
     INSTALL_HOOK(logger, PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles);
     INSTALL_HOOK(logger, GameEnergyCounter_LateUpdate);
+    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Event);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
 )

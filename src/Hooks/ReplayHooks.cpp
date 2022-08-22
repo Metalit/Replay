@@ -129,20 +129,6 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
         HapticFeedbackController_PlayHapticFeedback(self, node, hapticPreset);
 }
 
-#include "GlobalNamespace/NoteController.hpp"
-
-// disable misses for cases in both replay types
-MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
-    
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        return;
-        
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
-        return;
-
-    NoteController_HandleNoteDidPassMissedMarkerEvent(self);
-}
-
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 
@@ -183,7 +169,6 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, Saber_ManualUpdate);
     INSTALL_HOOK(logger, PlayerTransforms_Update);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
-    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults);
 )

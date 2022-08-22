@@ -101,14 +101,22 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
 
 #include "GlobalNamespace/GameNoteController.hpp"
 
-// avoid fake comnbo hits
-MAKE_HOOK_MATCH(GameNoteController_HandleCut, &GameNoteController::HandleCut,
+// avoid fake comnbo bad cuts
+MAKE_HOOK_MATCH(GameNoteController_HandleCut_Frame, &GameNoteController::HandleCut,
         void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
     
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
         allowBadCut = false;
     
-    GameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
+    GameNoteController_HandleCut_Frame(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
+}
+// misses too
+MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Frame, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
+        
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
+        return;
+
+    NoteController_HandleNoteDidPassMissedMarkerEvent_Frame(self);
 }
 
 HOOK_FUNC(
@@ -118,5 +126,6 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, ComboController_HandleNoteWasCut);
     INSTALL_HOOK(logger, ComboController_HandleNoteWasMissed);
     INSTALL_HOOK(logger, GameEnergyCounter_ProcessEnergyChange);
-    INSTALL_HOOK(logger, GameNoteController_HandleCut);
+    INSTALL_HOOK(logger, GameNoteController_HandleCut_Frame);
+    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Frame);
 )
