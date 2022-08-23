@@ -9,17 +9,19 @@
 
 #include "Formats/EventReplay.hpp"
 #include "ReplayManager.hpp"
+#include "ReplayMenu.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"
 
 EXPOSE_API(PlayBSORFromFile, bool, std::string filePath) {
     auto replay = ReadBSOR(filePath);
-    if (replay.replay) {
+    if (replay.IsValid()) {
         auto levelView = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::StandardLevelDetailView*>().First();
 
-        Manager::ReplayStarted(replay);
-        levelView->actionButton->get_onClick()->Invoke();
+        Menu::EnsureSetup(levelView);
+        Manager::SetReplays({{filePath, std::move(replay)}}, true);
+        Menu::PresentMenu();
 
         return true;
     }

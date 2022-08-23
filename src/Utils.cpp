@@ -59,7 +59,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
     for(auto& path : tests) {
         if(fileexists(path)) {
             auto replay = ReadReqlay(path);
-            if(replay.replay) {
+            if(replay.IsValid()) {
                 replays.insert({path, replay});
                 LOG_INFO("Read reqlay from {}", path);
             }
@@ -97,7 +97,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
             auto path = entry.path();
             if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
                 auto replay = ReadBSOR(path.string());
-                if(replay.replay) {
+                if(replay.IsValid()) {
                     replays.insert({path.string(), replay});
                     LOG_INFO("Read reqlay from {}", path.string());
                 }

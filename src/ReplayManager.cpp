@@ -226,19 +226,26 @@ namespace Manager {
         RefreshLevelReplays();
     }
 
-    void RefreshLevelReplays() {
-        currentReplays = GetReplays(beatmap);
+    void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external) {
+        currentReplays = replays;
         if(currentReplays.size() > 0) {
-            Menu::SetButtonEnabled(true);
+            if(!external)
+                Menu::SetButtonEnabled(true);
             std::vector<std::string> paths;
             std::vector<ReplayInfo*> infos;
             for(auto& pair : currentReplays) {
                 paths.emplace_back(pair.first);
                 infos.emplace_back(&pair.second.replay->info);
             }
-            Menu::SetReplays(infos, paths);
-        } else
+            Menu::SetReplays(infos, paths, external);
+        } else if(!external) {
             Menu::SetButtonEnabled(false);
+            Menu::DismissMenu();
+        }
+    }
+
+    void RefreshLevelReplays() {
+        SetReplays(GetReplays(beatmap));
     }
 
     void ReplayStarted(ReplayWrapper& wrapper) {

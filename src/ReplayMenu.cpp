@@ -15,6 +15,8 @@
 
 #include "questui/shared/BeatSaberUI.hpp"
 
+#include <filesystem>
+
 DEFINE_TYPE(Menu, ReplayViewController);
 
 using namespace GlobalNamespace;
@@ -23,6 +25,7 @@ using namespace QuestUI;
 UnityEngine::GameObject* canvas;
 Menu::ReplayViewController* viewController;
 StandardLevelDetailView* levelView;
+bool usingLocalReplays = true;
 
 const std::vector<std::string> dropdownStrings = {
     "Normal",
@@ -30,14 +33,20 @@ const std::vector<std::string> dropdownStrings = {
 };
 
 void OnReplayButtonClick() {
-    auto flowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<MainFlowCoordinator*>().First()->YoungestChildFlowCoordinatorOrSelf();
-    flowCoordinator->showBackButton = true;
-    flowCoordinator->PresentViewController(viewController, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
-    viewController->UpdateUI();
+    if(!usingLocalReplays)
+        Manager::RefreshLevelReplays();
+    Menu::PresentMenu();
 }
 
 void OnDeleteButtonClick() {
-
+    if(!usingLocalReplays)
+        return;
+    try {
+        std::filesystem::remove(viewController->GetReplay());
+    } catch (const std::filesystem::filesystem_error& e) {
+        LOG_ERROR("Failed to delete replay: {}", e.what());
+    }
+    Manager::RefreshLevelReplays();
 }
 
 void OnWatchButtonClick() {
@@ -116,8 +125,22 @@ namespace Menu {
             SetButtonEnabled(false);
     }
 
-    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths) {
+    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths, bool external) {
+        usingLocalReplays = !external;
         viewController->SetReplays(replayInfos, replayPaths);
+    }
+
+    void PresentMenu() {
+        auto flowCoordinator = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
+        flowCoordinator->showBackButton = true;
+        flowCoordinator->PresentViewController(viewController, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
+        viewController->UpdateUI();
+    }
+    void DismissMenu() {
+        if(viewController->get_isInViewControllerHierarchy() && !viewController->childViewController) {
+            auto flowCoordinator = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
+            flowCoordinator->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
+        }
     }
 }
 
@@ -172,12 +195,12 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto layout4 = BeatSaberUI::CreateVerticalLayoutGroup(layout2);
     layout4->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
 
-    BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
-    BeatSaberUI::CreateUIButton(layout4, "Render Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
+    watchButton = BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
+    renderButton = BeatSaberUI::CreateUIButton(layout4, "Render Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
     std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
     BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[0], dropdownWs, OnCameraModeSet)
         ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);
-    BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
+    deleteButton = BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
 
     increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
 }
@@ -186,13 +209,17 @@ void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std:
     replayInfos = infos;
     replayPaths = paths;
     currentReplay = 0;
-    beatmapData = nullptr;
-    GetBeatmapData(levelView->selectedDifficultyBeatmap, [this, infos](IReadonlyBeatmapData* data) {
-        beatmapData = data;
-        if(replayInfos == infos && increment) {
-            UpdateUI();
-        }
-    });
+    auto lastBeatmap = beatmap;
+    beatmap = levelView->selectedDifficultyBeatmap;
+    if(lastBeatmap != beatmap) {
+        beatmapData = nullptr;
+        GetBeatmapData(beatmap, [this, infos](IReadonlyBeatmapData* data) {
+            beatmapData = data;
+            if(replayInfos == infos && increment) {
+                UpdateUI();
+            }
+        });
+    }
     if(increment) {
         increment->MaxValue = infos.size();
         increment->CurrentValue = 0;
@@ -235,4 +262,12 @@ void Menu::ReplayViewController::UpdateUI() {
     modifiersText->set_text(GetLayeredText("Modifiers", modifiers));
     scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
+
+    deleteButton->set_interactable(usingLocalReplays);
+
+    auto buttons = increment->get_transform()->GetChild(1)->GetComponentsInChildren<UnityEngine::UI::Button*>();
+    buttons.First()->set_interactable(currentReplay + 1 != increment->MinValue);
+    buttons.Last()->set_interactable(currentReplay + 1 != increment->MaxValue);
+
+    increment->get_gameObject()->SetActive(increment->MinValue != increment->MaxValue);
 }

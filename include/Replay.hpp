@@ -80,4 +80,6 @@ struct ReplayWrapper {
 
     ReplayWrapper() = default;
     ReplayWrapper(ReplayType type, Replay* replay) : type(type), replay(replay) {}
+
+    bool IsValid() const { return (bool) replay; }
 };

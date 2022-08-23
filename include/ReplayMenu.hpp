@@ -20,7 +20,10 @@ namespace Menu {
 
     void CheckMultiplayer();
 
-    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
+    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths, bool external = false);
+
+    void PresentMenu();
+    void DismissMenu();
 }
 
 DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
@@ -44,12 +47,14 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         TMPro::TextMeshProUGUI* modifiersText;
         TMPro::TextMeshProUGUI* scoreText;
         TMPro::TextMeshProUGUI* failText;
-        UnityEngine::UI::Button* deleteButton;
         UnityEngine::UI::Button* watchButton;
+        UnityEngine::UI::Button* renderButton;
+        UnityEngine::UI::Button* deleteButton;
         QuestUI::IncrementSetting* increment;
 
         std::vector<ReplayInfo*> replayInfos;
         std::vector<std::string> replayPaths;
         int currentReplay;
+        GlobalNamespace::IDifficultyBeatmap* beatmap;
         GlobalNamespace::IReadonlyBeatmapData* beatmapData;
 )
