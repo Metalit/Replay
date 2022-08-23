@@ -74,6 +74,7 @@ float EnergyForNote(const NoteEventInfo& noteEvent) {
 
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 #define READ_STRING(name) name = ReadString(input)
+#define READ_UTF16(name) name = ReadPotentialUTF16(input)
 
 std::string ReadString(std::ifstream& input) {
     int length;
@@ -81,6 +82,34 @@ std::string ReadString(std::ifstream& input) {
     std::string str;
     str.resize(length);
     input.read(str.data(), length);
+    return str;
+}
+
+// Some strings like name, mapper or song name
+// may contain incorrectly encoded UTF16 symbols.
+std::string ReadPotentialUTF16(std::ifstream& input) {
+    int length;
+    READ_TO(length);
+
+    if (length > 0) {
+        input.seekg(length, input.cur);
+        int nextLength;
+        READ_TO(nextLength);
+        
+        // This code will search for the next valid string length
+        while (nextLength < 0 || nextLength > 100) {
+            input.seekg(-3, input.cur);
+
+            length++;
+            READ_TO(nextLength);
+        }
+        input.seekg(-length - 4, input.cur);
+    }
+
+    std::string str;
+    str.resize(length);
+    input.read(str.data(), length);
+
     return str;
 }
 
@@ -108,7 +137,7 @@ BSORInfo ReadInfo(std::ifstream& input) {
     READ_STRING(info.timestamp);
     
     READ_STRING(info.playerID);
-    READ_STRING(info.playerName);
+    READ_UTF16(info.playerName);
     READ_STRING(info.platform);
 
     READ_STRING(info.trackingSytem);
@@ -116,8 +145,8 @@ BSORInfo ReadInfo(std::ifstream& input) {
     READ_STRING(info.controller);
 
     READ_STRING(info.hash);
-    READ_STRING(info.songName);
-    READ_STRING(info.mapper);
+    READ_UTF16(info.songName);
+    READ_UTF16(info.mapper);
     READ_STRING(info.difficulty);
 
     READ_TO(info.score);
