@@ -10,6 +10,7 @@
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/MainFlowCoordinator.hpp"
 #include "GlobalNamespace/MultiplayerLevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
 
@@ -74,6 +75,14 @@ void OnIncrementChanged(float value) {
     viewController->SelectReplay(value - 1);
 }
 
+custom_types::Helpers::Coroutine MatchRequirementsCoroutine(UnityEngine::UI::Button* replayButton) {
+    co_yield nullptr;
+    
+    bool interactable = levelView->actionButton->get_interactable();
+    replayButton->set_interactable(interactable);
+    co_return;
+}
+
 namespace Menu {
     void EnsureSetup(StandardLevelDetailView* view) {
         static ConstString canvasName("ReplayButtonCanvas");
@@ -110,6 +119,9 @@ namespace Menu {
             viewController = BeatSaberUI::CreateViewController<ReplayViewController*>();
             viewController->set_name("ReplayViewController");
         }
+        
+        auto replayButton = canvasTransform->GetComponentInChildren<UnityEngine::UI::Button*>();
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(MatchRequirementsCoroutine(replayButton)));
     }
 
     void SetButtonEnabled(bool enabled) {
