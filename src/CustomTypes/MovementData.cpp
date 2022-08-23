@@ -4,6 +4,9 @@
 #include "GlobalNamespace/BladeMovementDataElement.hpp"
 #include "GlobalNamespace/SaberSwingRatingCounter.hpp"
 
+#include "GlobalNamespace/ISaberSwingRatingCounterDidChangeReceiver.hpp"
+#include "GlobalNamespace/LazyCopyHashSet_1.hpp"
+
 DEFINE_TYPE(ReplayHelpers, MovementData);
 
 using namespace ReplayHelpers;
@@ -29,6 +32,9 @@ void MovementData::RequestLastDataProcessing(ISaberMovementDataProcessor* dataPr
     counter->notePlaneWasCut = true;
     counter->cutPlaneNormal = baseElement.segmentNormal;
     baseElement.segmentAngle = afterCutRating * 60;
+    // needs to try to calculate after cut rating so that it doesn't immediately finish
+    counter->rateAfterCut = true;
+    counter->afterCutRating = 0;
     counter->ProcessNewData(baseElement, baseElement, true);
     // register as a data processor and wait for the next data so that the counter can finish properly
     baseData->AddDataProcessor((ISaberMovementDataProcessor*) this);
@@ -47,7 +53,11 @@ void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovemen
     if(counter) {
         if(counter->beforeCutRating > 1)
             counter->beforeCutRating = 1;
-        counter->Finish();
+        // run change events because the receivers aren't registered at the time of RequestLastDataProcessing
+        ListWrapper<ISaberSwingRatingCounterDidChangeReceiver*> changeEvents = counter->didChangeReceivers->get_items();
+        for(auto& changeEvent : changeEvents)
+            changeEvent->HandleSaberSwingRatingCounterDidChange(counter->i_ISaberSwingRatingCounter(), counter->afterCutRating);
+        counter->Finish(); // TODO: this likely causes finishes to be in an arbitrary order, causing at least part of the scoring issue
     }
     baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
 }
