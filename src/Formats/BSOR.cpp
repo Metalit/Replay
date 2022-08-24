@@ -72,6 +72,16 @@ float EnergyForNote(const NoteEventInfo& noteEvent) {
     }
 }
 
+bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
+    if(abs(info.saberType) > 1)
+        return false;
+    if(info.saberSpeed < 1 || info.saberSpeed >= 1000)
+        return false;
+    if(info.beforeCutRating < 0 || info.afterCutRating < 0)
+        return false;
+    return true;
+}
+
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 #define READ_STRING(name) name = ReadString(input)
 #define READ_UTF16(name) name = ReadPotentialUTF16(input)
@@ -263,8 +273,32 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
         
-        if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD)
+        if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
             READ_TO(note.noteCutInfo);
+        
+            // replays on a certain BL version failed to save the NoteCutInfo for chain links correctly
+            // so we catch replays with garbage note cut info (to limit failures to maps with the problem) and missing scoring type info
+            if(note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
+                // either fail to load the replay or force set the data (since most fields don't matter for chain links)
+                if(false) {
+                    LOG_ERROR("BSOR had garbage NoteCutInfo data in bsor file {}", path);
+                    return {};
+                } else {
+                    note.noteCutInfo = {0};
+                    if(note.info.eventType == NoteEventInfo::Type::GOOD) {
+                        note.noteCutInfo.speedOK = true;
+                        note.noteCutInfo.directionOK = true;
+                        note.noteCutInfo.saberTypeOK = true;
+                        note.noteCutInfo.wasCutTooSoon = false;
+                    } else {
+                        note.noteCutInfo.speedOK = true;
+                        note.noteCutInfo.directionOK = true;
+                        note.noteCutInfo.saberTypeOK = false;
+                        note.noteCutInfo.wasCutTooSoon = false;
+                    }
+                }
+            }
+        }
     }
     
     READ_TO(section);
