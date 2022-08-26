@@ -33,14 +33,25 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
+#include "hollywood/shared/Hollywood.hpp"
+
+UnityEngine::Camera* mainCamera = nullptr;
+Hollywood::AudioCapture* audioCapture = nullptr;
+UnityEngine::Camera* customCamera = nullptr;
+
 MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender, void, LightManager* self, UnityEngine::Camera* camera) {
 
     LightManager_OnCameraPreRender(self, camera);
 
     if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != Manager::Camera::Mode::HEADSET) {
+        if(!mainCamera)
+            mainCamera = UnityEngine::Camera::get_main();
+        if(camera != mainCamera && camera != customCamera)
+            return;
         camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
         camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
-    }
+    } else
+        mainCamera = nullptr;
 }
 
 #include "GlobalNamespace/CoreGameHUDController.hpp"
@@ -48,14 +59,11 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 #include "UnityEngine/CameraClearFlags.hpp"
 #include "UnityEngine/HideFlags.hpp"
 #include "UnityEngine/DepthTextureMode.hpp"
-#include "hollywood/shared/Hollywood.hpp"
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/AudioListener.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
 
-Hollywood::AudioCapture* audioCapture = nullptr;
-UnityEngine::Camera* customCamera = nullptr;
+#include "questui/shared/BeatSaberUI.hpp"
 
 // start recording when the level actually loads
 MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void, CoreGameHUDController* self) {
@@ -83,7 +91,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             return;
         
         using cullingMatrixType = function_ptr_t<void, UnityEngine::Camera *, UnityEngine::Matrix4x4>;
-        auto set_cullingMatrix = *((cullingMatrixType) il2cpp_functions::resolve_icall("UnityEngine.Camera::set_cullingMatrix_Injected"));
+        static auto set_cullingMatrix = *((cullingMatrixType) il2cpp_functions::resolve_icall("UnityEngine.Camera::set_cullingMatrix_Injected"));
 
         auto mainCamera = UnityEngine::Camera::get_main();
         set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
