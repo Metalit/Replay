@@ -71,19 +71,23 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     CoreGameHUDController_Start(self);
 
     if(Manager::replaying) {
-        if(Manager::currentReplay.replay->info.playerName != std::nullopt) {
-            auto comboPanel = UnityEngine::GameObject::Find("ComboPanel");
+        // TODO: maybe move elsewhere
+        auto& player = Manager::currentReplay.replay->info.playerName;
+        if(player.has_value()) {
+            using namespace QuestUI;
 
-            IPreviewBeatmapLevel* levelData = reinterpret_cast<IPreviewBeatmapLevel*>(Manager::beatmap->get_level());
-            auto songName = (std::string)levelData->get_songName();
-            auto mapper = (std::string)levelData->get_levelAuthorName();
+            auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
+            std::string songName = levelData->get_songName();
+            std::string mapper = levelData->get_levelAuthorName();
 
-            auto text = QuestUI::BeatSaberUI::CreateText(comboPanel->get_transform(), 
-            "<color=red>REPLAY</color>    " + 
-            mapper + " - " + songName + 
-            "    Player: " + Manager::currentReplay.replay->info.playerName.value(), {300, 150});
-            text->set_fontSize(20);
-            text->set_alignment(TMPro::TextAlignmentOptions::Center);
+            std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", mapper, songName, player.value());
+
+            auto canvas = BeatSaberUI::CreateCanvas();
+            canvas->get_transform()->set_position({0, 3.5, 7});
+
+            auto textObj = BeatSaberUI::CreateText(canvas, text);
+            textObj->set_fontSize(7);
+            textObj->set_alignment(TMPro::TextAlignmentOptions::Center);
         }
 
         // set culling matrix for moved camera modes and for rendering
