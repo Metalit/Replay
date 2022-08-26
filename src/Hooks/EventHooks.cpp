@@ -90,6 +90,14 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectMan
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
         Manager::Events::AddNoteController(noteController);
 }
+MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(BeatmapObjectManager::*)(NoteController*)>(&BeatmapObjectManager::Despawn),
+        void, BeatmapObjectManager* self, NoteController* noteController) {
+    
+    BeatmapObjectManager_DespawnNoteController(self, noteController);
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        Manager::Events::RemoveNoteController(noteController);
+}
 
 HOOK_FUNC(
     INSTALL_HOOK(logger, GameNoteController_HandleCut_Event);
@@ -99,4 +107,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, GameEnergyCounter_LateUpdate);
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Event);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
+    INSTALL_HOOK(logger, BeatmapObjectManager_DespawnNoteController);
 )

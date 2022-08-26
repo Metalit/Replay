@@ -36,6 +36,7 @@ namespace Manager {
     
     namespace Events {
         void AddNoteController(GlobalNamespace::NoteController* note);
+        void RemoveNoteController(GlobalNamespace::NoteController* note);
         float& GetWallEnergyLoss();
     }
 

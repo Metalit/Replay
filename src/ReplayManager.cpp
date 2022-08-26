@@ -29,6 +29,14 @@
 
 using namespace GlobalNamespace;
 
+struct NoteCompare {
+    constexpr bool operator()(const NoteController* const& lhs, const NoteController* const& rhs) const {
+        if(lhs->noteData->time == rhs->noteData->time)
+            return lhs < rhs;
+        return lhs->noteData->time < rhs->noteData->time;
+    }
+};
+
 std::unordered_map<std::string, ReplayWrapper> currentReplays;
 
 namespace Manager {
@@ -127,7 +135,7 @@ namespace Manager {
     }
     
     namespace Events {
-        std::vector<NoteController*> notes;
+        std::set<NoteController*, NoteCompare> notes;
         std::vector<NoteEvent>::iterator noteEvent;
         float wallEndTime = 0;
         float wallEnergyLoss = 0;
@@ -142,7 +150,13 @@ namespace Manager {
         }
 
         void AddNoteController(NoteController* note) {
-            notes.push_back(note);
+            if(note->noteData->scoringType > NoteData::ScoringType::NoScore)
+                notes.insert(note);
+        }
+        void RemoveNoteController(NoteController* note) {
+            auto iter = notes.find(note);
+            if(iter != notes.end())
+                notes.erase(iter);
         }
         float& GetWallEnergyLoss() {
             return wallEnergyLoss;
@@ -173,26 +187,32 @@ namespace Manager {
 
         void ProcessNoteEvent(const NoteEvent& event) {
             auto& info = event.info;
+            bool found = false;
             for(auto iter = notes.begin(); iter != notes.end(); iter++) {
-                auto noteData = (*iter)->noteData;
+                auto controller = *iter;
+                auto noteData = controller->noteData;
                 if((noteData->scoringType == info.scoringType || info.scoringType == -2)
                         && noteData->lineIndex == info.lineIndex
                         && noteData->noteLineLayer == info.lineLayer
                         && noteData->colorType == info.colorType
                         && noteData->cutDirection == info.cutDirection) {
+                    found = true;
                     auto saber = event.noteCutInfo.saberType == SaberType::SaberA ? leftSaber : rightSaber;
                     if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
-                        auto cutInfo = GetNoteCutInfo(*iter, saber, event.noteCutInfo);
-                        il2cpp_utils::RunMethodUnsafe(*iter, "SendNoteWasCutEvent", byref(cutInfo));
+                        auto cutInfo = GetNoteCutInfo(controller, saber, event.noteCutInfo);
+                        il2cpp_utils::RunMethodUnsafe(controller, "SendNoteWasCutEvent", byref(cutInfo));
                     } else if(info.eventType == NoteEventInfo::Type::MISS) {
-                        (*iter)->SendNoteWasMissedEvent();
+                        controller->SendNoteWasMissedEvent();
+                        notes.erase(iter); // note will despawn and be removed in the other cases
                     } else if(info.eventType == NoteEventInfo::Type::BOMB) {
-                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,
-                            (*iter)->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
+                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,controller->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
                     }
-                    notes.erase(iter);
                     break;
                 }
+            }
+            if(!found) {
+                int bsorID = (event.info.scoringType + 2)*10000 + event.info.lineIndex*1000 + event.info.lineLayer*100 + event.info.colorType*10 + event.info.cutDirection;
+                LOG_ERROR("Could not find note for event! time: {}, bsor id: {}", event.time, bsorID);
             }
         }
 
