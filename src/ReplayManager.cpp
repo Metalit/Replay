@@ -136,17 +136,17 @@ namespace Manager {
     
     namespace Events {
         std::set<NoteController*, NoteCompare> notes;
-        std::vector<NoteEvent>::iterator noteEvent;
+        decltype(EventReplay::events)::iterator event;
+        EventReplay* replay;
         float wallEndTime = 0;
         float wallEnergyLoss = 0;
-        std::vector<WallEvent>::iterator wallEvent;
 
         void ReplayStarted() {
             notes.clear();
-            noteEvent = ((EventReplay*) currentReplay.replay.get())->notes.begin();
+            replay = (EventReplay*) currentReplay.replay.get();
+            event = replay->events.begin();
             wallEndTime = 0;
             wallEnergyLoss = 0;
-            wallEvent = ((EventReplay*) currentReplay.replay.get())->walls.begin();
         }
 
         void AddNoteController(NoteController* note) {
@@ -225,13 +225,18 @@ namespace Manager {
         }
         
         void UpdateTime() {
-            while(noteEvent != ((EventReplay*) currentReplay.replay.get())->notes.end() && noteEvent->time < songTime) {
-                ProcessNoteEvent(*noteEvent);
-                noteEvent++;
-            }
-            while(wallEvent != ((EventReplay*) currentReplay.replay.get())->walls.end() && wallEvent->time < songTime) {
-                ProcessWallEvent(*wallEvent);
-                wallEvent++;
+            while(event != ((EventReplay*) currentReplay.replay.get())->events.end() && event->time < songTime) {
+                switch(event->eventType) {
+                case EventRef::Note:
+                    ProcessNoteEvent(replay->notes[event->index]);
+                    break;
+                case EventRef::Wall:
+                    ProcessWallEvent(replay->walls[event->index]);
+                    break;
+                default:
+                    break;
+                }
+                event++;
             }
         }
     }

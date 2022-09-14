@@ -10,7 +10,7 @@ struct ScoreFrame;
 struct NoteEvent;
 struct WallEvent;
 struct HeightEvent;
-struct Pause;
+struct PauseEvent;
 
 namespace Manager {
 

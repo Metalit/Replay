@@ -299,6 +299,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
                 }
             }
         }
+        replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
     }
     
     READ_TO(section);
@@ -350,6 +351,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
             }
             energy = wallEvent.energy;
         }
+        replay->events.emplace(wall.time, EventRef::Wall, replay->walls.size() - 1);
     }
     
     READ_TO(section);
@@ -362,6 +364,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     for(int i = 0; i < heightCount; i++) {
         auto& height = replay->heights.emplace_back(HeightEvent());
         READ_TO(height);
+        replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
     }
     replay->info.hasYOffset = true;
     
@@ -373,8 +376,9 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int pauseCount;
     READ_TO(pauseCount);
     for(int i = 0; i < pauseCount; i++) {
-        auto& pause = replay->pauses.emplace_back(Pause());
+        auto& pause = replay->pauses.emplace_back(PauseEvent());
         READ_TO(pause);
+        replay->events.emplace(pause.time, EventRef::Height, replay->pauses.size() - 1);
     }
 
     return ret;

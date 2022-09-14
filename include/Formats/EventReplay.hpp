@@ -55,16 +55,38 @@ struct HeightEvent {
     float time;
 };
 
-struct Pause {
+struct PauseEvent {
     long duration;
     float time;
+};
+
+struct EventRef {
+    enum Type {
+        Note,
+        Wall,
+        Height,
+        Pause
+    };
+    float time;
+    Type eventType;
+    int index;
+    EventRef(float time, Type eventType, int index) : time(time), eventType(eventType), index(index) {}
+};
+
+struct EventCompare {
+    constexpr bool operator()(const EventRef& lhs, const EventRef& rhs) const {
+        if(lhs.time == rhs.time)
+            return lhs.eventType < rhs.eventType || (lhs.eventType == rhs.eventType && lhs.index < rhs.index);
+        return lhs.time < rhs.time;
+    }
 };
 
 struct EventReplay : public Replay {
     std::vector<NoteEvent> notes;
     std::vector<WallEvent> walls;
     std::vector<HeightEvent> heights;
-    std::vector<Pause> pauses;
+    std::vector<PauseEvent> pauses;
+    std::set<EventRef, EventCompare> events;
 };
 
 ReplayWrapper ReadBSOR(const std::string& path);
