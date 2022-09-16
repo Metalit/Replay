@@ -99,6 +99,18 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(Bea
         Manager::Events::RemoveNoteController(noteController);
 }
 
+#include "GlobalNamespace/ScoreController.hpp"
+#include "CustomTypes/ScoringElement.hpp"
+
+// prevent crasing on attempting to despawn fake scoring elements
+MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Event, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
+    
+    if(il2cpp_utils::try_cast<ReplayHelpers::ScoringElement>(scoringElement))
+        return;
+
+    ScoreController_DespawnScoringElement_Event(self, scoringElement);
+}
+
 HOOK_FUNC(
     INSTALL_HOOK(logger, GameNoteController_HandleCut_Event);
     INSTALL_HOOK(logger, BombNoteController_HandleWasCutBySaber);
@@ -108,4 +120,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Event);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
     INSTALL_HOOK(logger, BeatmapObjectManager_DespawnNoteController);
+    INSTALL_HOOK(logger, ScoreController_DespawnScoringElement_Event);
 )

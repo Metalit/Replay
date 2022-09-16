@@ -61,11 +61,13 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
 
 // handle pause and resume
 MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-    Manager::paused = true;
+    if(Manager::replaying)
+        Manager::ReplayPaused();
     PauseMenuManager_ShowMenu(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
-    Manager::paused = false;
+    if(Manager::replaying)
+        Manager::ReplayUnpaused();
     PauseMenuManager_HandleResumeFromPauseAnimationDidFinish(self);
 }
 

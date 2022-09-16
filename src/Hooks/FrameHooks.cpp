@@ -12,12 +12,12 @@ using namespace GlobalNamespace;
 #include "System/Action_2.hpp"
 
 // override score
-MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
+MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Frame, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
     
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame)
         self->multipliedScore = Manager::Frames::GetScoreFrame()->score;
 
-    ScoreController_DespawnScoringElement(self, scoringElement);
+    ScoreController_DespawnScoringElement_Frame(self, scoringElement);
 }
 MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, ScoreController* self) {
     
@@ -120,7 +120,7 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Frame, &NoteCo
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, ScoreController_DespawnScoringElement);
+    INSTALL_HOOK(logger, ScoreController_DespawnScoringElement_Frame);
     INSTALL_HOOK(logger, ScoreController_LateUpdate);
     INSTALL_HOOK(logger, ComboController_HandlePlayerHeadDidEnterObstacles);
     INSTALL_HOOK(logger, ComboController_HandleNoteWasCut);

@@ -4,10 +4,14 @@
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
 
+#include "CustomTypes/MovementData.hpp"
+
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
+#include "GlobalNamespace/NoteData.hpp"
+#include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
 
 #include "custom-types/shared/coroutine.hpp"
@@ -207,4 +211,56 @@ custom_types::Helpers::Coroutine GetBeatmapDataCoro(IDifficultyBeatmap* beatmap,
 
 void GetBeatmapData(IDifficultyBeatmap* beatmap, std::function<void(IReadonlyBeatmapData*)> callback) {
     SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(GetBeatmapDataCoro(beatmap, callback)));
+}
+
+NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, const ReplayNoteCutInfo& info) {
+    return NoteCutInfo(note ? note->noteData : nullptr,
+        info.speedOK,
+        info.directionOK,
+        info.saberTypeOK,
+        info.wasCutTooSoon,
+        info.saberSpeed,
+        info.saberDir,
+        info.saberType,
+        info.timeDeviation,
+        info.cutDirDeviation,
+        info.cutPoint,
+        info.cutNormal,
+        info.cutAngle,
+        info.cutDistanceToCenter,
+        note ? note->get_worldRotation() : Quaternion::identity(),
+        note ? note->get_inverseWorldRotation() : Quaternion::identity(),
+        note ? note->noteTransform->get_rotation() : Quaternion::identity(),
+        note ? note->noteTransform->get_position() : Vector3::zero(),
+        saber ? MakeFakeMovementData((ISaberMovementData*) saber->movementData, info.beforeCutRating, info.afterCutRating) : nullptr
+    );
+}
+
+float EnergyForNote(const NoteEventInfo& noteEvent) {
+    if(noteEvent.eventType == NoteEventInfo::Type::BOMB)
+        return -0.15;
+    bool goodCut = noteEvent.eventType == NoteEventInfo::Type::GOOD;
+    bool miss = noteEvent.eventType == NoteEventInfo::Type::MISS;
+    switch(noteEvent.scoringType) {
+    case -2:
+    case NoteData::ScoringType::Normal:
+    case NoteData::ScoringType::BurstSliderHead:
+        return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
+    case NoteData::ScoringType::BurstSliderElement:
+        return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
+    default:
+        return 0;
+    }
+}
+
+int ScoreForNote(const NoteEvent& note) {
+    ScoreModel::NoteScoreDefinition* scoreDefinition;
+    if(note.info.scoringType == -2)
+        scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
+    else
+        scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
+    return scoreDefinition->fixedCutScore +
+        int(std::lerp(scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, std::clamp(note.noteCutInfo.beforeCutRating, 0.0f, 1.0f)) + 0.5) +
+        int(std::lerp(scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, std::clamp(note.noteCutInfo.afterCutRating, 0.0f, 1.0f)) + 0.5) +
+        int(scoreDefinition->maxCenterDistanceCutScore * (1 - std::clamp(note.noteCutInfo.cutDistanceToCenter / 0.3, 0.0, 1.0)) + 0.5);
 }

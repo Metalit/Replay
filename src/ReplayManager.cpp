@@ -2,12 +2,13 @@
 #include "Config.hpp"
 #include "ReplayManager.hpp"
 #include "MathUtils.hpp"
+#include "Utils.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
 
 #include "ReplayMenu.hpp"
-#include "CustomTypes/MovementData.hpp"
+#include "PauseMenu.hpp"
 
 #include "bs-utils/shared/utils.hpp"
 
@@ -50,6 +51,7 @@ namespace Manager {
     Saber *leftSaber, *rightSaber;
     PlayerHeadAndObstacleInteraction* obstacleChecker;
     PlayerTransforms* playerTransforms;
+    PauseMenuManager* pauseManager;
 
     void GetObjects() {
         auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
@@ -57,6 +59,7 @@ namespace Manager {
         rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
         obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
         playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
+        pauseManager = UnityEngine::Resources::FindObjectsOfTypeAll<PauseMenuManager*>().First();
     }
 
     namespace Camera {
@@ -162,29 +165,6 @@ namespace Manager {
             return wallEnergyLoss;
         }
 
-        NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo info) {
-            return NoteCutInfo(note->noteData,
-                info.speedOK,
-                info.directionOK,
-                info.saberTypeOK,
-                info.wasCutTooSoon,
-                info.saberSpeed,
-                info.saberDir,
-                info.saberType,
-                info.timeDeviation,
-                info.cutDirDeviation,
-                info.cutPoint,
-                info.cutNormal,
-                info.cutAngle,
-                info.cutDistanceToCenter,
-                note->get_worldRotation(),
-                note->get_inverseWorldRotation(),
-                note->noteTransform->get_rotation(),
-                note->noteTransform->get_position(),
-                MakeFakeMovementData((ISaberMovementData*) saber->movementData, info.beforeCutRating, info.afterCutRating)
-            );
-        }
-
         void ProcessNoteEvent(const NoteEvent& event) {
             auto& info = event.info;
             bool found = false;
@@ -228,7 +208,8 @@ namespace Manager {
             while(event != ((EventReplay*) currentReplay.replay.get())->events.end() && event->time < songTime) {
                 switch(event->eventType) {
                 case EventRef::Note:
-                    ProcessNoteEvent(replay->notes[event->index]);
+                    if(!notes.empty())
+                        ProcessNoteEvent(replay->notes[event->index]);
                     break;
                 case EventRef::Wall:
                     ProcessWallEvent(replay->walls[event->index]);
@@ -294,10 +275,10 @@ namespace Manager {
             return;
     }
 
-    void ReplayRestarted() {
+    void ReplayRestarted(bool full) {
         paused = false;
         currentFrame = 0;
-        songTime = -1;
+        songTime = full ? -1 : 0;
         if(currentReplay.type == ReplayType::Event)
             Events::ReplayStarted();
     }
@@ -311,6 +292,15 @@ namespace Manager {
         bs_utils::Submission::enable(modInfo);
         replaying = false;
         inTransition = false;
+    }
+
+    void ReplayPaused() {
+        Pause::EnsureSetup(pauseManager);
+        paused = true;
+    }
+
+    void ReplayUnpaused() {
+        paused = false;
     }
     
     void UpdateTime(float time) {

@@ -1,6 +1,7 @@
 #include "Main.hpp"
 #include "Formats/EventReplay.hpp"
 #include "MathUtils.hpp"
+#include "Utils.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -51,26 +52,6 @@ struct BSORWallEvent {
     float time;
     float spawnTime;
 };
-
-#include "GlobalNamespace/NoteData.hpp"
-using namespace GlobalNamespace;
-
-float EnergyForNote(const NoteEventInfo& noteEvent) {
-    if(noteEvent.eventType == NoteEventInfo::Type::BOMB)
-        return -0.15;
-    bool goodCut = noteEvent.eventType == NoteEventInfo::Type::GOOD;
-    bool miss = noteEvent.eventType == NoteEventInfo::Type::MISS;
-    switch(noteEvent.scoringType) {
-        case -2:
-        case NoteData::ScoringType::Normal:
-        case NoteData::ScoringType::BurstSliderHead:
-            return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
-        case NoteData::ScoringType::BurstSliderElement:
-            return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
-        default:
-            return 0;
-    }
-}
 
 bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
     if(abs(info.saberType) > 1)

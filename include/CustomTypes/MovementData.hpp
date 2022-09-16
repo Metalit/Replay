@@ -29,4 +29,7 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, INTE
     DECLARE_OVERRIDE_METHOD(void, ProcessNewData, METHOD(ISaberMovementDataProcessor::ProcessNewData), DataElement newData, DataElement prevData, bool prevDataAreValid);
 )
 
+#undef METHOD
+#undef INTERFACES
+
 GlobalNamespace::ISaberMovementData* MakeFakeMovementData(GlobalNamespace::ISaberMovementData* baseData, float beforeCutRating, float afterCutRating);
