@@ -43,7 +43,7 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 
     LightManager_OnCameraPreRender(self, camera);
 
-    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != Manager::Camera::Mode::HEADSET) {
+    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
         if(!mainCamera)
             mainCamera = UnityEngine::Camera::get_main();
         if(camera != mainCamera && camera != customCamera)
@@ -73,7 +73,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     if(Manager::replaying) {
         // TODO: maybe move elsewhere
         auto& player = Manager::currentReplay.replay->info.playerName;
-        if(player.has_value()) {
+        if(player.has_value() && (!Manager::AreReplaysLocal() || !getConfig().HideText.GetValue())) {
             using namespace QuestUI;
 
             auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
@@ -83,7 +83,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", mapper, songName, player.value());
 
             auto canvas = BeatSaberUI::CreateCanvas();
-            canvas->get_transform()->set_position({0, 3.5, 7});
+            canvas->get_transform()->set_position({0, 3.5, getConfig().TextHeight.GetValue()});
 
             auto textObj = BeatSaberUI::CreateText(canvas, text);
             textObj->set_fontSize(7);
@@ -91,7 +91,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         }
 
         // set culling matrix for moved camera modes and for rendering
-        if(Manager::Camera::GetMode() == Manager::Camera::Mode::HEADSET)
+        if(Manager::Camera::GetMode() == (int) CameraMode::Headset)
             return;
         
         using cullingMatrixType = function_ptr_t<void, UnityEngine::Camera *, UnityEngine::Matrix4x4>;
@@ -171,7 +171,7 @@ MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, 
 MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
     
     if(Manager::replaying && Manager::Camera::rendering)
-        return false;
+        return getConfig().Pauses.GetValue();
     
     return PauseController_get_canPause(self);
 }

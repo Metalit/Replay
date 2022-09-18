@@ -15,18 +15,11 @@ struct PauseEvent;
 namespace Manager {
 
     namespace Camera {
-        enum struct Mode {
-            HEADSET,
-            SMOOTH,
-            THIRDPERSON
-        };
-
-        extern Mode mode;
         extern bool rendering;
 
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
-        Mode GetMode();
+        int GetMode();
     }
     
     namespace Frames {
@@ -44,6 +37,7 @@ namespace Manager {
     
     void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external = false);
     void RefreshLevelReplays();
+    bool AreReplaysLocal();
     
     void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);

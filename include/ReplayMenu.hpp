@@ -24,6 +24,8 @@ namespace Menu {
 
     void PresentMenu();
     void DismissMenu();
+
+    bool AreReplaysLocal();
 }
 
 DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,

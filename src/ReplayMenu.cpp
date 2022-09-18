@@ -4,6 +4,7 @@
 #include "Formats/FrameReplay.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
+#include "Config.hpp"
 
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
@@ -59,7 +60,7 @@ void OnWatchButtonClick() {
 void OnCameraModeSet(StringW value) {
     for(int i = 0; i < dropdownStrings.size(); i++) {
         if(dropdownStrings[i] == value) {
-            Manager::Camera::mode = (Manager::Camera::Mode) i;
+            getConfig().CamMode.SetValue(i);
             return;
         }
     }
@@ -154,6 +155,10 @@ namespace Menu {
             flowCoordinator->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
         }
     }
+
+    bool AreReplaysLocal() {
+        return usingLocalReplays;
+    }
 }
 
 TMPro::TextMeshProUGUI* CreateCenteredText(UnityEngine::UI::VerticalLayoutGroup* parent) {
@@ -210,7 +215,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     watchButton = BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
     renderButton = BeatSaberUI::CreateUIButton(layout4, "Render Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
     std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
-    BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[0], dropdownWs, OnCameraModeSet)
+    BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet)
         ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);
     deleteButton = BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
 

@@ -5,6 +5,7 @@
 #include "Hooks.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
+#include "CustomTypes/ReplaySettings.hpp"
 
 #include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
@@ -146,7 +147,7 @@ extern "C" void load() {
     
     il2cpp_functions::Init();
 
-    QuestUI::Register::RegisterModSettingsViewController(modInfo, SettingsDidActivate);
+    QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
 
     LOG_INFO("Installing hooks...");
     auto& logger = getLogger();

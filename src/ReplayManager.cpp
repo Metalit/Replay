@@ -63,7 +63,6 @@ namespace Manager {
     }
 
     namespace Camera {
-        Mode mode = Mode::HEADSET;
         bool rendering = false;
 
         Vector3 smoothPosition;
@@ -82,21 +81,25 @@ namespace Manager {
             return GetRotOffset(smoothRotation, true);
         }
 
-        Mode GetMode() {
-            if(mode == Mode::HEADSET && rendering)
-                return Mode::SMOOTH;
-            return mode;
+        int GetMode() {
+            if(getConfig().CamMode.GetValue() == (int) CameraMode::Headset && rendering)
+                return (int) CameraMode::Smooth;
+            return getConfig().CamMode.GetValue();
         }
 
         void SetGraphicsSettings() {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
-            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue() ? 1 : 0);
+            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue());
             settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
+            settings->bloomPrePassGraphicsSettings->set_value(getConfig().Bloom.GetValue());
+            settings->mirrorGraphicsSettings->set_value(getConfig().Mirrors.GetValue());
         }
         void UnsetGraphicsSettings() {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
             settings->screenDisplacementEffectsEnabled->set_value(false);
+            settings->bloomPrePassGraphicsSettings->set_value(0);
+            settings->mirrorGraphicsSettings->set_value(0);
         }
 
         void ReplayStarted() {
@@ -248,6 +251,10 @@ namespace Manager {
             Menu::SetButtonEnabled(false);
             Menu::DismissMenu();
         }
+    }
+
+    bool AreReplaysLocal() {
+        return Menu::AreReplaysLocal();
     }
 
     void RefreshLevelReplays() {
