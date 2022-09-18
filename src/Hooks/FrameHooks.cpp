@@ -14,8 +14,12 @@ using namespace GlobalNamespace;
 // override score
 MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Frame, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
     
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame)
-        self->multipliedScore = Manager::Frames::GetScoreFrame()->score;
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+        auto frame = Manager::Frames::GetScoreFrame();
+        // modified scores are calculated based on these after this function is called
+        self->multipliedScore = frame->score;
+        self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
+    }
 
     ScoreController_DespawnScoringElement_Frame(self, scoringElement);
 }
@@ -27,8 +31,10 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
         auto frame = Manager::Frames::GetScoreFrame();
         if(self->multipliedScore != frame->score) {
             self->multipliedScore = frame->score;
+            self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
             float multiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, frame->energy);
             self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(frame->score, multiplier);
+            self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(frame->score / frame->percent, multiplier);
             if(!self->scoreDidChangeEvent->Equals(nullptr))
                 self->scoreDidChangeEvent->Invoke(frame->score, self->modifiedScore);
         }

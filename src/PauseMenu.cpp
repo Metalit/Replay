@@ -19,23 +19,17 @@
 #include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
 #include "GlobalNamespace/MemoryPoolContainer_1.hpp"
 #include "GlobalNamespace/GameplayModifiersModelSO.hpp"
-#include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/BeatmapObjectSpawnController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksController.hpp"
 #include "GlobalNamespace/CallbacksInTime.hpp"
 #include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
-#include "GlobalNamespace/BeatmapDataItem.hpp"
-#include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/SliderController.hpp"
 
 #include "System/Action.hpp"
-#include "System/Func_2.hpp"
 #include "System/Collections/Generic/Dictionary_2.hpp"
 #include "System/Single.hpp"
 
 #include "questui/shared/BeatSaberUI.hpp"
-
-#include "custom-types/shared/delegate.hpp"
 
 using namespace GlobalNamespace;
 using namespace QuestUI;
@@ -65,7 +59,6 @@ namespace Pause {
     NoteCutSoundEffectManager* noteSoundManager;
     BeatmapObjectManager* beatmapObjectManager;
     BeatmapCallbacksController* callbackController;
-    IReadonlyBeatmapData* beatmapData;
     PauseMenuManager* lastPauseMenu = nullptr;
 
     void EnsureSetup(PauseMenuManager* pauseMenu) {
@@ -75,7 +68,6 @@ namespace Pause {
             scoreController = (ScoreController*) hasOtherObjects->scoreController;
             comboController = hasOtherObjects->comboController;
             gameEnergyCounter = hasOtherObjects->gameEnergyCounter;
-            beatmapData = hasOtherObjects->beatmapData;
             noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>().First();
             beatmapObjectManager = noteSoundManager->beatmapObjectManager;
             callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>().First()->beatmapCallbacksController;
@@ -167,18 +159,12 @@ namespace Pause {
         if(replay.type == ReplayType::Frame) {
             // let hooks update values
             gameEnergyCounter->ProcessEnergyChange(0);
-            // update immediate max score
-            using FilterFunc = System::Func_2<BeatmapDataItem*, BeatmapDataItem*>*;
-            auto filter = custom_types::MakeDelegate<FilterFunc>((std::function<BeatmapDataItem*(BeatmapDataItem*)>) [time](BeatmapDataItem* data) -> BeatmapDataItem* {
-                if(data->time < time)
-                    return data;
-                return nullptr;
-            });
-            int maxScore = ScoreModel::ComputeMaxMultipliedScoreForBeatmap((IReadonlyBeatmapData*) beatmapData->GetFilteredCopy(filter));
+            auto frame = Manager::Frames::GetScoreFrame();
+            int maxScore = frame->score / frame->percent;
+            float multiplier = scoreController->gameplayModifiersModel->GetTotalMultiplier(scoreController->gameplayModifierParams, frame->energy);
+            int modifiedMaxScore = modifiedMaxScore * multiplier;
             scoreController->immediateMaxPossibleMultipliedScore = maxScore;
-            float energy = Manager::Frames::GetScoreFrame()->energy;
-            float multiplier = scoreController->gameplayModifiersModel->GetTotalMultiplier(scoreController->gameplayModifierParams, energy);
-            scoreController->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(maxScore, multiplier);
+            scoreController->immediateMaxPossibleModifiedScore = modifiedMaxScore;
             scoreController->LateUpdate();
             NoteCutInfo info{}; il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(info));
         } else {

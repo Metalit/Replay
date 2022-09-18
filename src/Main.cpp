@@ -58,6 +58,77 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
 }
 
+#include "GlobalNamespace/ScoreController.hpp"
+#include "GlobalNamespace/ScoreModel.hpp"
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/ScoringElement.hpp"
+#include "GlobalNamespace/GameplayModifiersModelSO.hpp"
+#include "GlobalNamespace/IGameEnergyCounter.hpp"
+#include "System/Action_1.hpp"
+#include "System/Action_2.hpp"
+
+MAKE_HOOK_MATCH(WeirdFix, &ScoreController::LateUpdate, void, ScoreController* self) {
+    LOG_DEBUG("LateUpdate");
+    float num = self->sortedNoteTimesWithoutScoringElements->get_Count() > 0 ? self->sortedNoteTimesWithoutScoringElements->get_Item(0) : 3000000000;
+    float num2 = self->audioTimeSyncController->get_songTime() + 0.15;
+    int num3 = 0;
+    bool flag = false;
+    LOG_DEBUG("Processing without multiplier");
+    for(int i = 0; i < self->sortedScoringElementsWithoutMultiplier->get_Count(); i++) {
+        auto item = self->sortedScoringElementsWithoutMultiplier->get_Item(i);
+        if(item->get_time() < num2 || item->get_time() > num) {
+            flag |= self->scoreMultiplierCounter->ProcessMultiplierEvent(item->get_multiplierEventType());
+            if(item->get_wouldBeCorrectCutBestPossibleMultiplierEventType() == ScoreMultiplierCounter::MultiplierEventType::Positive)
+                self->maxScoreMultiplierCounter->ProcessMultiplierEvent(ScoreMultiplierCounter::MultiplierEventType::Positive);
+            item->SetMultipliers(self->scoreMultiplierCounter->get_multiplier(), self->maxScoreMultiplierCounter->get_multiplier());
+            self->scoringElementsWithMultiplier->Add(item);
+            num3++;
+            continue;
+        }
+        break;
+    }
+    LOG_DEBUG("Removing without multiplier");
+    self->sortedScoringElementsWithoutMultiplier->RemoveRange(0, num3);
+    if(flag)
+        self->multiplierDidChangeEvent->Invoke(self->scoreMultiplierCounter->get_multiplier(), self->scoreMultiplierCounter->get_normalizedProgress());
+    LOG_DEBUG("Processing with multiplier");
+    bool flag2 = false;
+    self->scoringElementsToRemove->Clear();
+    for(int i = 0; i < self->scoringElementsWithMultiplier->get_Count(); i++) {
+        auto item2 = self->scoringElementsWithMultiplier->get_Item(i);
+        if (item2->isFinished) {
+            if (item2->get_maxPossibleCutScore() > 0) {
+                flag2 = true;
+                self->multipliedScore += item2->get_cutScore() * item2->get_multiplier();
+                self->immediateMaxPossibleMultipliedScore += item2->get_maxPossibleCutScore() * item2->get_maxMultiplier();
+            }
+            self->scoringElementsToRemove->Add(item2);
+            if(self->scoringForNoteFinishedEvent)
+                self->scoringForNoteFinishedEvent->Invoke(item2);
+        }
+    }
+    LOG_DEBUG("Removing with multiplier");
+    for(int i = 0; i < self->scoringElementsToRemove->get_Count(); i++) {
+        auto item3 = self->scoringElementsToRemove->get_Item(i);
+        self->DespawnScoringElement(item3);
+        self->scoringElementsWithMultiplier->Remove(item3);
+    }
+    self->scoringElementsToRemove->Clear();
+    LOG_DEBUG("Setting values");
+    float totalMultiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, self->gameEnergyCounter->get_energy());
+    if (self->prevMultiplierFromModifiers != totalMultiplier) {
+        self->prevMultiplierFromModifiers = totalMultiplier;
+        flag2 = true;
+    }
+    if (flag2) {
+        self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->multipliedScore, totalMultiplier);
+        self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->immediateMaxPossibleMultipliedScore, totalMultiplier);
+        if(self->scoreDidChangeEvent)
+            self->scoreDidChangeEvent->Invoke(self->multipliedScore, self->modifiedScore);
+    }
+    LOG_DEBUG("Done");
+}
+
 extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
@@ -83,5 +154,6 @@ extern "C" void load() {
     INSTALL_HOOK(logger, StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
+    INSTALL_HOOK_ORIG(logger, WeirdFix);
     LOG_INFO("Installed all hooks!");
 }
