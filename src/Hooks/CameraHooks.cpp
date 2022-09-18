@@ -65,6 +65,16 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 
 #include "questui/shared/BeatSaberUI.hpp"
 
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
+
+#include "custom-types/shared/coroutine.hpp"
+
+custom_types::Helpers::Coroutine SetCullingCoro(UnityEngine::Camera* camera, UnityEngine::Camera* mainCam) {
+    co_yield nullptr;
+    camera->set_cullingMask(mainCam->get_cullingMask());
+    co_return;
+}
+
 // start recording when the level actually loads
 MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void, CoreGameHUDController* self) {
 
@@ -117,10 +127,11 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         customCamera->set_clearFlags(mainCamera->get_clearFlags());
         customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
         customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
-        customCamera->set_cullingMask(mainCamera->get_cullingMask());
         customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
         customCamera->set_hideFlags(mainCamera->get_hideFlags());
         customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
+        // debris culling mask is set later in the frame, in a different Start() method
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
         // Makes the camera render before the main
         customCamera->set_depth(mainCamera->get_depth() - 1);
 
