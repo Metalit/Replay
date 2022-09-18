@@ -68,6 +68,11 @@ namespace Manager {
         Vector3 smoothPosition;
         Quaternion smoothRotation;
 
+        // BloomPrePassGraphicsSettingsPresetsSO* bloomPresets;
+        // BloomPrePassEffectContainerSO* bloomContainer;
+        MirrorRendererGraphicsSettingsPresets* mirrorPresets;
+        MirrorRendererSO* mirrorRenderer;
+
         void UpdateTime() {
             float deltaTime = UnityEngine::Time::get_deltaTime();
             smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
@@ -91,15 +96,31 @@ namespace Manager {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue());
             settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
-            settings->bloomPrePassGraphicsSettings->set_value(getConfig().Bloom.GetValue());
-            settings->mirrorGraphicsSettings->set_value(getConfig().Mirrors.GetValue());
+            // no presets available other than the disabled one :(
+            // if(getConfig().Bloom.GetValue() != 0) {
+            //     auto preset = bloomPresets->presets[getConfig().Bloom.GetValue()];
+            //     bloomContainer->Init(preset->bloomPrePassEffect);
+            // }
+            if(getConfig().Mirrors.GetValue() != 0) {
+                int length = mirrorPresets->presets.Length();
+                LOG_INFO("Mirror presets: {}", length);
+                auto preset = mirrorPresets->presets[std::min(getConfig().Mirrors.GetValue(), length - 1)];
+                mirrorRenderer->Init(preset->reflectLayers, preset->stereoTextureWidth, preset->stereoTextureHeight, preset->monoTextureWidth,
+                    preset->monoTextureHeight, preset->maxAntiAliasing, preset->enableBloomPrePassFog);
+            }
         }
         void UnsetGraphicsSettings() {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
             settings->screenDisplacementEffectsEnabled->set_value(false);
-            settings->bloomPrePassGraphicsSettings->set_value(0);
-            settings->mirrorGraphicsSettings->set_value(0);
+            // if(getConfig().Bloom.GetValue() != 0) {
+            //     bloomContainer->Init(bloomPresets->presets[0]->bloomPrePassEffect);
+            // }
+            if(getConfig().Mirrors.GetValue() != 0) {
+                auto preset = mirrorPresets->presets[settings->mirrorGraphicsSettings->get_value()];
+                mirrorRenderer->Init(preset->reflectLayers, preset->stereoTextureWidth, preset->stereoTextureHeight, preset->monoTextureWidth,
+                    preset->monoTextureHeight, preset->maxAntiAliasing, preset->enableBloomPrePassFog);
+            }
         }
 
         void ReplayStarted() {

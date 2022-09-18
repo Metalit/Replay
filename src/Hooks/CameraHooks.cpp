@@ -146,10 +146,11 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     }
 }
 
-#include "GlobalNamespace/ResultsViewController.hpp"
+#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 
-// undo rendering changes when finishing a level
-MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, ResultsViewController* self, LevelCompletionResults* levelCompletionResults, IReadonlyBeatmapData* transformedBeatmapData, IDifficultyBeatmap* difficultyBeatmap, bool practice, bool newHighScore) {
+// undo rendering changes when exiting a level
+MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults_Camera, &PrepareLevelCompletionResults::FillLevelCompletionResults,
+        LevelCompletionResults*, PrepareLevelCompletionResults* self, LevelCompletionResults::LevelEndStateType levelEndStateType, LevelCompletionResults::LevelEndAction levelEndAction) {
 
     if(audioCapture)
         UnityEngine::Object::Destroy(audioCapture);
@@ -160,9 +161,9 @@ MAKE_HOOK_MATCH(ResultsViewController_Init, &ResultsViewController::Init, void, 
 
     // UnityEngine::Camera::get_main()->set_enabled(true);
 
-    UnityEngine::Time::set_captureDeltaTime(0.0f);
+    UnityEngine::Time::set_captureDeltaTime(0);
 
-    ResultsViewController_Init(self, levelCompletionResults, transformedBeatmapData, difficultyBeatmap, practice, newHighScore);
+    return PrepareLevelCompletionResults_FillLevelCompletionResults_Camera(self, levelEndStateType, levelEndAction);
 }
 
 #include "GlobalNamespace/PauseController.hpp"
@@ -176,9 +177,23 @@ MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bo
     return PauseController_get_canPause(self);
 }
 
+#include "GlobalNamespace/MainSystemInit.hpp"
+
+// get mirror and bloom presets
+MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit* self) {
+
+    MainSystemInit_Init(self);
+
+    // Manager::Camera::bloomPresets = self->bloomPrePassGraphicsSettingsPresets;
+    // Manager::Camera::bloomContainer = self->bloomPrePassEffectContainer;
+    Manager::Camera::mirrorPresets = self->mirrorRendererGraphicsSettingsPresets;
+    Manager::Camera::mirrorRenderer = self->mirrorRenderer;
+}
+
 HOOK_FUNC(
     INSTALL_HOOK(logger, LightManager_OnCameraPreRender);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
-    INSTALL_HOOK(logger, ResultsViewController_Init);
+    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Camera);
     INSTALL_HOOK(logger, PauseController_get_canPause);
+    INSTALL_HOOK(logger, MainSystemInit_Init);
 )

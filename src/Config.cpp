@@ -109,9 +109,9 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(transform, getConfig().Walls);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Mirrors, 1, 0, 3, fourLevelStrings);
+    // AddConfigValueIncrementEnum(transform, getConfig().Bloom, 1, 0, 3, fourLevelStrings);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Bloom, 1, 0, 3, fourLevelStrings);
+    AddConfigValueIncrementEnum(transform, getConfig().Mirrors, 1, 0, 3, fourLevelStrings);
     
     SetButtons(AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 0, 20));
 

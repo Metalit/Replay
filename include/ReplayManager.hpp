@@ -5,6 +5,10 @@
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
+// #include "GlobalNamespace/BloomPrePassGraphicsSettingsPresetsSO_Preset.hpp"
+// #include "GlobalNamespace/BloomPrePassEffectContainerSO.hpp"
+#include "GlobalNamespace/MirrorRendererGraphicsSettingsPresets_Preset.hpp"
+#include "GlobalNamespace/MirrorRendererSO.hpp"
 
 struct ScoreFrame;
 struct NoteEvent;
@@ -16,6 +20,11 @@ namespace Manager {
 
     namespace Camera {
         extern bool rendering;
+
+        // extern GlobalNamespace::BloomPrePassGraphicsSettingsPresetsSO* bloomPresets;
+        // extern GlobalNamespace::BloomPrePassEffectContainerSO* bloomContainer;
+        extern GlobalNamespace::MirrorRendererGraphicsSettingsPresets* mirrorPresets;
+        extern GlobalNamespace::MirrorRendererSO* mirrorRenderer;
 
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
