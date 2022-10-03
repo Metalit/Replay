@@ -2,22 +2,8 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "NDK Build",
-            "detail": "Builds the library using ndk-build.cmd",
-            "type": "shell",
-            "command": "ndk-build",
-            "windows": {
-                "command": "ndk-build.cmd"
-            },
-            "args": ["NDK_PROJECT_PATH=.", "APP_BUILD_SCRIPT=./Android.mk", "NDK_APPLICATION_MK=./Application.mk"],
-            "group": "build",
-            "options": {
-                "env": {}
-            }
-        },
-        {
-            "label": "Powershell Build",
-            "detail": "Builds the library using Powershell (recommended)",
+            "label": "Build",
+            "detail": "Builds the library",
             "type": "shell",
             "command": "./build.ps1",
             "windows": {
@@ -29,28 +15,32 @@
             },
             "options": {
                 "env": {}
-            }
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Powershell Build and Copy",
+            "label": "Build and Copy",
             "detail": "Builds and copies the library to the Quest using ADB and force-quits Beat Saber",
             "type": "shell",
             "command": "./copy.ps1",
             "windows": {
                 "command": "./copy.ps1"
             },
-            "group": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "options": {
                 "env": {}
             }
         },
         {
-            "label": "QMOD Build",
-            "detail": "Builds a .qmod to be installed into BMBF or QuestPatcher",
+            "label": "Create QMOD",
+            "detail": "Creates a .qmod using built files to be installed into BMBF or QuestPatcher",
             "type": "shell",
-            "command": "./buildQMOD.ps1",
+            "command": "./createqmod.ps1",
             "windows": {
-                "command": "./buildQMOD.ps1"
+                "command": "./createqmod.ps1"
             },
             "args": [],
             "group": "build",
@@ -62,27 +52,27 @@
             "label": "Start logging",
             "detail": "Begin logging from the Quest to the console",
             "type": "shell",
-            "command": "./start-logging.ps1",
+            "command": "./start-logging.ps1 --self",
             "windows": {
-                "command": "./start-logging.ps1"
+                "command": "./start-logging.ps1 --self"
             }
         },
         {
             "label": "Start logging to file",
-            "detail": "Begin logging from the Quest to the console and saving output to a file 'logcat.log'",
+            "detail": "Begin logging from the Quest to the console, saving output to a file 'logcat.log'",
             "type": "shell",
-            "command": "./start-logging.ps1 --file",
+            "command": "./start-logging.ps1 --file logcat.log",
             "windows": {
-                "command": "./start-logging.ps1 --file"
+                "command": "./start-logging.ps1 --file logcat.log"
             }
         },
         {
             "label": "Restart Beat Saber",
             "detail": "Force-quits and restarts Beat Saber on the Quest",
             "type": "shell",
-            "command": "./start-logging.ps1",
+            "command": "./restart-game.ps1",
             "windows": {
-                "command": "./start-logging.ps1"
+                "command": "./restart-game.ps1"
             }
         }
     ]
