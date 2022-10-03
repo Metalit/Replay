@@ -9,7 +9,7 @@
 
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/AudioTimeSyncController_InitData.hpp"
 #include "GlobalNamespace/GameEnergyCounter.hpp"
 #include "GlobalNamespace/ComboController.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
@@ -24,8 +24,13 @@
 #include "GlobalNamespace/CallbacksInTime.hpp"
 #include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 #include "GlobalNamespace/SliderController.hpp"
+#include "GlobalNamespace/AudioManagerSO.hpp"
+
+#include "UnityEngine/AudioSource.hpp"
 
 #include "System/Action.hpp"
+#include "System/Action_1.hpp"
+#include "System/Action_2.hpp"
 #include "System/Collections/Generic/Dictionary_2.hpp"
 #include "System/Single.hpp"
 
@@ -50,18 +55,63 @@ void DespawnObject(BeatmapObjectManager* manager, IBeatmapObjectController* obje
         manager->Despawn((SliderController*) object);
 }
 
+SliderSetting* TextlessSlider(auto parent, float min, float max, float current, float increment, auto onChange, auto format) {
+    auto madeSlider = BeatSaberUI::CreateSliderSetting(parent, "", 0, 0, 0, 0);
+    SliderSetting* slider = madeSlider->slider->get_gameObject()->template AddComponent<SliderSetting*>();
+    slider->slider = madeSlider->slider;
+    slider->FormatString = std::move(format);
+    slider->Setup(min, max, current, increment, 0, std::move(onChange));
+    auto transform = (UnityEngine::RectTransform*) slider->slider->get_transform();
+    auto object = transform->GetParent()->get_gameObject();
+    transform->SetParent(parent->get_transform(), false);
+    transform->set_anchorMin({0.5, 0.5});
+    transform->set_anchorMax({0.5, 0.5});
+    transform->set_pivot({0.5, 0.5});
+    UnityEngine::Object::Destroy(object);
+    return slider;
+}
+
+void SetTransform(auto obj, UnityEngine::Vector2 anchoredPos, UnityEngine::Vector2 sizeDelta) {
+    auto transform = (UnityEngine::RectTransform*) obj->get_transform();
+    transform->set_anchoredPosition(anchoredPos);
+    transform->set_sizeDelta(sizeDelta);
+}
+
+void AddIncrement(SliderSetting* slider, float increment) {
+    auto rect = (UnityEngine::RectTransform*) slider->slider->get_transform();
+    // not sure how general purpose this really is
+    auto width = rect->get_rect().get_width() / 2;
+    auto delta = rect->get_sizeDelta();
+    rect->set_sizeDelta({delta.x - 16, delta.y});
+    BeatSaberUI::CreateUIButton(rect, "", "DecButton", {4 - width, 0}, {6, 20}, [slider, increment] {
+        float newValue = slider->slider->get_value() - increment;
+        slider->slider->set_value(newValue);
+        // get_value to let it handle min/max
+        slider->OnChange(slider->slider, slider->slider->get_value());
+    });
+    BeatSaberUI::CreateUIButton(rect, "", "IncButton", {-6 + width, 0}, {10, 20}, [slider, increment] {
+        float newValue = slider->slider->get_value() + increment;
+        slider->slider->set_value(newValue);
+        // get_value to let it handle min/max
+        slider->OnChange(slider->slider, slider->slider->get_value());
+    });
+}
+
 namespace Pause {
     UnityEngine::GameObject* parent;
-    QuestUI::SliderSetting* slider;
+    SliderSetting* timeSlider;
+    SliderSetting* speedSlider;
     ScoreController* scoreController;
     ComboController* comboController;
     GameEnergyCounter* gameEnergyCounter;
     NoteCutSoundEffectManager* noteSoundManager;
+    AudioManagerSO* audioManager;
     BeatmapObjectManager* beatmapObjectManager;
     BeatmapCallbacksController* callbackController;
     PauseMenuManager* lastPauseMenu = nullptr;
 
     void EnsureSetup(PauseMenuManager* pauseMenu) {
+        LOG_DEBUG("pause menu: {}", fmt::ptr(pauseMenu->pauseContainerTransform));
         static ConstString menuName("ReplayPauseMenu");
         if(lastPauseMenu != pauseMenu && !pauseMenu->pauseContainerTransform->Find(menuName)) {
             auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>().First();
@@ -69,6 +119,7 @@ namespace Pause {
             comboController = hasOtherObjects->comboController;
             gameEnergyCounter = hasOtherObjects->gameEnergyCounter;
             noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>().First();
+            audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>().First();
             beatmapObjectManager = noteSoundManager->beatmapObjectManager;
             callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>().First()->beatmapCallbacksController;
 
@@ -76,37 +127,65 @@ namespace Pause {
             parent->set_name(menuName);
             parent->get_transform()->SetParent(pauseMenu->restartButton->get_transform()->GetParent(), false);
             parent->get_transform()->set_localScale(Vector3::one());
-            auto rect = parent->GetComponent<UnityEngine::RectTransform*>();
-            rect->set_anchoredPosition({0, -15});
-            rect->set_sizeDelta({90, 10});
+            SetTransform(parent, {0, -15}, {90, 25});
             
-            auto madeSlider = BeatSaberUI::CreateSliderSetting(parent, "", 0, 0, 0, 0);
-            slider = madeSlider->slider->get_gameObject()->AddComponent<SliderSetting*>();
-            slider->slider = madeSlider->slider;
             float time = scoreController->audioTimeSyncController->songTime;
             float startTime = scoreController->audioTimeSyncController->startSongTime;
             float endTime = scoreController->audioTimeSyncController->get_songLength();
-            slider->FormatString = [](float time) {
-                return SecondsToString(time);
-            };
-            slider->Setup(startTime, int(endTime - 1), time, 1, 0.1, [](float time) {
-                SetTime(time);
-            });
-            auto transform = (UnityEngine::RectTransform*) slider->slider->get_transform();
-            auto object = transform->GetParent()->get_gameObject();
-            transform->SetParent(parent->get_transform());
-            transform->set_anchorMin({0, 0});
-            transform->set_anchorMax({1, 1});
-            transform->set_pivot({0.5, 0.5});
-            transform->set_sizeDelta({0, 0});
-            UnityEngine::Object::Destroy(object);
+            timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
+            SetTransform(timeSlider, {0, 6}, {90, 10});
+            speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, nullptr, [](float speed) { return string_format("%.1fx", speed); });
+            SetTransform(speedSlider, {0, -6}, {90, 10});
+            AddIncrement(speedSlider, 0.1);
         }
-        slider->set_value(scoreController->audioTimeSyncController->songTime);
+        timeSlider->set_value(scoreController->audioTimeSyncController->songTime);
+        float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;
+        float speed = scoreController->audioTimeSyncController->timeScale;
+        speedSlider->set_value(speed / baseSpeed);
         lastPauseMenu = pauseMenu;
+    }
+
+    void OnUnpause() {
+        float setTime = timeSlider->get_value();
+        if(scoreController->audioTimeSyncController->songTime != setTime)
+            SetTime(setTime);
+        float setSpeed = speedSlider->get_value();
+        if(scoreController->audioTimeSyncController->timeScale != setSpeed)
+            SetSpeed(setSpeed);
     }
 
     void UpdateInReplay() {
         parent->SetActive(Manager::replaying);
+    }
+
+    void SetSpeed(float speed) {
+        float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;
+        float modifiedSpeed = speed * baseSpeed;
+        // audio pitch can't be adjusted past these for some reason
+        if(modifiedSpeed > 2)
+            modifiedSpeed = 2;
+        if(modifiedSpeed < 0.5)
+            modifiedSpeed = 0.5;
+        scoreController->audioTimeSyncController->timeScale = modifiedSpeed;
+        scoreController->audioTimeSyncController->audioSource->set_pitch(modifiedSpeed);
+        audioManager->set_musicPitch(1 / modifiedSpeed);
+    }
+
+    void PreviewTime(float time) {
+        auto values = MapAtTime(Manager::currentReplay, time);
+        float modifierMult = ModifierMultiplier(Manager::currentReplay, values.energy == 0);
+        // 1 / 4 lives modes?
+        gameEnergyCounter->ProcessEnergyChange(values.energy - gameEnergyCounter->energy);
+        scoreController->multipliedScore = values.score;
+        scoreController->modifiedScore = values.score * modifierMult;
+        scoreController->immediateMaxPossibleMultipliedScore = values.maxScore;
+        scoreController->immediateMaxPossibleModifiedScore = values.maxScore * modifierMult;
+        if(!scoreController->scoreDidChangeEvent->Equals(nullptr))
+            scoreController->scoreDidChangeEvent->Invoke(values.score, values.score * modifierMult);
+        comboController->combo = values.combo;
+        comboController->maxCombo = std::max(comboController->maxCombo, values.combo);
+        if(!comboController->comboDidChangeEvent->Equals(nullptr))
+            comboController->comboDidChangeEvent->Invoke(values.combo);
     }
 
     void DespawnObjects() {
@@ -134,8 +213,12 @@ namespace Pause {
         callbackController->prevSongTime = System::Single::MinValue;
         // clear all running callbacks or something like that
         auto callbacksList = callbackController->callbacksInTimes->entries;
-        for(auto& entry : callbacksList)
-            entry.value->lastProcessedNode = nullptr;
+        int count = callbackController->callbacksInTimes->get_Count();
+        for(int i = 0; i < count && i < callbacksList.Length(); i++) {
+            auto& entry = callbacksList[i];
+            if(entry.hashCode >= 0)
+                entry.value->lastProcessedNode = nullptr;
+        }
         // don't despawn elements as they might still be event recievers, so just make them do nothing to the score instead
         for(int i = 0; i < scoreController->sortedScoringElementsWithoutMultiplier->get_Count(); i++)
             scoreController->scoringElementsWithMultiplier->Add(scoreController->sortedScoringElementsWithoutMultiplier->get_Item(i));

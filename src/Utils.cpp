@@ -236,6 +236,30 @@ NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, const ReplayNoteC
     );
 }
 
+float ModifierMultiplier(const ReplayWrapper& replay, bool failed) {
+    auto mods = replay.replay->info.modifiers;
+    float mult = 1;
+    if(mods.disappearingArrows)
+        mult += 0.07;
+    if(mods.noObstacles)
+        mult -= 0.05;
+    if(mods.noBombs)
+        mult -= 0.1;
+    if(mods.noArrows)
+        mult -= 0.3;
+    if(mods.slowerSong)
+        mult -= 0.3;
+    if(mods.noFail && failed)
+        mult -= 0.5;
+    if(mods.ghostNotes)
+        mult += 0.11;
+    if(mods.fasterSong)
+        mult += 0.08;
+    if(mods.superFastSong)
+        mult += 0.1;
+    return mult;
+}
+
 float EnergyForNote(const NoteEventInfo& noteEvent) {
     if(noteEvent.eventType == NoteEventInfo::Type::BOMB)
         return -0.15;
@@ -253,14 +277,115 @@ float EnergyForNote(const NoteEventInfo& noteEvent) {
     }
 }
 
-int ScoreForNote(const NoteEvent& note) {
+int ScoreForNote(const NoteEvent& note, bool max) {
     ScoreModel::NoteScoreDefinition* scoreDefinition;
     if(note.info.scoringType == -2)
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
     else
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
+    if(max)
+        return scoreDefinition->get_maxCutScore();
     return scoreDefinition->fixedCutScore +
         int(std::lerp(scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, std::clamp(note.noteCutInfo.beforeCutRating, 0.0f, 1.0f)) + 0.5) +
         int(std::lerp(scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, std::clamp(note.noteCutInfo.afterCutRating, 0.0f, 1.0f)) + 0.5) +
         int(scoreDefinition->maxCenterDistanceCutScore * (1 - std::clamp(note.noteCutInfo.cutDistanceToCenter / 0.3, 0.0, 1.0)) + 0.5);
+}
+
+void UpdateMultiplier(int& multiplier, int& progress, bool good) {
+    if(good) {
+        progress++;
+        if(multiplier < 8 && progress == (multiplier * 2)) {
+            progress = 0;
+            multiplier *= 2;
+        }
+    } else {
+        if(multiplier > 1)
+            multiplier /= 2;
+        progress = 0;
+    }
+}
+
+MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
+    if(replay.type == ReplayType::Frame) {
+        auto frames = ((FrameReplay*) replay.replay.get())->scoreFrames;
+        auto* lastFrame = &frames.front();
+        for(auto& frame : frames) {
+            if(frame.time > time)
+                break;
+            lastFrame = &frame;
+        }
+        int maxScore = (int) (lastFrame->score / lastFrame->percent);
+        return MapPreview{
+            .energy = lastFrame->energy,
+            .combo = lastFrame->combo,
+            .score = lastFrame->score,
+            .maxScore = maxScore
+        };
+    } else {
+        auto eventReplay = (EventReplay*) replay.replay.get();
+        int multiplier = 1, multiProg = 0;
+        int maxMultiplier = 1, maxMultiProg = 0;
+        float lastCalculatedWall = 0, wallEnd = 0;
+        int score = 0;
+        int maxScore = 0;
+        int combo = 0;
+        float energy = 0.5;
+        for(auto& event: eventReplay->events) {
+            if(event.time > time)
+                break;
+            // add wall energy change since last event
+            if(lastCalculatedWall != wallEnd) {
+                if(event.time < wallEnd) {
+                    energy += 1.3 * (lastCalculatedWall - event.time);
+                    lastCalculatedWall = event.time;
+                } else {
+                    energy += 1.3 * (lastCalculatedWall - wallEnd);
+                    lastCalculatedWall = wallEnd;
+                }
+            }
+            if(energy <= 0)
+                energy = -1000;
+            if(energy > 1)
+                energy = 1;
+            switch(event.eventType) {
+            case EventRef::Note: {
+                auto& note = eventReplay->notes[event.index];
+                if(note.info.eventType != NoteEventInfo::Type::BOMB) {
+                    UpdateMultiplier(maxMultiplier, maxMultiProg, true);
+                    maxScore += ScoreForNote(note, true) * maxMultiplier;
+                }
+                if(note.info.eventType == NoteEventInfo::Type::GOOD) {
+                    UpdateMultiplier(multiplier, multiProg, true);
+                    score += ScoreForNote(note) * multiplier;
+                    combo += 1;
+                } else {
+                    UpdateMultiplier(multiplier, multiProg, false);
+                    combo = 0;
+                }
+                energy += EnergyForNote(note.info);
+                break;
+            }
+            case EventRef::Wall:
+                // combo doesn't get set back to 0 if you enter a wall while inside of one
+                if(event.time > wallEnd) {
+                    UpdateMultiplier(multiplier, multiProg, false);
+                    combo = 0;
+                }
+                // step through wall energy loss instead of doing it all at once
+                lastCalculatedWall = event.time;
+                wallEnd = std::max(wallEnd, eventReplay->walls[event.index].endTime);
+                break;
+            default:
+                break;
+            }
+        }
+        if(energy < 0)
+            energy = 0;
+        return MapPreview{
+            .energy = energy,
+            .combo = combo,
+            .score = score,
+            .maxScore = maxScore
+        };
+    }
 }

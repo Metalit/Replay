@@ -97,7 +97,7 @@ MAKE_HOOK_MATCH(WeirdFix, &ScoreController::LateUpdate, void, ScoreController* s
     self->scoringElementsToRemove->Clear();
     for(int i = 0; i < self->scoringElementsWithMultiplier->get_Count(); i++) {
         auto item2 = self->scoringElementsWithMultiplier->get_Item(i);
-        if (item2->isFinished) {
+        if (item2->get_isFinished()) {
             if (item2->get_maxPossibleCutScore() > 0) {
                 flag2 = true;
                 self->multipliedScore += item2->get_cutScore() * item2->get_multiplier();

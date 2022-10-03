@@ -28,4 +28,8 @@ EXPOSE_API(PlayBSORFromFile, bool, std::string filePath) {
     return false;
 }
 
+EXPOSE_API(IsInReplay, bool) {
+    return Manager::replaying;
+}
+
 #pragma GCC diagnostic pop

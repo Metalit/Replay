@@ -30,6 +30,17 @@ void GetBeatmapData(GlobalNamespace::IDifficultyBeatmap* beatmap, std::function<
 
 GlobalNamespace::NoteCutInfo GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
 
+float ModifierMultiplier(const ReplayWrapper& replay, bool failed);
+
 float EnergyForNote(const class NoteEventInfo& noteEvent);
 
-int ScoreForNote(const class NoteEvent& note);
+int ScoreForNote(const class NoteEvent& note, bool max = false);
+
+struct MapPreview {
+    float energy;
+    int combo;
+    int score;
+    int maxScore;
+};
+
+MapPreview MapAtTime(const ReplayWrapper& replay, float time);

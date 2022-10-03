@@ -328,6 +328,7 @@ namespace Manager {
     }
 
     void ReplayUnpaused() {
+        Pause::OnUnpause();
         paused = false;
     }
     
