@@ -28,6 +28,7 @@ struct NoteEventInfo {
         BOMB = 3
     };
 
+    int noteId;
     short scoringType;
     short lineIndex;
     short lineLayer;
@@ -87,6 +88,7 @@ struct EventReplay : public Replay {
     std::vector<HeightEvent> heights;
     std::vector<PauseEvent> pauses;
     std::set<EventRef, EventCompare> events;
+    bool needsRecalculation;
 };
 
 ReplayWrapper ReadBSOR(const std::string& path);
