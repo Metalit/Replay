@@ -236,7 +236,6 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         auto& note = replay->notes.emplace_back(NoteEvent());
         READ_TO(noteInfo);
         auto noteID = noteInfo.noteID;
-        note.info.noteId = noteID;
 
         // Mapping extensions replays require map data
         // for parsing because of the lost data. Blame NSGolova

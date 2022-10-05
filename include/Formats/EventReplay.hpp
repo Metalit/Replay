@@ -28,13 +28,14 @@ struct NoteEventInfo {
         BOMB = 3
     };
 
-    int noteId;
     short scoringType;
     short lineIndex;
     short lineLayer;
     short colorType;
     short cutDirection;
     Type eventType = Type::GOOD;
+
+    bool recalculated;
 };
 
 struct NoteEvent {

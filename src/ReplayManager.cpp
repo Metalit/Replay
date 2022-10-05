@@ -190,25 +190,21 @@ namespace Manager {
             auto list = beatmapData->get_allBeatmapDataItems();
             for (auto i = list->head; i->next != list->head; i = i->next) {
                 if (il2cpp_utils::try_cast<NoteData>(i->item) == std::nullopt) continue;
-                NoteData* noteData = il2cpp_utils::try_cast<NoteData>(i->item).value();
 
-                int colorType = noteData->colorType.value;
-                if (colorType < 0) colorType = 3;
-                int mapNoteId = (noteData->scoringType.value + 2) * 10000 + 
-                                noteData->lineIndex * 1000 + 
-                                noteData->noteLineLayer.value * 100 + 
-                                colorType * 10 + 
-                                noteData->cutDirection.value;
+                NoteData* noteData = il2cpp_utils::try_cast<NoteData>(i->item).value();
+                int mapNoteId = IdForNoteData(noteData);
+                
                 for (size_t j = 0; j < replay->notes.size(); j++) {
                     NoteEventInfo& info = replay->notes[j].info;
-                    if (mapNoteId == info.noteId || mapNoteId == (info.noteId + 30000)) {
+                    int eventNoteId = IdForNoteEventInfo(info);
+                    if (!info.recalculated &&
+                        (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000))) {
                         info.scoringType = noteData->scoringType.value;
                         info.lineIndex = noteData->lineIndex;
                         info.lineLayer = noteData->noteLineLayer.value;
                         info.colorType = noteData->colorType.value;
                         info.cutDirection = noteData->cutDirection.value;
-                        info.noteId = 0;
-                        
+                        info.recalculated = true;
                         break;
                     }
                 }
