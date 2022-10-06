@@ -37,9 +37,9 @@ namespace Manager {
     }
     
     namespace Events {
+        extern float wallEnergyLoss;
         void AddNoteController(GlobalNamespace::NoteController* note);
         void RemoveNoteController(GlobalNamespace::NoteController* note);
-        float& GetWallEnergyLoss();
     }
 
     void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);

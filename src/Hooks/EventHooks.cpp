@@ -53,7 +53,7 @@ MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &
 MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, void, GameEnergyCounter* self) {
 
     if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
-        float& actualEnergyLoss = Manager::Events::GetWallEnergyLoss();
+        float& actualEnergyLoss = Manager::Events::wallEnergyLoss;
         if(actualEnergyLoss > 0) {
             float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
             if(gameEnergyLoss >= actualEnergyLoss) {
@@ -102,7 +102,7 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(Bea
 #include "GlobalNamespace/ScoreController.hpp"
 #include "CustomTypes/ScoringElement.hpp"
 
-// prevent crasing on attempting to despawn fake scoring elements
+// prevent crashing on attempting to despawn fake scoring elements
 MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Event, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
     
     if(il2cpp_utils::try_cast<ReplayHelpers::ScoringElement>(scoringElement))

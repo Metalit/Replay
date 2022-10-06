@@ -185,9 +185,6 @@ namespace Manager {
             if(iter != notes.end())
                 notes.erase(iter);
         }
-        float& GetWallEnergyLoss() {
-            return wallEnergyLoss;
-        }
 
         void ProcessNoteEvent(const NoteEvent& event) {
             auto& info = event.info;

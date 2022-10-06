@@ -252,7 +252,7 @@ namespace Pause {
             NoteCutInfo info{}; il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(info));
         } else {
             // reset energy as we will override it
-            Manager::Events::GetWallEnergyLoss() = 0;
+            Manager::Events::wallEnergyLoss = 0;
             auto eventReplay = (EventReplay*) replay.replay.get();
             float lastCalculatedWall = 0, wallEnd = 0;
             // simulate all events
