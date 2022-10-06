@@ -34,8 +34,6 @@ struct NoteEventInfo {
     short colorType;
     short cutDirection;
     Type eventType = Type::GOOD;
-
-    bool recalculated;
 };
 
 struct NoteEvent {
@@ -93,3 +91,6 @@ struct EventReplay : public Replay {
 };
 
 ReplayWrapper ReadBSOR(const std::string& path);
+
+namespace GlobalNamespace{ class IReadonlyBeatmapData; }
+void RecalculateNotes(ReplayWrapper& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);

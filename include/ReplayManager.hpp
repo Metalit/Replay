@@ -38,7 +38,6 @@ namespace Manager {
     
     namespace Events {
         extern float wallEnergyLoss;
-        void PopulateNoteData(GlobalNamespace::IReadonlyBeatmapData* beatmapData);
         void AddNoteController(GlobalNamespace::NoteController* note);
         void RemoveNoteController(GlobalNamespace::NoteController* note);
     }

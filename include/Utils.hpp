@@ -37,9 +37,8 @@ float EnergyForNote(const class NoteEventInfo& noteEvent);
 
 int ScoreForNote(const class NoteEvent& note, bool max = false);
 
-int IdForNoteData(GlobalNamespace::NoteData *noteData);
-int IdForNoteEventInfo(NoteEventInfo eventInfo);
-int NoteDataEqualToEventInfo(GlobalNamespace::NoteData *noteData, NoteEventInfo eventInfo);
+int BSORNoteID(GlobalNamespace::NoteData* note);
+int BSORNoteID(NoteEventInfo note);
 
 struct MapPreview {
     float energy;

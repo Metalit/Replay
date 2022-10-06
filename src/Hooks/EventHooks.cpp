@@ -80,17 +80,8 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Event, &NoteCo
 }
 
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
-#include "GlobalNamespace/GameplayCoreInstaller.hpp"
-#include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
 
 // keep track of all notes
-MAKE_HOOK_MATCH(GameplayCoreInstaller_InstallBindings, &GameplayCoreInstaller::InstallBindings, void, GameplayCoreInstaller* self) {
-
-    GameplayCoreInstaller_InstallBindings(self);
-
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
-        Manager::Events::PopulateNoteData(self->sceneSetupData->transformedBeatmapData);
-}
 MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectManager::AddSpawnedNoteController,
         void, BeatmapObjectManager* self, NoteController* noteController, BeatmapObjectSpawnMovementData::NoteSpawnData noteSpawnData, float rotation) {
     
@@ -118,6 +109,18 @@ MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Event, &ScoreController::D
         return;
 
     ScoreController_DespawnScoringElement_Event(self, scoringElement);
+}
+
+#include "GlobalNamespace/GameplayCoreInstaller.hpp"
+#include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
+
+// recalculate notes based on map data if necessary
+MAKE_HOOK_MATCH(GameplayCoreInstaller_InstallBindings, &GameplayCoreInstaller::InstallBindings, void, GameplayCoreInstaller* self) {
+
+    GameplayCoreInstaller_InstallBindings(self);
+
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+        RecalculateNotes(Manager::currentReplay, self->sceneSetupData->transformedBeatmapData);
 }
 
 HOOK_FUNC(

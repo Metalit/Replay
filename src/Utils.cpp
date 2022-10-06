@@ -291,34 +291,26 @@ int ScoreForNote(const NoteEvent& note, bool max) {
         int(scoreDefinition->maxCenterDistanceCutScore * (1 - std::clamp(note.noteCutInfo.cutDistanceToCenter / 0.3, 0.0, 1.0)) + 0.5);
 }
 
-int IdForNoteData(NoteData *noteData) {
-    int colorType = noteData->colorType.value;
+int BSORNoteID(GlobalNamespace::NoteData* note) {
+    int colorType = note->colorType.value;
     if (colorType < 0) colorType = 3;
 
-    return (noteData->scoringType.value + 2) * 10000 + 
-            noteData->lineIndex * 1000 + 
-            noteData->noteLineLayer.value * 100 + 
+    return (note->scoringType.value + 2) * 10000 + 
+            note->lineIndex * 1000 + 
+            note->noteLineLayer.value * 100 + 
             colorType * 10 + 
-            noteData->cutDirection.value;
+            note->cutDirection.value;
 }
 
-int IdForNoteEventInfo(NoteEventInfo eventInfo) {
-    int colorType = eventInfo.colorType;
+int BSORNoteID(NoteEventInfo note) {
+    int colorType = note.colorType;
     if (colorType < 0) colorType = 3;
 
-    return (eventInfo.scoringType + 2) * 10000 + 
-            eventInfo.lineIndex * 1000 + 
-            eventInfo.lineLayer * 100 + 
-            eventInfo.colorType * 10 + 
-            eventInfo.cutDirection;
-}
-
-int NoteDataEqualToEventInfo(NoteData *noteData, NoteEventInfo eventInfo) {
-    return noteData->scoringType.value == eventInfo.scoringType &&
-           noteData->lineIndex == eventInfo.lineIndex &&
-           noteData->noteLineLayer.value == eventInfo.lineLayer &&
-           noteData->colorType.value == eventInfo.colorType && 
-           noteData->cutDirection.value == eventInfo.cutDirection;
+    return (note.scoringType + 2) * 10000 + 
+            note.lineIndex * 1000 + 
+            note.lineLayer * 100 + 
+            colorType * 10 + 
+            note.cutDirection;
 }
 
 void UpdateMultiplier(int& multiplier, int& progress, bool good) {
@@ -344,7 +336,9 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
                 break;
             lastFrame = &frame;
         }
-        int maxScore = (int) (lastFrame->score / lastFrame->percent);
+        int maxScore = 1;
+        if(lastFrame->percent > 0)
+            maxScore = (int) (lastFrame->score / lastFrame->percent);
         return MapPreview{
             .energy = lastFrame->energy,
             .combo = lastFrame->combo,

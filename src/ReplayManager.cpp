@@ -15,7 +15,6 @@
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/ObstacleData.hpp"
-#include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/Saber.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
@@ -26,8 +25,6 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
-#include "System/Collections/Generic/LinkedList_1.hpp"
-#include "System/Collections/Generic/LinkedListNode_1.hpp"
 #include "System/Action_1.hpp"
 #include "System/Action.hpp"
 
@@ -184,32 +181,6 @@ namespace Manager {
             wallEnergyLoss = 0;
         }
 
-        void PopulateNoteData(IReadonlyBeatmapData* beatmapData) {
-            if (!replay->needsRecalculation) return;
-
-            auto list = beatmapData->get_allBeatmapDataItems();
-            for (auto i = list->head; i->next != list->head; i = i->next) {
-                if (il2cpp_utils::try_cast<NoteData>(i->item) == std::nullopt) continue;
-
-                NoteData* noteData = il2cpp_utils::try_cast<NoteData>(i->item).value();
-                int mapNoteId = IdForNoteData(noteData);
-                
-                for (size_t j = 0; j < replay->notes.size(); j++) {
-                    NoteEventInfo& info = replay->notes[j].info;
-                    int eventNoteId = IdForNoteEventInfo(info);
-                    if (!info.recalculated &&
-                        (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000))) {
-                        info.scoringType = noteData->scoringType.value;
-                        info.lineIndex = noteData->lineIndex;
-                        info.lineLayer = noteData->noteLineLayer.value;
-                        info.colorType = noteData->colorType.value;
-                        info.cutDirection = noteData->cutDirection.value;
-                        info.recalculated = true;
-                        break;
-                    }
-                }
-            }
-        }
         void AddNoteController(NoteController* note) {
             if(note->noteData->scoringType > NoteData::ScoringType::NoScore)
                 notes.insert(note);
