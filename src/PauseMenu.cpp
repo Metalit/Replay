@@ -132,6 +132,11 @@ namespace Pause {
             float time = scoreController->audioTimeSyncController->songTime;
             float startTime = scoreController->audioTimeSyncController->startSongTime;
             float endTime = scoreController->audioTimeSyncController->get_songLength();
+            auto& info = Manager::currentReplay.replay->info;
+            if(info.practice)
+                startTime = info.startTime;
+            if(info.failed)
+                endTime = info.failTime;
             timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
             SetTransform(timeSlider, {0, 6}, {90, 10});
             speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, nullptr, [](float speed) { return string_format("%.1fx", speed); });
@@ -175,11 +180,15 @@ namespace Pause {
         auto values = MapAtTime(Manager::currentReplay, time);
         float modifierMult = ModifierMultiplier(Manager::currentReplay, values.energy == 0);
         // 1 / 4 lives modes?
+        if(values.energy <= 0)
+            values.energy = 0.0001;
         gameEnergyCounter->ProcessEnergyChange(values.energy - gameEnergyCounter->energy);
         scoreController->multipliedScore = values.score;
         scoreController->modifiedScore = values.score * modifierMult;
         scoreController->immediateMaxPossibleMultipliedScore = values.maxScore;
         scoreController->immediateMaxPossibleModifiedScore = values.maxScore * modifierMult;
+        if(values.maxScore == 0)
+            scoreController->immediateMaxPossibleModifiedScore = 1;
         if(!scoreController->scoreDidChangeEvent->Equals(nullptr))
             scoreController->scoreDidChangeEvent->Invoke(values.score, values.score * modifierMult);
         comboController->combo = values.combo;
@@ -202,7 +211,7 @@ namespace Pause {
     void ResetControllers() {
         scoreController->modifiedScore = 0;
         scoreController->multipliedScore = 0;
-        scoreController->immediateMaxPossibleModifiedScore = 0;
+        scoreController->immediateMaxPossibleModifiedScore = 1;
         scoreController->immediateMaxPossibleMultipliedScore = 0;
         scoreController->scoreMultiplierCounter->Reset();
         scoreController->maxScoreMultiplierCounter->Reset();
@@ -243,9 +252,13 @@ namespace Pause {
             // let hooks update values
             gameEnergyCounter->ProcessEnergyChange(0);
             auto frame = Manager::Frames::GetScoreFrame();
-            int maxScore = frame->score / frame->percent;
+            int maxScore = 1;
+            if(frame->percent > 0)
+                maxScore = (int) (frame->score / frame->percent);
             float multiplier = scoreController->gameplayModifiersModel->GetTotalMultiplier(scoreController->gameplayModifierParams, frame->energy);
             int modifiedMaxScore = modifiedMaxScore * multiplier;
+            if(maxScore == 0)
+                modifiedMaxScore = 1;
             scoreController->immediateMaxPossibleMultipliedScore = maxScore;
             scoreController->immediateMaxPossibleModifiedScore = modifiedMaxScore;
             scoreController->LateUpdate();
