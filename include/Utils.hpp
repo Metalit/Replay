@@ -7,6 +7,7 @@
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/NoteController.hpp"
+#include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/Saber.hpp"
 #include "UnityEngine/Sprite.hpp"
 
@@ -35,6 +36,10 @@ float ModifierMultiplier(const ReplayWrapper& replay, bool failed);
 float EnergyForNote(const class NoteEventInfo& noteEvent);
 
 int ScoreForNote(const class NoteEvent& note, bool max = false);
+
+int IdForNoteData(GlobalNamespace::NoteData *noteData);
+int IdForNoteEventInfo(NoteEventInfo eventInfo);
+int NoteDataEqualToEventInfo(GlobalNamespace::NoteData *noteData, NoteEventInfo eventInfo);
 
 struct MapPreview {
     float energy;

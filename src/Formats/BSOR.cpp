@@ -235,21 +235,29 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     for(int i = 0; i < notesCount; i++) {
         auto& note = replay->notes.emplace_back(NoteEvent());
         READ_TO(noteInfo);
-        note.info.scoringType = noteInfo.noteID / 10000;
-        noteInfo.noteID -= note.info.scoringType * 10000;
+        auto noteID = noteInfo.noteID;
+
+        // Mapping extensions replays require map data
+        // for parsing because of the lost data. Blame NSGolova
+        if (noteID >= 1000000 || noteID <= -1000) {
+            replay->needsRecalculation = true;
+        }
+
+        note.info.scoringType = noteID / 10000;
+        noteID -= note.info.scoringType * 10000;
         note.info.scoringType -= 2;
 
-        note.info.lineIndex = noteInfo.noteID / 1000;
-        noteInfo.noteID -= note.info.lineIndex * 1000;
+        note.info.lineIndex = noteID / 1000;
+        noteID -= note.info.lineIndex * 1000;
 
-        note.info.lineLayer = noteInfo.noteID / 100;
-        noteInfo.noteID -= note.info.lineLayer * 100;
+        note.info.lineLayer = noteID / 100;
+        noteID -= note.info.lineLayer * 100;
 
-        note.info.colorType = noteInfo.noteID / 10;
-        noteInfo.noteID -= note.info.colorType * 10;
+        note.info.colorType = noteID / 10;
+        noteID -= note.info.colorType * 10;
         if(note.info.colorType == 3) note.info.colorType = -1;
 
-        note.info.cutDirection = noteInfo.noteID;
+        note.info.cutDirection = noteID;
 
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
