@@ -66,7 +66,4 @@ namespace Manager {
     Frame& GetFrame();
     Frame& GetNextFrame();
     float GetFrameProgress();
-
-    Vector3 GetPosOffset(Vector3 pos, bool head = false);
-    Quaternion GetRotOffset(Quaternion rot, bool head = false);
 }

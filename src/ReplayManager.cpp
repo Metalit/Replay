@@ -80,10 +80,15 @@ namespace Manager {
         }
 
         Vector3 GetHeadPosition() {
-            return GetPosOffset(smoothPosition, true);
+            auto offset = getConfig().Offset.GetValue();
+            if(getConfig().Relative.GetValue())
+                offset = Sombrero::QuaternionMultiply(Camera::GetHeadRotation(), offset);
+            return smoothPosition + offset;
         }
         Quaternion GetHeadRotation() {
-            return GetRotOffset(smoothRotation, true);
+            if(getConfig().Correction.GetValue())
+                return Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
+            return smoothRotation;
         }
 
         int GetMode() {
@@ -367,26 +372,5 @@ namespace Manager {
 
     float GetFrameProgress() {
         return lerpAmount;
-    }
-
-    Vector3 GetPosOffset(Vector3 pos, bool head) {
-        if(head) {
-            auto offset = getConfig().Offset.GetValue();
-            if(getConfig().Relative.GetValue())
-                offset = Sombrero::QuaternionMultiply(Camera::GetHeadRotation(), offset);
-            pos += offset;
-        }
-        if(!inTransition && playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
-            return playerTransforms->originParentTransform->get_position() + pos;
-        return pos;
-    }
-    Quaternion GetRotOffset(Quaternion rot, bool head) {
-        if(head) {
-            if(getConfig().Correction.GetValue())
-                rot = Sombrero::QuaternionMultiply(rot, currentReplay.replay->info.averageOffset);
-        }
-        if(!inTransition && playerTransforms->useOriginParentTransformForPseudoLocalCalculations && currentReplay.type == ReplayType::Event)
-            return Sombrero::QuaternionMultiply(playerTransforms->originParentTransform->get_rotation(), rot);
-        return rot;
     }
 }

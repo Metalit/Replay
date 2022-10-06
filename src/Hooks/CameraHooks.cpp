@@ -46,10 +46,19 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
     if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
         if(!mainCamera)
             mainCamera = UnityEngine::Camera::get_main();
-        if(camera != mainCamera && camera != customCamera)
-            return;
-        camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
-        camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
+        if(camera == mainCamera) {
+            if(Manager::currentReplay.type == ReplayType::Event) {
+                camera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
+                camera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
+            } else {
+                camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
+                camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
+            }
+        } else if(camera == customCamera) {
+            // might be a frame behind, idk, hopefully not since it's instantiated later
+            camera->get_transform()->set_rotation(mainCamera->get_transform()->get_rotation());
+            camera->get_transform()->set_position(mainCamera->get_transform()->get_position());
+        }
     } else
         mainCamera = nullptr;
 }

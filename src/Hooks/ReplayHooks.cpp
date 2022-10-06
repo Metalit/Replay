@@ -79,30 +79,31 @@ MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &Pause
 MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
 
     if(Manager::replaying) {
-        auto saberTransform = self->get_transform();
+        auto saberTransform = self->get_transform()->GetParent();
         int saberType = (int) self->get_saberType();
 
-        auto& transform = Manager::GetFrame();
+        Transform *transform, *nextTransform = nullptr;
         if(saberType == 0) {
-            Quaternion leftRot = transform.leftHand.rotation;
-            Vector3 leftPos = transform.leftHand.position;
-            if(Manager::GetFrameProgress() > 0) {
-                auto& nextTransform = Manager::GetNextFrame();
-                leftRot = Quaternion::Lerp(leftRot, nextTransform.leftHand.rotation, Manager::GetFrameProgress());
-                leftPos = Vector3::Lerp(leftPos, nextTransform.leftHand.position, Manager::GetFrameProgress());
-            }
-            saberTransform->set_rotation(Manager::GetRotOffset(leftRot));
-            saberTransform->set_position(Manager::GetPosOffset(leftPos));
+            transform = &Manager::GetFrame().leftHand;
+            if(Manager::GetFrameProgress() > 0)
+                nextTransform = &Manager::GetNextFrame().leftHand;
         } else {
-            Quaternion rightRot = transform.rightHand.rotation;
-            Vector3 rightPos = transform.rightHand.position;
-            if(Manager::GetFrameProgress() > 0) {
-                auto& nextTransform = Manager::GetNextFrame();
-                rightRot = Quaternion::Lerp(rightRot, nextTransform.rightHand.rotation, Manager::GetFrameProgress());
-                rightPos = Vector3::Lerp(rightPos, nextTransform.rightHand.position, Manager::GetFrameProgress());
-            }
-            saberTransform->set_rotation(Manager::GetRotOffset(rightRot));
-            saberTransform->set_position(Manager::GetPosOffset(rightPos));
+            transform = &Manager::GetFrame().rightHand;
+            if(Manager::GetFrameProgress() > 0)
+                nextTransform = &Manager::GetNextFrame().rightHand;
+        }
+        Quaternion rot = transform->rotation;
+        Vector3 pos = transform->position;
+        if(nextTransform) {
+            rot = Quaternion::Lerp(rot, nextTransform->rotation, Manager::GetFrameProgress());
+            pos = Vector3::Lerp(pos, nextTransform->position, Manager::GetFrameProgress());
+        }
+        if(Manager::currentReplay.type == ReplayType::Frame) {
+            saberTransform->set_rotation(rot);
+            saberTransform->set_position(pos);
+        } else {
+            saberTransform->set_localRotation(rot);
+            saberTransform->set_localPosition(pos);
         }
     }
     Saber_ManualUpdate(self);

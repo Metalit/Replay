@@ -304,7 +304,7 @@ ReplayWrapper ReadReqlay(const std::string& path) {
 
     QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
     for(auto& frame : ret.replay->frames) {
-        
+        averageCalc.AddRotation(frame.head.rotation);
     }
     ret.replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
     if(path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos) {
