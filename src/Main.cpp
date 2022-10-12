@@ -1,7 +1,7 @@
 #include "Main.hpp"
 #include "Config.hpp"
 
-#include "ReplayMenu.hpp"
+#include "CustomTypes/ReplayMenu.hpp"
 #include "Hooks.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"

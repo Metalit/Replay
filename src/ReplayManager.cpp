@@ -7,7 +7,7 @@
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
 
-#include "ReplayMenu.hpp"
+#include "CustomTypes/ReplayMenu.hpp"
 #include "PauseMenu.hpp"
 
 #include "bs-utils/shared/utils.hpp"

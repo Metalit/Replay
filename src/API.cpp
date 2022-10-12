@@ -9,7 +9,7 @@
 
 #include "Formats/EventReplay.hpp"
 #include "ReplayManager.hpp"
-#include "ReplayMenu.hpp"
+#include "CustomTypes/ReplayMenu.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"

@@ -1,5 +1,5 @@
 #include "Main.hpp"
-#include "ReplayMenu.hpp"
+#include "CustomTypes/ReplayMenu.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "ReplayManager.hpp"
