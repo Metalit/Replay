@@ -16,6 +16,18 @@ using namespace GlobalNamespace;
 using namespace QuestUI;
 using namespace ReplaySettings;
 
+inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<bool>& configValue, std::function<void(bool value)> callback) {
+    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), 
+        [&configValue, callback = std::move(callback)](bool value) { 
+            configValue.SetValue(value); 
+            callback(value);
+        }
+    );
+    if(!configValue.GetHoverHint().empty())
+        BeatSaberUI::AddHoverHint(object->get_gameObject(), configValue.GetHoverHint());
+    return object;
+}
+
 inline IncrementSetting* AddConfigValueIncrementEnum(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<int>& configValue, int increment, int min, int max, auto& strings) {
     auto inc = BeatSaberUI::CreateIncrementSetting(parent, configValue.GetName(), 0, increment, configValue.GetValue(), min, max);
     auto child = inc->get_gameObject()->get_transform()->GetChild(1);
@@ -35,7 +47,7 @@ inline IncrementSetting* AddConfigValueIncrementEnum(UnityEngine::Transform* par
     return inc;
 }
 
-inline void SetButtons(IncrementSetting* increment) {
+inline IncrementSetting* SetButtons(IncrementSetting* increment) {
     auto child = increment->get_gameObject()->get_transform()->GetChild(1);
     auto decButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().First();
     auto incButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().Last();
@@ -46,6 +58,7 @@ inline void SetButtons(IncrementSetting* increment) {
     };
     decButton->set_interactable(increment->CurrentValue > increment->MinValue);
     incButton->set_interactable(increment->CurrentValue < increment->MaxValue);
+    return increment;
 }
 
 const std::vector<const char*> resolutionStrings = {
@@ -113,15 +126,31 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueIncrementEnum(transform, getConfig().Mirrors, 1, 0, 3, fourLevelStrings);
     
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 0, 20));
+    shockwaveSetting = SetButtons(AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 1, 20))->get_gameObject();
+    auto incrementObject = shockwaveSetting->get_transform()->GetChild(1);
+    incrementObject->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
+    incrementObject->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({-20, 0});
+
+    auto shockwaveToggle = BeatSaberUI::CreateToggle(transform, "", getConfig().ShockwavesOn.GetValue(), [this](bool enabled) {
+        getConfig().ShockwavesOn.SetValue(enabled);
+        shockwaveSetting->get_transform()->GetChild(1)->get_gameObject()->SetActive(enabled);
+    })->get_transform();
+    auto oldParent = shockwaveToggle->GetParent()->get_gameObject();
+    shockwaveToggle->SetParent(shockwaveSetting->get_transform(), false);
+    UnityEngine::Object::Destroy(oldParent);
 
     AddConfigValueIncrementEnum(transform, getConfig().Resolution, 1, 0, resolutions.size() - 1, resolutionStrings);
     
     SetButtons(AddConfigValueIncrementInt(transform, getConfig().Bitrate, 1000, 0, 100000));
     
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120));
-    
     SetButtons(AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150));
+    
+    AddConfigValueToggle(transform, getConfig().ForceFPS, [this](bool enabled) {
+        fpsSetting->SetActive(enabled);
+    });
+    
+    fpsSetting = SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120))->get_gameObject();
+    fpsSetting->SetActive(getConfig().ForceFPS.GetValue());
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"

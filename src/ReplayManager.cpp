@@ -99,7 +99,8 @@ namespace Manager {
 
         void SetGraphicsSettings() {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
-            settings->maxShockwaveParticles->set_value(getConfig().Shockwaves.GetValue());
+            int shockwaves = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
+            settings->maxShockwaveParticles->set_value(shockwaves);
             settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
             // no presets available other than the disabled one :(
             // if(getConfig().Bloom.GetValue() != 0) {

@@ -4,6 +4,7 @@
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "HMUI/ViewController.hpp"
+#include "HMUI/ModalView.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
 
@@ -53,6 +54,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         UnityEngine::UI::Button* renderButton;
         UnityEngine::UI::Button* deleteButton;
         QuestUI::IncrementSetting* increment;
+        HMUI::ModalView* confirmModal;
 
         std::vector<ReplayInfo*> replayInfos;
         std::vector<std::string> replayPaths;

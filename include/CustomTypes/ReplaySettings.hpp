@@ -3,6 +3,8 @@
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
 
+#include "UnityEngine/GameObject.hpp"
+
 #include "custom-types/shared/macros.hpp"
 
 #define METHOD(...) il2cpp_utils::il2cpp_type_check::MetadataGetter<&HMUI::__VA_ARGS__>::get()
@@ -13,6 +15,9 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController,
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController,
     DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+
+    DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, fpsSetting);
+    DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, shockwaveSetting);
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, ModSettings, HMUI::FlowCoordinator,

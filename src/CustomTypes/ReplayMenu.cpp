@@ -217,9 +217,29 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
     BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet)
         ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);
-    deleteButton = BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnDeleteButtonClick);
+    deleteButton = BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), [this]() {
+        confirmModal->Show(true, true, nullptr);
+    });
 
     increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
+    
+    confirmModal = BeatSaberUI::CreateModal(get_transform(), {58, 24}, nullptr);
+    
+    static ConstString dialogText("Are you sure you would like to delete this\nreplay? This cannot be undone.");
+
+    auto removeText = BeatSaberUI::CreateText(confirmModal->get_transform(), dialogText, false, {0, 5});
+    removeText->set_alignment(TMPro::TextAlignmentOptions::Center);
+
+    static ConstString contentName("Content");
+    auto confirmButton = BeatSaberUI::CreateUIButton(confirmModal->get_transform(), "Delete", "ActionButton", {11.5, -6}, {20, 10}, [this] {
+        confirmModal->Hide(true, nullptr);
+        OnDeleteButtonClick();
+    });
+    UnityEngine::Object::Destroy(confirmButton->get_transform()->Find(contentName)->GetComponent<UnityEngine::UI::LayoutElement*>());
+    auto cancelButton = BeatSaberUI::CreateUIButton(confirmModal->get_transform(), "Cancel", {-11.5, -6}, {20, 10}, [this] {
+        confirmModal->Hide(true, nullptr);
+    });
+    UnityEngine::Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UnityEngine::UI::LayoutElement*>());
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
