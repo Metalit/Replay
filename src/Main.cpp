@@ -69,6 +69,11 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
 #include "System/Action_2.hpp"
 
 MAKE_HOOK_MATCH(WeirdFix, &ScoreController::LateUpdate, void, ScoreController* self) {
+    if (!Manager::replaying) {
+        WeirdFix(self);
+        return;
+    }
+
     LOG_DEBUG("LateUpdate");
     float num = self->sortedNoteTimesWithoutScoringElements->get_Count() > 0 ? self->sortedNoteTimesWithoutScoringElements->get_Item(0) : 3000000000;
     float num2 = self->audioTimeSyncController->get_songTime() + 0.15;
