@@ -46,18 +46,12 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
     if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
         if(!mainCamera)
             mainCamera = UnityEngine::Camera::get_main();
-        if(camera == mainCamera) {
-            if(Manager::currentReplay.type == ReplayType::Event) {
-                camera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
-                camera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
-            } else {
-                camera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
-                camera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
-            }
-        } else if(camera == customCamera) {
-            // might be a frame behind, idk, hopefully not since it's instantiated later
-            camera->get_transform()->set_rotation(mainCamera->get_transform()->get_rotation());
-            camera->get_transform()->set_position(mainCamera->get_transform()->get_position());
+        if(Manager::currentReplay.type == ReplayType::Event) {
+            mainCamera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
+            mainCamera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
+        } else {
+            mainCamera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
+            mainCamera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
         }
     } else
         mainCamera = nullptr;
@@ -126,6 +120,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
         customCamera->set_enabled(true);
+        customCamera->get_transform()->SetParent(mainCamera->get_transform());
 
         while (customCamera->get_transform()->get_childCount() > 0)
             UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
@@ -152,14 +147,17 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             .height = resolutions[getConfig().Resolution.GetValue()].second,
             .fps = getConfig().FPS.GetValue(),
             .bitrate = getConfig().Bitrate.GetValue(),
+            .movieModeRendering = getConfig().ForceFPS.GetValue(),
             .fov = getConfig().FOV.GetValue()
         };
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
-        UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
-
-        if(!settings.movieModeRendering) {
-            auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) { return x->get_gameObject()->get_activeInHierarchy(); });
+        if(getConfig().ForceFPS.GetValue())
+            UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+        else {
+            auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
+                return x->get_gameObject()->get_activeInHierarchy();
+            });
             audioCapture = Hollywood::SetAudioCapture(audioListener);
             audioCapture->OpenFile("/sdcard/audio.wav");
         }

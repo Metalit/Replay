@@ -25,6 +25,8 @@
 #include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 #include "GlobalNamespace/SliderController.hpp"
 #include "GlobalNamespace/AudioManagerSO.hpp"
+#include "GlobalNamespace/ScoreModel.hpp"
+#include "GlobalNamespace/IGameEnergyCounter.hpp"
 
 #include "UnityEngine/AudioSource.hpp"
 
@@ -236,6 +238,63 @@ namespace Pause {
             scoreController->scoringElementsWithMultiplier->get_Item(i)->SetMultipliers(0, 0);
     }
 
+    void UpdateScoreController() {
+        // literally the exact implementation of ScoreController::LateUpdate
+        auto& self = scoreController;
+        float num = self->sortedNoteTimesWithoutScoringElements->get_Count() > 0 ? self->sortedNoteTimesWithoutScoringElements->get_Item(0) : 3000000000;
+        float num2 = self->audioTimeSyncController->get_songTime() + 0.15;
+        int num3 = 0;
+        bool flag = false;
+        for(int i = 0; i < self->sortedScoringElementsWithoutMultiplier->get_Count(); i++) {
+            auto item = self->sortedScoringElementsWithoutMultiplier->get_Item(i);
+            if(item->get_time() < num2 || item->get_time() > num) {
+                flag |= self->scoreMultiplierCounter->ProcessMultiplierEvent(item->get_multiplierEventType());
+                if(item->get_wouldBeCorrectCutBestPossibleMultiplierEventType() == ScoreMultiplierCounter::MultiplierEventType::Positive)
+                    self->maxScoreMultiplierCounter->ProcessMultiplierEvent(ScoreMultiplierCounter::MultiplierEventType::Positive);
+                item->SetMultipliers(self->scoreMultiplierCounter->get_multiplier(), self->maxScoreMultiplierCounter->get_multiplier());
+                self->scoringElementsWithMultiplier->Add(item);
+                num3++;
+                continue;
+            }
+            break;
+        }
+        self->sortedScoringElementsWithoutMultiplier->RemoveRange(0, num3);
+        if(flag)
+            self->multiplierDidChangeEvent->Invoke(self->scoreMultiplierCounter->get_multiplier(), self->scoreMultiplierCounter->get_normalizedProgress());
+        bool flag2 = false;
+        self->scoringElementsToRemove->Clear();
+        for(int i = 0; i < self->scoringElementsWithMultiplier->get_Count(); i++) {
+            auto item2 = self->scoringElementsWithMultiplier->get_Item(i);
+            if (item2->get_isFinished()) {
+                if (item2->get_maxPossibleCutScore() > 0) {
+                    flag2 = true;
+                    self->multipliedScore += item2->get_cutScore() * item2->get_multiplier();
+                    self->immediateMaxPossibleMultipliedScore += item2->get_maxPossibleCutScore() * item2->get_maxMultiplier();
+                }
+                self->scoringElementsToRemove->Add(item2);
+                if(self->scoringForNoteFinishedEvent)
+                    self->scoringForNoteFinishedEvent->Invoke(item2);
+            }
+        }
+        for(int i = 0; i < self->scoringElementsToRemove->get_Count(); i++) {
+            auto item3 = self->scoringElementsToRemove->get_Item(i);
+            self->DespawnScoringElement(item3);
+            self->scoringElementsWithMultiplier->Remove(item3);
+        }
+        self->scoringElementsToRemove->Clear();
+        float totalMultiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, self->gameEnergyCounter->get_energy());
+        if (self->prevMultiplierFromModifiers != totalMultiplier) {
+            self->prevMultiplierFromModifiers = totalMultiplier;
+            flag2 = true;
+        }
+        if (flag2) {
+            self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->multipliedScore, totalMultiplier);
+            self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->immediateMaxPossibleMultipliedScore, totalMultiplier);
+            if(self->scoreDidChangeEvent)
+                self->scoreDidChangeEvent->Invoke(self->multipliedScore, self->modifiedScore);
+        }
+    }
+
     void SetTime(float time) {
         LOG_INFO("Time set to {}", time);
         DespawnObjects();
@@ -288,7 +347,7 @@ namespace Pause {
                     auto& noteEvent = eventReplay->notes[event.index];
                     auto scoringElement = MakeFakeScoringElement(noteEvent);
                     InsertIntoSortedListFromEnd(scoreController->sortedScoringElementsWithoutMultiplier, scoringElement);
-                    scoreController->LateUpdate();
+                    UpdateScoreController();
                     auto noteCutInfo = GetNoteCutInfo(nullptr, nullptr, noteEvent.noteCutInfo);
                     il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(noteCutInfo));
                     gameEnergyCounter->ProcessEnergyChange(EnergyForNote(noteEvent.info));

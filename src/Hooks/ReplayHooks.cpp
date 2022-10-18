@@ -9,17 +9,21 @@ using namespace GlobalNamespace;
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/GameplayModifiers.hpp"
 #include "GlobalNamespace/PlayerSpecificSettings.hpp"
+#include "GlobalNamespace/PracticeSettings.hpp"
 
 SafePtr<GameplayModifiers> modifierHolder{};
 PlayerSpecificSettings* playerSpecificSettings = nullptr;
 bool wasLeftHanded = false;
+
+#include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
 
 // set modifiers on replay start
 MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuTransitionsHelper::*)(StringW, IDifficultyBeatmap*, IPreviewBeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>*)>(&MenuTransitionsHelper::StartStandardLevel),
         void, MenuTransitionsHelper* self, StringW f1, IDifficultyBeatmap* f2, IPreviewBeatmapLevel* f3, OverrideEnvironmentSettings* f4, ColorScheme* f5, GameplayModifiers* f6, PlayerSpecificSettings* f7, PracticeSettings* f8, StringW f9, bool f10, bool f11, System::Action* f12, System::Action_1<Zenject::DiContainer*>* f13, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>* f14) {
     
     if(Manager::replaying) {
-        const auto& modifiers = Manager::currentReplay.replay->info.modifiers;
+        const auto& info = Manager::currentReplay.replay->info;
+        const auto& modifiers = info.modifiers;
         auto energyType = modifiers.fourLives ? GameplayModifiers::EnergyType::Battery : GameplayModifiers::EnergyType::Bar;
         bool noFail = modifiers.noFail;
         bool instaFail = modifiers.oneLife;
@@ -37,11 +41,14 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
         bool proMode = modifiers.proMode;
         bool zenMode = false;
         bool smallNotes = modifiers.smallNotes;
-        modifierHolder.emplace(CRASH_UNLESS(il2cpp_utils::New<GameplayModifiers*>(energyType, noFail, instaFail, saberClash, obstacleType, noBombs, fastNotes, strictAngles, disappearingArrows, songSpeed, noArrows, ghostNotes, proMode, zenMode, smallNotes)));
+        modifierHolder.emplace(GameplayModifiers::New_ctor(energyType, noFail, instaFail, saberClash, obstacleType, noBombs, fastNotes, strictAngles, disappearingArrows, songSpeed, noArrows, ghostNotes, proMode, zenMode, smallNotes));
         f6 = static_cast<GameplayModifiers*>(modifierHolder);
         playerSpecificSettings = f7;
         wasLeftHanded = f7->leftHanded;
         f7->leftHanded = modifiers.leftHanded;
+
+        if(info.practice)
+            f8 = PracticeSettings::New_ctor(info.startTime, info.speed);
     }
     MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14);
 }
