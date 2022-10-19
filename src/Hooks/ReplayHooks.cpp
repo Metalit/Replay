@@ -123,13 +123,16 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, Player
 
     if(Manager::replaying) {
         auto& transform = Manager::GetFrame();
-        if(Manager::currentReplay.type == ReplayType::Frame) {
-            self->headTransform->set_rotation(transform.head.rotation);
-            self->headTransform->set_position(transform.head.position);
-        } else {
-            self->headTransform->set_localRotation(transform.head.rotation);
-            self->headTransform->set_localPosition(transform.head.position);
+        auto targetRot = transform.head.rotation;
+        auto targetPos = transform.head.position;
+        if(Manager::currentReplay.type == ReplayType::Event) {
+            if(auto originParent = self->originParentTransform) {
+                targetRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
+                targetPos += originParent->get_position();
+            }
         }
+        self->headTransform->set_rotation(targetRot);
+        self->headTransform->set_position(targetPos);
     }
     PlayerTransforms_Update(self);
 }

@@ -4,13 +4,13 @@
 
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
+#include "CustomTypes/CameraRig.hpp"
 
-using namespace GlobalNamespace;
+#include "hollywood/shared/Hollywood.hpp"
 
 #include "UnityEngine/Matrix4x4.hpp"
-#include "GlobalNamespace/LightManager.hpp"
-#include "UnityEngine/Camera.hpp"
-#include "UnityEngine/Transform.hpp"
+
+using namespace GlobalNamespace;
 
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
@@ -33,32 +33,10 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
-#include "hollywood/shared/Hollywood.hpp"
-
-UnityEngine::Camera* mainCamera = nullptr;
-Hollywood::AudioCapture* audioCapture = nullptr;
-UnityEngine::Camera* customCamera = nullptr;
-
-MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender, void, LightManager* self, UnityEngine::Camera* camera) {
-
-    LightManager_OnCameraPreRender(self, camera);
-
-    if(Manager::replaying && !Manager::paused && Manager::GetSongTime() >= 0 && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-        if(!mainCamera)
-            mainCamera = UnityEngine::Camera::get_main();
-        if(Manager::currentReplay.type == ReplayType::Event) {
-            mainCamera->get_transform()->set_localRotation(Manager::Camera::GetHeadRotation());
-            mainCamera->get_transform()->set_localPosition(Manager::Camera::GetHeadPosition());
-        } else {
-            mainCamera->get_transform()->set_rotation(Manager::Camera::GetHeadRotation());
-            mainCamera->get_transform()->set_position(Manager::Camera::GetHeadPosition());
-        }
-    } else
-        mainCamera = nullptr;
-}
-
 #include "GlobalNamespace/CoreGameHUDController.hpp"
 #include "UnityEngine/GameObject.hpp"
+#include "UnityEngine/Transform.hpp"
+#include "UnityEngine/Camera.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
 #include "UnityEngine/HideFlags.hpp"
 #include "UnityEngine/DepthTextureMode.hpp"
@@ -71,6 +49,12 @@ MAKE_HOOK_MATCH(LightManager_OnCameraPreRender, &LightManager::OnCameraPreRender
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 
 #include "custom-types/shared/coroutine.hpp"
+
+UnityEngine::Camera* mainCamera = nullptr;
+Hollywood::AudioCapture* audioCapture = nullptr;
+UnityEngine::Camera* customCamera = nullptr;
+
+ReplayHelpers::CameraRig* cameraRig = nullptr;
 
 custom_types::Helpers::Coroutine SetCullingCoro(UnityEngine::Camera* camera, UnityEngine::Camera* mainCam) {
     co_yield nullptr;
@@ -107,20 +91,26 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         if(Manager::Camera::GetMode() == (int) CameraMode::Headset)
             return;
         
-        using cullingMatrixType = function_ptr_t<void, UnityEngine::Camera *, UnityEngine::Matrix4x4>;
-        static auto set_cullingMatrix = *((cullingMatrixType) il2cpp_functions::resolve_icall("UnityEngine.Camera::set_cullingMatrix_Injected"));
+        static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
+            ("UnityEngine.Camera::set_cullingMatrix_Injected");
 
         auto mainCamera = UnityEngine::Camera::get_main();
         set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
         // mainCamera->set_enabled(false);
 
+        auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
+        cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
+        auto cameraParent = cameraGO->get_transform();
+        cameraParent->SetParent(mainCamera->get_transform()->GetParent());
+        mainCamera->get_transform()->SetParent(cameraParent);
+
         if(!Manager::Camera::rendering)
             return;
 
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
         customCamera->set_enabled(true);
-        customCamera->get_transform()->SetParent(mainCamera->get_transform());
+        customCamera->get_transform()->SetParent(cameraParent);
 
         while (customCamera->get_transform()->get_childCount() > 0)
             UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
@@ -209,7 +199,6 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, LightManager_OnCameraPreRender);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Camera);
     INSTALL_HOOK(logger, PauseController_get_canPause);

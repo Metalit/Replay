@@ -113,7 +113,6 @@ namespace Pause {
     PauseMenuManager* lastPauseMenu = nullptr;
 
     void EnsureSetup(PauseMenuManager* pauseMenu) {
-        LOG_DEBUG("pause menu: {}", fmt::ptr(pauseMenu->pauseContainerTransform));
         static ConstString menuName("ReplayPauseMenu");
         if(lastPauseMenu != pauseMenu && !pauseMenu->pauseContainerTransform->Find(menuName)) {
             auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>().First();
