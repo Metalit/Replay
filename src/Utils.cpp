@@ -327,6 +327,21 @@ void UpdateMultiplier(int& multiplier, int& progress, bool good) {
     }
 }
 
+void AddEnergy(float& energy, float addition, const ReplayModifiers& modifiers) {
+    if(modifiers.oneLife) {
+        if(addition < 0)
+            energy = 0;
+    } else if(modifiers.fourLives) {
+        if(addition < 0)
+            energy -= 0.25;
+    } else if(energy > 0)
+        energy += addition;
+    if(energy > 1)
+        energy = 1;
+    if(energy < 0)
+        energy = 0;
+}
+
 MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
     if(replay.type == ReplayType::Frame) {
         auto frames = ((FrameReplay*) replay.replay.get())->scoreFrames;
@@ -347,6 +362,7 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
         };
     } else {
         auto eventReplay = (EventReplay*) replay.replay.get();
+        auto& modifiers = eventReplay->info.modifiers;
         int multiplier = 1, multiProg = 0;
         int maxMultiplier = 1, maxMultiProg = 0;
         float lastCalculatedWall = 0, wallEnd = 0;
@@ -354,23 +370,21 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
         int maxScore = 0;
         int combo = 0;
         float energy = 0.5;
+        if(modifiers.oneLife || modifiers.fourLives)
+            energy = 1;
         for(auto& event: eventReplay->events) {
             if(event.time > time)
                 break;
             // add wall energy change since last event
             if(lastCalculatedWall != wallEnd) {
                 if(event.time < wallEnd) {
-                    energy += 1.3 * (lastCalculatedWall - event.time);
+                    AddEnergy(energy, 1.3 * (lastCalculatedWall - event.time), modifiers);
                     lastCalculatedWall = event.time;
                 } else {
-                    energy += 1.3 * (lastCalculatedWall - wallEnd);
+                    AddEnergy(energy, 1.3 * (lastCalculatedWall - wallEnd), modifiers);
                     lastCalculatedWall = wallEnd;
                 }
             }
-            if(energy <= 0)
-                energy = -1000;
-            if(energy > 1)
-                energy = 1;
             switch(event.eventType) {
             case EventRef::Note: {
                 auto& note = eventReplay->notes[event.index];
@@ -386,7 +400,7 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
                     UpdateMultiplier(multiplier, multiProg, false);
                     combo = 0;
                 }
-                energy += EnergyForNote(note.info);
+                AddEnergy(energy, EnergyForNote(note.info), modifiers);
                 break;
             }
             case EventRef::Wall:
@@ -403,8 +417,6 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
                 break;
             }
         }
-        if(energy < 0)
-            energy = 0;
         return MapPreview{
             .energy = energy,
             .combo = combo,

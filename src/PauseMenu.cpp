@@ -180,10 +180,8 @@ namespace Pause {
     void PreviewTime(float time) {
         auto values = MapAtTime(Manager::currentReplay, time);
         float modifierMult = ModifierMultiplier(Manager::currentReplay, values.energy == 0);
-        // 1 / 4 lives modes?
-        if(values.energy <= 0)
-            values.energy = 0.0001;
-        gameEnergyCounter->ProcessEnergyChange(values.energy - gameEnergyCounter->energy);
+        gameEnergyCounter->energy = values.energy;
+        gameEnergyCounter->ProcessEnergyChange(0);
         scoreController->multipliedScore = values.score;
         scoreController->modifiedScore = values.score * modifierMult;
         scoreController->immediateMaxPossibleMultipliedScore = values.maxScore;

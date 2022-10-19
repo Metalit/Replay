@@ -99,8 +99,17 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasMissed, &ComboController::HandleNot
 // override energy
 MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::ProcessEnergyChange, void, GameEnergyCounter* self, float energyChange) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame)
-        energyChange = Manager::Frames::GetScoreFrame()->energy - self->energy;
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+        float energy = Manager::Frames::GetScoreFrame()->energy;
+        if(self->energyType != GameplayModifiers::EnergyType::Bar) {
+            self->energy = energy;
+            if(energy == 0)
+                energyChange = -1;
+            else
+                energyChange = 0;
+        } else
+            energyChange = energy - self->energy;
+    }
 
     GameEnergyCounter_ProcessEnergyChange(self, energyChange);
 }
