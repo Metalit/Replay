@@ -341,8 +341,10 @@ namespace Manager {
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 
-        while(frames[currentFrame].time <= songTime && currentFrame < frameCount - 1)
+        while(currentFrame < frameCount && frames[currentFrame].time <= songTime)
             currentFrame++;
+        if(currentFrame > 0)
+            currentFrame--;
         
         if(currentFrame == frameCount - 1)
             lerpAmount = 0;
