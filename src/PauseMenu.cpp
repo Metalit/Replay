@@ -26,9 +26,10 @@
 #include "GlobalNamespace/SliderController.hpp"
 #include "GlobalNamespace/AudioManagerSO.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
-#include "GlobalNamespace/IGameEnergyCounter.hpp"
+#include "GlobalNamespace/GameEnergyUIPanel.hpp"
 
 #include "UnityEngine/AudioSource.hpp"
+#include "UnityEngine/Playables/PlayableDirector.hpp"
 
 #include "System/Action.hpp"
 #include "System/Action_1.hpp"
@@ -106,6 +107,7 @@ namespace Pause {
     ScoreController* scoreController;
     ComboController* comboController;
     GameEnergyCounter* gameEnergyCounter;
+    GameEnergyUIPanel* energyBar;
     NoteCutSoundEffectManager* noteSoundManager;
     AudioManagerSO* audioManager;
     BeatmapObjectManager* beatmapObjectManager;
@@ -119,6 +121,7 @@ namespace Pause {
             scoreController = (ScoreController*) hasOtherObjects->scoreController;
             comboController = hasOtherObjects->comboController;
             gameEnergyCounter = hasOtherObjects->gameEnergyCounter;
+            energyBar = UnityEngine::Resources::FindObjectsOfTypeAll<GameEnergyUIPanel*>().First();
             noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>().First();
             audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>().First();
             beatmapObjectManager = noteSoundManager->beatmapObjectManager;
@@ -177,11 +180,37 @@ namespace Pause {
         audioManager->set_musicPitch(1 / modifiedSpeed);
     }
 
+    void ResetEnergyBar() {
+        static auto RebindPlayableGraphOutputs = il2cpp_utils::resolve_icall<void, UnityEngine::Playables::PlayableDirector*>
+            ("UnityEngine.Playables.PlayableDirector::RebindPlayableGraphOutputs");
+        energyBar->playableDirector->Stop();
+        RebindPlayableGraphOutputs(energyBar->playableDirector);
+        energyBar->playableDirector->Evaluate();
+        energyBar->energyBar->set_enabled(true);
+        static auto opacityColor = UnityEngine::Color(1, 1, 1, 0.3);
+        auto emptyIcon = energyBar->get_transform()->Find("EnergyIconEmpty");
+        emptyIcon->set_localPosition({-59, 0, 0});
+        emptyIcon->GetComponent<HMUI::ImageView*>()->set_color(opacityColor);
+        auto fullIcon = energyBar->get_transform()->Find("EnergyIconFull");
+        fullIcon->set_localPosition({59, 0, 0});
+        fullIcon->GetComponent<HMUI::ImageView*>()->set_color(opacityColor);
+        energyBar->get_transform()->Find("Laser")->get_gameObject()->SetActive(false);
+        // prevent recreation of battery energy UI
+        auto energyType = gameEnergyCounter->energyType;
+        gameEnergyCounter->energyType = -1;
+        // make sure event is registered
+        energyBar->Init();
+        gameEnergyCounter->energyType = energyType;
+    }
+
     void PreviewTime(float time) {
         auto values = MapAtTime(Manager::currentReplay, time);
         float modifierMult = ModifierMultiplier(Manager::currentReplay, values.energy == 0);
         gameEnergyCounter->energy = values.energy;
         gameEnergyCounter->ProcessEnergyChange(0);
+        if(values.energy > 0 && !energyBar->energyBar->get_enabled())
+            ResetEnergyBar();
+        energyBar->RefreshEnergyUI(values.energy);
         scoreController->multipliedScore = values.score;
         scoreController->modifiedScore = values.score * modifierMult;
         scoreController->immediateMaxPossibleMultipliedScore = values.maxScore;
@@ -216,6 +245,8 @@ namespace Pause {
         scoreController->maxScoreMultiplierCounter->Reset();
         gameEnergyCounter->didReach0Energy = false;
         gameEnergyCounter->energy = 0.5;
+        if(!energyBar->energyBar->get_enabled())
+            ResetEnergyBar();
         comboController->combo = 0;
         comboController->maxCombo = 0;
         callbackController->prevSongTime = System::Single::MinValue;
@@ -327,6 +358,8 @@ namespace Pause {
             // simulate all events
             for(auto& event: eventReplay->events) {
                 if(event.time > time)
+                    break;
+                if(gameEnergyCounter->didReach0Energy && !eventReplay->info.modifiers.noFail)
                     break;
                 // add wall energy change since last event
                 // needs to be done before the new event is processed in case it is a new wall
