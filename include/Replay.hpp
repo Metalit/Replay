@@ -33,6 +33,7 @@ struct ReplayInfo {
     std::time_t timestamp;
     int score;
     std::string source;
+    bool positionsAreLocal;
     float jumpDistance = -1;
     bool hasYOffset = false;
     std::optional<std::string> playerName;

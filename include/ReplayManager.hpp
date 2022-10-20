@@ -61,9 +61,11 @@ namespace Manager {
     extern ReplayWrapper currentReplay;
     extern GlobalNamespace::IDifficultyBeatmap* beatmap;
 
+    const ReplayInfo& GetCurrentInfo();
+
     void UpdateTime(float songTime);
     float GetSongTime();
-    Frame& GetFrame();
-    Frame& GetNextFrame();
+    const Frame& GetFrame();
+    const Frame& GetNextFrame();
     float GetFrameProgress();
 }

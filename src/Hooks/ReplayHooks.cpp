@@ -22,7 +22,7 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
         void, MenuTransitionsHelper* self, StringW f1, IDifficultyBeatmap* f2, IPreviewBeatmapLevel* f3, OverrideEnvironmentSettings* f4, ColorScheme* f5, GameplayModifiers* f6, PlayerSpecificSettings* f7, PracticeSettings* f8, StringW f9, bool f10, bool f11, System::Action* f12, System::Action_1<Zenject::DiContainer*>* f13, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>* f14) {
     
     if(Manager::replaying) {
-        const auto& info = Manager::currentReplay.replay->info;
+        auto& info = Manager::GetCurrentInfo();
         const auto& modifiers = info.modifiers;
         auto energyType = modifiers.fourLives ? GameplayModifiers::EnergyType::Battery : GameplayModifiers::EnergyType::Bar;
         bool noFail = modifiers.noFail;
@@ -89,7 +89,7 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
         auto saberTransform = self->get_transform()->GetParent();
         int saberType = (int) self->get_saberType();
 
-        Transform *transform, *nextTransform = nullptr;
+        const Transform *transform, *nextTransform = nullptr;
         if(saberType == 0) {
             transform = &Manager::GetFrame().leftHand;
             if(Manager::GetFrameProgress() > 0)
@@ -105,36 +105,55 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
             rot = Quaternion::Lerp(rot, nextTransform->rotation, Manager::GetFrameProgress());
             pos = Vector3::Lerp(pos, nextTransform->position, Manager::GetFrameProgress());
         }
-        if(Manager::currentReplay.type == ReplayType::Frame) {
-            saberTransform->set_rotation(rot);
-            saberTransform->set_position(pos);
-        } else {
+        if(Manager::GetCurrentInfo().positionsAreLocal) {
             saberTransform->set_localRotation(rot);
             saberTransform->set_localPosition(pos);
+        } else {
+            saberTransform->set_rotation(rot);
+            saberTransform->set_position(pos);
         }
     }
     Saber_ManualUpdate(self);
 }
 
 #include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/TransformExtensions.hpp"
 
 // set head position
-MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, PlayerTransforms* self) {
+MAKE_HOOK_MATCH(PlayerTransforms_Update_Replay, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
+    PlayerTransforms_Update_Replay(self);
+    
     if(Manager::replaying) {
         auto& transform = Manager::GetFrame();
         auto targetRot = transform.head.rotation;
         auto targetPos = transform.head.position;
-        if(Manager::currentReplay.type == ReplayType::Event) {
-            if(auto originParent = self->originParentTransform) {
-                targetRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
-                targetPos += originParent->get_position();
+        auto originParent = self->originParentTransform;
+        // both world pos and pseudo local pos are used in other places
+        if(Manager::GetCurrentInfo().positionsAreLocal) {
+            self->headPseudoLocalRot = targetRot;
+            self->headPseudoLocalPos = targetPos;
+            if(originParent) {
+                self->headWorldRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
+                self->headWorldPos = targetPos + originParent->get_position();
+            } else {
+                auto headParent = self->headTransform->GetParent();
+                self->headWorldRot = Sombrero::QuaternionMultiply(headParent->get_rotation(), targetRot);
+                self->headWorldPos = targetPos + headParent->get_position();
+            }
+        } else {
+            self->headWorldRot = targetRot;
+            self->headWorldPos = targetPos;
+            if(originParent) {
+                self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(originParent, targetRot);
+                self->headPseudoLocalPos = targetPos - originParent->get_position();
+            } else {
+                auto headParent = self->headTransform->GetParent();
+                self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(headParent, targetRot);
+                self->headPseudoLocalPos = targetPos - headParent->get_position();
             }
         }
-        self->headTransform->set_rotation(targetRot);
-        self->headTransform->set_position(targetPos);
     }
-    PlayerTransforms_Update(self);
 }
 
 #include "GlobalNamespace/HapticFeedbackController.hpp"
@@ -185,7 +204,7 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish);
     INSTALL_HOOK(logger, Saber_ManualUpdate);
-    INSTALL_HOOK(logger, PlayerTransforms_Update);
+    INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Replay);

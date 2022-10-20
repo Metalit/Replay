@@ -82,7 +82,7 @@ namespace Manager {
         Vector3 GetHeadPosition() {
             auto offset = getConfig().Offset.GetValue();
             if(getConfig().Relative.GetValue())
-                offset = Sombrero::QuaternionMultiply(Camera::GetHeadRotation(), offset);
+                offset = Sombrero::QuaternionMultiply(GetHeadRotation(), offset);
             return smoothPosition + offset;
         }
         Quaternion GetHeadRotation() {
@@ -254,6 +254,10 @@ namespace Manager {
     ReplayWrapper currentReplay;
     IDifficultyBeatmap* beatmap = nullptr;
 
+    const ReplayInfo& GetCurrentInfo() {
+        return currentReplay.replay->info;
+    }
+
     void SetLevel(IDifficultyBeatmap* level) {
         beatmap = level;
         RefreshLevelReplays();
@@ -362,11 +366,11 @@ namespace Manager {
         return songTime;
     }
 
-    Frame& GetFrame() {
+    const Frame& GetFrame() {
         return currentReplay.replay->frames[currentFrame];
     }
 
-    Frame& GetNextFrame() {
+    const Frame& GetNextFrame() {
         if(currentFrame == frameCount - 1)
             return currentReplay.replay->frames[currentFrame];
         else

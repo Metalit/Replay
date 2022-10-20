@@ -133,7 +133,7 @@ namespace Pause {
             float time = scoreController->audioTimeSyncController->songTime;
             float startTime = scoreController->audioTimeSyncController->startSongTime;
             float endTime = scoreController->audioTimeSyncController->get_songLength();
-            auto& info = Manager::currentReplay.replay->info;
+            auto& info = Manager::GetCurrentInfo();
             if(info.practice)
                 startTime = info.startTime;
             if(info.failed)

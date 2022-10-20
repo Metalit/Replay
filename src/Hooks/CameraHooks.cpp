@@ -6,11 +6,28 @@
 #include "ReplayManager.hpp"
 #include "CustomTypes/CameraRig.hpp"
 
+#include "GlobalNamespace/PlayerTransforms.hpp"
+
+using namespace GlobalNamespace;
+
+MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
+
+    if(Manager::replaying && !Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+        if(Manager::GetCurrentInfo().positionsAreLocal) {
+            auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+            self->headTransform->set_rotation(Sombrero::QuaternionMultiply(Manager::Camera::GetHeadRotation(), parent->get_rotation()));
+            self->headTransform->set_position(Manager::Camera::GetHeadPosition() + parent->get_position());
+        } else {
+            self->headTransform->set_rotation(Manager::Camera::GetHeadRotation());
+            self->headTransform->set_position(Manager::Camera::GetHeadPosition());
+        }
+    }
+    PlayerTransforms_Update_Camera(self);
+}
+
 #include "hollywood/shared/Hollywood.hpp"
 
 #include "UnityEngine/Matrix4x4.hpp"
-
-using namespace GlobalNamespace;
 
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
@@ -69,7 +86,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
     if(Manager::replaying) {
         // TODO: maybe move elsewhere
-        auto& player = Manager::currentReplay.replay->info.playerName;
+        auto& player = Manager::GetCurrentInfo().playerName;
         if(player.has_value() && (!Manager::AreReplaysLocal() || !getConfig().HideText.GetValue())) {
             using namespace QuestUI;
 
@@ -94,7 +111,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
             ("UnityEngine.Camera::set_cullingMatrix_Injected");
 
-        auto mainCamera = UnityEngine::Camera::get_main();
+        mainCamera = UnityEngine::Camera::get_main();
         set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
         // mainCamera->set_enabled(false);
@@ -102,8 +119,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
         cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
         auto cameraParent = cameraGO->get_transform();
-        cameraParent->SetParent(mainCamera->get_transform()->GetParent());
-        mainCamera->get_transform()->SetParent(cameraParent);
+        mainCamera->get_transform()->SetParent(cameraParent, false);
 
         if(!Manager::Camera::rendering)
             return;
@@ -199,6 +215,7 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 }
 
 HOOK_FUNC(
+    INSTALL_HOOK(logger, PlayerTransforms_Update_Camera);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Camera);
     INSTALL_HOOK(logger, PauseController_get_canPause);

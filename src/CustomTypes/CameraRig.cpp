@@ -32,15 +32,11 @@ void CameraRig::Update() {
         }
         Quaternion rot;
         GetLocalRotation(XRNode::Head, byref(rot));
-        auto targetPos = Manager::Camera::GetHeadPosition();
         auto targetRot = Subtract(Manager::Camera::GetHeadRotation(), rot);
-        if(Manager::currentReplay.type == ReplayType::Event) {
-            trans->set_localPosition(targetPos);
+        if(Manager::GetCurrentInfo().positionsAreLocal)
             trans->set_localRotation(targetRot);
-        } else {
-            trans->set_position(targetPos);
+        else
             trans->set_rotation(targetRot);
-        }
     } else {
         disablePositionalTracking(false);
         tracking = true;
