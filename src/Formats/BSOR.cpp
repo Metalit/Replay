@@ -316,6 +316,11 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         wall.time = wallEvent.time;
         if(info.platform == "oculus" || version > 1)
             wall.endTime = wallEvent.energy;
+            // replays on yet another BL version just forgot to record wall event end times
+            if(wall.endTime < wall.time || wall.endTime > replay->notes.back().time * 100) {
+                LOG_ERROR("Replay had broken wall event {}", path);
+                return {};
+            }
         else {
             // process all note events up to event time
             while(notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
@@ -327,10 +332,8 @@ ReplayWrapper ReadBSOR(const std::string& path) {
             float diff = energy - wallEvent.energy;
             // only realistic case for this happening (assuming the recorder is correct)
             // is for a wall event's time span to be fully contained inside another wall event
-            if(diff < 0) {
-                wall.endTime = wall.time;
+            if(diff < 0)
                 continue;
-            }
             float seconds = diff / 1.3;
             wall.endTime = wallEvent.time + seconds;
             // now we also correct for any misses that happen during the wall...
