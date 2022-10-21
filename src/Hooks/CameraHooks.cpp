@@ -29,10 +29,6 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void,
             self->headTransform->set_rotation(Manager::Camera::GetHeadRotation());
             self->headTransform->set_position(Manager::Camera::GetHeadPosition());
         }
-        if(customCamera) {
-            customCamera->get_transform()->set_rotation(self->headTransform->get_rotation());
-            customCamera->get_transform()->set_position(self->headTransform->get_position());
-        }
     }
     PlayerTransforms_Update_Camera(self);
 }
@@ -121,7 +117,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         // mainCamera->set_enabled(false);
 
         auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
-        cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
+        cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
         auto cameraParent = cameraGO->get_transform();
         mainCamera->get_transform()->SetParent(cameraParent, false);
 
@@ -131,6 +127,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         if(!getConfig().AudioMode.GetValue()) {
             customCamera = UnityEngine::Object::Instantiate(mainCamera);
             customCamera->set_enabled(true);
+            customCamera->get_transform()->SetParent(mainCamera->get_transform(), false);
 
             while (customCamera->get_transform()->get_childCount() > 0)
                 UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
@@ -185,6 +182,9 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults_Camera,
     if(customCamera)
         UnityEngine::Object::Destroy(customCamera);
     customCamera = nullptr;
+    if(cameraRig)
+        UnityEngine::Object::Destroy(cameraRig);
+    cameraRig = nullptr;
 
     // UnityEngine::Camera::get_main()->set_enabled(true);
 

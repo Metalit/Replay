@@ -13,5 +13,5 @@ DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour,
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_INSTANCE_METHOD(void, Update);
-    DECLARE_DTOR(dtor);
+    DECLARE_DTOR(OnDestroy);
 )

@@ -67,7 +67,7 @@ void OnCameraModeSet(StringW value) {
 }
 
 void OnRenderButtonClick() {
-    Manager::Camera::rendering = true;
+    Manager::Camera::rendering = !getConfig().AudioMode.GetValue();
     Manager::ReplayStarted(viewController->GetReplay());
     levelView->actionButton->get_onClick()->Invoke();
 }
@@ -213,7 +213,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     layout4->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
 
     watchButton = BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
-    renderButton = BeatSaberUI::CreateUIButton(layout4, "Render Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
+    renderButton = BeatSaberUI::CreateUIButton(layout4, "Record Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
     std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
     BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet)
         ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);

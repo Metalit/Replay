@@ -45,8 +45,8 @@ void CameraRig::Update() {
     }
 }
 
-void CameraRig::dtor() {
+void CameraRig::OnDestroy() {
     static auto disablePositionalTracking = il2cpp_utils::resolve_icall<void, bool>
-        ("UnityEngine.XR.InputTracking::disablePositionalTracking");
+        ("UnityEngine.XR.InputTracking::set_disablePositionalTracking");
     disablePositionalTracking(false);
 }
