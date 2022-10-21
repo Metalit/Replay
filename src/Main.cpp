@@ -75,6 +75,7 @@ extern "C" void load() {
     Paper::Logger::RegisterFileContextId("Replay");
     
     il2cpp_functions::Init();
+    custom_types::Register::AutoRegister();
 
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
 
