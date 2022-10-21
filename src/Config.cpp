@@ -16,18 +16,6 @@ using namespace GlobalNamespace;
 using namespace QuestUI;
 using namespace ReplaySettings;
 
-inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<bool>& configValue, std::function<void(bool value)> callback) {
-    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), 
-        [&configValue, callback = std::move(callback)](bool value) { 
-            configValue.SetValue(value); 
-            callback(value);
-        }
-    );
-    if(!configValue.GetHoverHint().empty())
-        BeatSaberUI::AddHoverHint(object->get_gameObject(), configValue.GetHoverHint());
-    return object;
-}
-
 inline IncrementSetting* AddConfigValueIncrementEnum(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<int>& configValue, int increment, int min, int max, auto& strings) {
     auto inc = BeatSaberUI::CreateIncrementSetting(parent, configValue.GetName(), 0, increment, configValue.GetValue(), min, max);
     auto child = inc->get_gameObject()->get_transform()->GetChild(1);
@@ -145,12 +133,9 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     
     SetButtons(AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150));
     
-    AddConfigValueToggle(transform, getConfig().ForceFPS, [this](bool enabled) {
-        fpsSetting->SetActive(enabled);
-    });
+    SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120))->get_gameObject();
     
-    fpsSetting = SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120))->get_gameObject();
-    fpsSetting->SetActive(getConfig().ForceFPS.GetValue());
+    AddConfigValueToggle(transform, getConfig().AudioMode);
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"

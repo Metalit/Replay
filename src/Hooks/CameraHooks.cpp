@@ -127,43 +127,43 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
         if(!Manager::Camera::rendering)
             return;
-
-        customCamera = UnityEngine::Object::Instantiate(mainCamera);
-        customCamera->set_enabled(true);
-
-        while (customCamera->get_transform()->get_childCount() > 0)
-            UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
         
-        customCamera->set_clearFlags(mainCamera->get_clearFlags());
-        customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
-        customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
-        customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
-        customCamera->set_hideFlags(mainCamera->get_hideFlags());
-        customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
-        // debris culling mask is set later in the frame, in a different Start() method
-        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
-        // Makes the camera render before the main
-        customCamera->set_depth(mainCamera->get_depth() - 1);
+        if(!getConfig().AudioMode.GetValue()) {
+            customCamera = UnityEngine::Object::Instantiate(mainCamera);
+            customCamera->set_enabled(true);
 
-        set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
-        
-        Hollywood::CameraRecordingSettings settings{
-            .width = resolutions[getConfig().Resolution.GetValue()].first,
-            .height = resolutions[getConfig().Resolution.GetValue()].second,
-            .fps = getConfig().FPS.GetValue(),
-            .bitrate = getConfig().Bitrate.GetValue(),
-            .movieModeRendering = getConfig().ForceFPS.GetValue(),
-            .fov = getConfig().FOV.GetValue()
-        };
-        Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
+            while (customCamera->get_transform()->get_childCount() > 0)
+                UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
+            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
+            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
+            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
+            
+            customCamera->set_clearFlags(mainCamera->get_clearFlags());
+            customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
+            customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
+            customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
+            customCamera->set_hideFlags(mainCamera->get_hideFlags());
+            customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
+            // debris culling mask is set later in the frame, in a different Start() method
+            SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
+            // Makes the camera render before the main
+            customCamera->set_depth(mainCamera->get_depth() - 1);
 
-        if(getConfig().ForceFPS.GetValue())
+            set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+                MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
+            
+            Hollywood::CameraRecordingSettings settings{
+                .width = resolutions[getConfig().Resolution.GetValue()].first,
+                .height = resolutions[getConfig().Resolution.GetValue()].second,
+                .fps = getConfig().FPS.GetValue(),
+                .bitrate = getConfig().Bitrate.GetValue(),
+                .movieModeRendering = true,
+                .fov = getConfig().FOV.GetValue()
+            };
+            Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
+
             UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
-        else {
+        } else {
             auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
                 return x->get_gameObject()->get_activeInHierarchy();
             });
