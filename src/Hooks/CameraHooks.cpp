@@ -6,9 +6,17 @@
 #include "ReplayManager.hpp"
 #include "CustomTypes/CameraRig.hpp"
 
+#include "hollywood/shared/Hollywood.hpp"
+
 #include "GlobalNamespace/PlayerTransforms.hpp"
 
 using namespace GlobalNamespace;
+
+UnityEngine::Camera* mainCamera = nullptr;
+Hollywood::AudioCapture* audioCapture = nullptr;
+UnityEngine::Camera* customCamera = nullptr;
+
+ReplayHelpers::CameraRig* cameraRig = nullptr;
 
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
@@ -21,11 +29,13 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void,
             self->headTransform->set_rotation(Manager::Camera::GetHeadRotation());
             self->headTransform->set_position(Manager::Camera::GetHeadPosition());
         }
+        if(customCamera) {
+            customCamera->get_transform()->set_rotation(self->headTransform->get_rotation());
+            customCamera->get_transform()->set_position(self->headTransform->get_position());
+        }
     }
     PlayerTransforms_Update_Camera(self);
 }
-
-#include "hollywood/shared/Hollywood.hpp"
 
 #include "UnityEngine/Matrix4x4.hpp"
 
@@ -66,12 +76,6 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 
 #include "custom-types/shared/coroutine.hpp"
-
-UnityEngine::Camera* mainCamera = nullptr;
-Hollywood::AudioCapture* audioCapture = nullptr;
-UnityEngine::Camera* customCamera = nullptr;
-
-ReplayHelpers::CameraRig* cameraRig = nullptr;
 
 custom_types::Helpers::Coroutine SetCullingCoro(UnityEngine::Camera* camera, UnityEngine::Camera* mainCam) {
     co_yield nullptr;
@@ -126,7 +130,6 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
         customCamera->set_enabled(true);
-        customCamera->get_transform()->SetParent(cameraParent);
 
         while (customCamera->get_transform()->get_childCount() > 0)
             UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());

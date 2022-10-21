@@ -13,7 +13,7 @@
   "dependencies": [
     {
       "id": "beatsaber-hook",
-      "versionRange": "^3.9.0",
+      "versionRange": "^3.14.0",
       "additionalData": {
         "extraFiles": [
           "src/inline-hook"
@@ -27,22 +27,22 @@
     },
     {
       "id": "codegen",
-      "versionRange": "^0.25.0",
+      "versionRange": "^0.28.0",
       "additionalData": {}
     },
     {
       "id": "paper",
-      "versionRange": "^1.2.7",
+      "versionRange": "^1.2.9",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.15.13",
+      "versionRange": "^0.15.21",
       "additionalData": {}
     },
     {
       "id": "questui",
-      "versionRange": "^0.16.2",
+      "versionRange": "^0.17.5",
       "additionalData": {}
     },
     {

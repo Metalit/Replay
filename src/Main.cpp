@@ -16,6 +16,8 @@
 
 #include "QuestUI/shared/QuestUI.hpp"
 
+#include "custom-types/shared/register.hpp"
+
 using namespace GlobalNamespace;
 
 ModInfo modInfo;
@@ -75,6 +77,8 @@ extern "C" void load() {
     Paper::Logger::RegisterFileContextId("Replay");
     
     il2cpp_functions::Init();
+
+    custom_types::Register::AutoRegister();
 
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
 
