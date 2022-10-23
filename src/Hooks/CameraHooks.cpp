@@ -21,16 +21,20 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void,
 
     if(Manager::replaying && !Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
         // head tranform IS the camera, but we can set its position anyway for some reason
+        Vector3 targetPos;
+        Quaternion targetRot;
         if(Manager::GetCurrentInfo().positionsAreLocal) {
             auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
             auto rot = parent->get_rotation();
-            self->headTransform->set_rotation(Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation()));
-            auto targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition());
-            self->headTransform->set_position(targetPos + parent->get_position());
+            targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
+            targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
         } else {
-            self->headTransform->set_rotation(Manager::Camera::GetHeadRotation());
-            self->headTransform->set_position(Manager::Camera::GetHeadPosition());
+            targetPos = Manager::Camera::GetHeadPosition();
+            targetRot = Manager::Camera::GetHeadRotation();
         }
+        self->headTransform->SetPositionAndRotation(targetPos, targetRot);
+        if(customCamera)
+            customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
     }
     PlayerTransforms_Update_Camera(self);
 }
@@ -130,7 +134,6 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         if(!getConfig().AudioMode.GetValue()) {
             customCamera = UnityEngine::Object::Instantiate(mainCamera);
             customCamera->set_enabled(true);
-            customCamera->get_transform()->SetParent(mainCamera->get_transform(), false);
 
             while (customCamera->get_transform()->get_childCount() > 0)
                 UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
