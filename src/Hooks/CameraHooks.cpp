@@ -180,7 +180,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 #include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 
 // undo rendering changes when exiting a level
-MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults_Camera, &PrepareLevelCompletionResults::FillLevelCompletionResults,
+MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &PrepareLevelCompletionResults::FillLevelCompletionResults,
         LevelCompletionResults*, PrepareLevelCompletionResults* self, LevelCompletionResults::LevelEndStateType levelEndStateType, LevelCompletionResults::LevelEndAction levelEndAction) {
 
     if(audioCapture)
@@ -197,7 +197,7 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults_Camera,
 
     UnityEngine::Time::set_captureDeltaTime(0);
 
-    return PrepareLevelCompletionResults_FillLevelCompletionResults_Camera(self, levelEndStateType, levelEndAction);
+    return PrepareLevelCompletionResults_FillLevelCompletionResults(self, levelEndStateType, levelEndAction);
 }
 
 #include "GlobalNamespace/PauseController.hpp"
@@ -227,7 +227,7 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 HOOK_FUNC(
     INSTALL_HOOK(logger, PlayerTransforms_Update_Camera);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
-    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Camera);
+    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults);
     INSTALL_HOOK(logger, PauseController_get_canPause);
     INSTALL_HOOK(logger, MainSystemInit_Init);
 )

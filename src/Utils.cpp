@@ -103,7 +103,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
                 auto replay = ReadBSOR(path.string());
                 if(replay.IsValid()) {
                     replays.insert({path.string(), replay});
-                    LOG_INFO("Read reqlay from {}", path.string());
+                    LOG_INFO("Read bsor from {}", path.string());
                 }
             }
         }

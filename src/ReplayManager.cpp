@@ -46,7 +46,6 @@ namespace Manager {
     int frameCount = 0;
     float songTime = -1;
     float lerpAmount = 0;
-    bool inTransition = false;
 
     Saber *leftSaber, *rightSaber;
     PlayerHeadAndObstacleInteraction* obstacleChecker;
@@ -318,15 +317,10 @@ namespace Manager {
             Events::ReplayStarted();
     }
 
-    void EndSceneChangeStarted() {
-        inTransition = true;
-    }
-
     void ReplayEnded() {
         Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
-        inTransition = false;
     }
 
     void ReplayPaused() {

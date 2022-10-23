@@ -186,18 +186,6 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
     }
 }
 
-#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
-
-// watch for the end of a replay
-MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults_Replay, &PrepareLevelCompletionResults::FillLevelCompletionResults,
-        LevelCompletionResults*, PrepareLevelCompletionResults* self, LevelCompletionResults::LevelEndStateType levelEndStateType, LevelCompletionResults::LevelEndAction levelEndAction) {
-
-    if(Manager::replaying && levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
-        Manager::EndSceneChangeStarted();
-    
-    return PrepareLevelCompletionResults_FillLevelCompletionResults_Replay(self, levelEndStateType, levelEndAction);
-}
-
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
@@ -207,5 +195,4 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
-    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults_Replay);
 )

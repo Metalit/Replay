@@ -162,8 +162,6 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         return {};
     }
 
-    LOG_INFO("Reading bsor file");
-
     int header;
     char version;
     char section;
