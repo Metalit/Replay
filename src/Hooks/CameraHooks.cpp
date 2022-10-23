@@ -12,7 +12,6 @@
 
 using namespace GlobalNamespace;
 
-UnityEngine::Camera* mainCamera = nullptr;
 Hollywood::AudioCapture* audioCapture = nullptr;
 UnityEngine::Camera* customCamera = nullptr;
 
@@ -21,10 +20,13 @@ ReplayHelpers::CameraRig* cameraRig = nullptr;
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
     if(Manager::replaying && !Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+        // head tranform IS the camera, but we can set its position anyway for some reason
         if(Manager::GetCurrentInfo().positionsAreLocal) {
             auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
-            self->headTransform->set_rotation(Sombrero::QuaternionMultiply(Manager::Camera::GetHeadRotation(), parent->get_rotation()));
-            self->headTransform->set_position(Manager::Camera::GetHeadPosition() + parent->get_position());
+            auto rot = parent->get_rotation();
+            self->headTransform->set_rotation(Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation()));
+            auto targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition());
+            self->headTransform->set_position(targetPos + parent->get_position());
         } else {
             self->headTransform->set_rotation(Manager::Camera::GetHeadRotation());
             self->headTransform->set_position(Manager::Camera::GetHeadPosition());
@@ -111,15 +113,16 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
             ("UnityEngine.Camera::set_cullingMatrix_Injected");
 
-        mainCamera = UnityEngine::Camera::get_main();
+        auto mainCamera = UnityEngine::Camera::get_main();
         set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
-        // mainCamera->set_enabled(false);
 
         auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
         cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
-        auto cameraParent = cameraGO->get_transform();
-        mainCamera->get_transform()->SetParent(cameraParent, false);
+        auto trans = mainCamera->get_transform();
+        cameraGO->get_transform()->SetPositionAndRotation(trans->get_position(), trans->get_rotation());
+        cameraGO->get_transform()->SetParent(trans->GetParent(), false);
+        trans->SetParent(cameraGO->get_transform(), false);
 
         if(!Manager::Camera::rendering)
             return;
@@ -160,6 +163,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
             UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+            // mainCamera->set_enabled(false);
         } else {
             auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
                 return x->get_gameObject()->get_activeInHierarchy();
