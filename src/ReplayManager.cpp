@@ -339,6 +339,8 @@ namespace Manager {
                 return;
             GetObjects();
         }
+        if(currentReplay.type == ReplayType::Frame)
+            time += 0.01;
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 
