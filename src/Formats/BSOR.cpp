@@ -213,10 +213,28 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int framesCount;
     READ_TO(framesCount);
     QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
+    // here we have yet another lecagy bug where multiplayer replays record all the avatars
+    float firstTime = -1000;
+    int skip = 0;
+    bool checkDone = false;
     for(int i = 0; i < framesCount; i++) {
         auto& frame = replay->frames.emplace_back(Frame());
         READ_TO(frame);
+        if(firstTime == -1000 && frame.time != 0)
+            firstTime = frame.time;
+        else if(firstTime == frame.time) {
+            skip++;
+            continue;
+        }
         averageCalc.AddRotation(frame.head.rotation);
+        if(skip > 0) {
+            if(!checkDone) {
+                replay->frames.erase(replay->frames.begin() + 1, replay->frames.end() - 1);
+                checkDone = true;
+            }
+            input.seekg(sizeof(Frame) * skip, std::ios::cur);
+            i += skip;
+        }
     }
     replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
     if(info.mode.find("Degree") != std::string::npos) {
