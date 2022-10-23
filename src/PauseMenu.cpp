@@ -114,9 +114,12 @@ namespace Pause {
     BeatmapCallbacksController* callbackController;
     PauseMenuManager* lastPauseMenu = nullptr;
 
+    bool touchedTime = false, touchedSpeed = false;
+
     void EnsureSetup(PauseMenuManager* pauseMenu) {
         static ConstString menuName("ReplayPauseMenu");
         if(lastPauseMenu != pauseMenu && !pauseMenu->pauseContainerTransform->Find(menuName)) {
+            LOG_INFO("Creating pause UI");
             auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>().First();
             scoreController = (ScoreController*) hasOtherObjects->scoreController;
             comboController = hasOtherObjects->comboController;
@@ -143,7 +146,7 @@ namespace Pause {
                 endTime = info.failTime;
             timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
             SetTransform(timeSlider, {0, 6}, {90, 10});
-            speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, nullptr, [](float speed) { return string_format("%.1fx", speed); });
+            speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, [](float _) { touchedSpeed = true; }, [](float speed) { return string_format("%.1fx", speed); });
             SetTransform(speedSlider, {0, -6}, {90, 10});
             AddIncrement(speedSlider, 0.1);
         }
@@ -151,16 +154,17 @@ namespace Pause {
         float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;
         float speed = scoreController->audioTimeSyncController->timeScale;
         speedSlider->set_value(speed / baseSpeed);
+        touchedTime = false;
+        touchedSpeed = false;
         lastPauseMenu = pauseMenu;
     }
 
     void OnUnpause() {
-        float setTime = timeSlider->get_value();
-        if(scoreController->audioTimeSyncController->songTime != setTime)
-            SetTime(setTime);
-        float setSpeed = speedSlider->get_value();
-        if(scoreController->audioTimeSyncController->timeScale != setSpeed)
-            SetSpeed(setSpeed);
+        // sliders are like really imprecise for some reason
+        if(touchedTime)
+            SetTime(timeSlider->get_value());
+        if(touchedSpeed)
+            SetSpeed(speedSlider->get_value());
     }
 
     void UpdateInReplay() {
@@ -204,6 +208,7 @@ namespace Pause {
     }
 
     void PreviewTime(float time) {
+        touchedTime = true;
         auto values = MapAtTime(Manager::currentReplay, time);
         float modifierMult = ModifierMultiplier(Manager::currentReplay, values.energy == 0);
         gameEnergyCounter->energy = values.energy;

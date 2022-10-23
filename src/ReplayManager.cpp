@@ -334,8 +334,11 @@ namespace Manager {
     }
     
     void UpdateTime(float time) {
-        if(songTime < 0)
+        if(songTime < 0) {
+            if(time != 0)
+                return;
             GetObjects();
+        }
         songTime = time;
         auto& frames = currentReplay.replay->frames;
 

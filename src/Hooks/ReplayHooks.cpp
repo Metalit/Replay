@@ -66,7 +66,7 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
 
 #include "GlobalNamespace/PauseMenuManager.hpp"
 
-// handle pause and resume
+// handle pause, resume, and restart
 MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
     if(Manager::replaying)
         Manager::ReplayPaused();
@@ -76,6 +76,11 @@ MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &Pause
     if(Manager::replaying)
         Manager::ReplayUnpaused();
     PauseMenuManager_HandleResumeFromPauseAnimationDidFinish(self);
+}
+MAKE_HOOK_MATCH(PauseMenuManager_RestartButtonPressed, &PauseMenuManager::RestartButtonPressed, void, PauseMenuManager* self) {
+    if(Manager::replaying)
+        Manager::ReplayRestarted();
+    PauseMenuManager_RestartButtonPressed(self);
 }
 
 #include "GlobalNamespace/Saber.hpp"
@@ -169,21 +174,18 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 
-// watch for restarts
+// watch for level ending
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish, &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData, LevelCompletionResults* levelCompletionResults) {
     
-    if(Manager::replaying && playerSpecificSettings)
-        playerSpecificSettings->leftHanded = wasLeftHanded;
-
-    SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
-    
     if(Manager::replaying) {
-        if(levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Restart)
-            Manager::ReplayRestarted();
-        else
+        if(playerSpecificSettings)
+            playerSpecificSettings->leftHanded = wasLeftHanded;
+        if(levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
             Manager::ReplayEnded();
     }
+
+    SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
 }
 
 HOOK_FUNC(
@@ -191,6 +193,7 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish);
+    INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
     INSTALL_HOOK(logger, Saber_ManualUpdate);
     INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
