@@ -185,6 +185,8 @@ namespace Pause {
     }
 
     void ResetEnergyBar() {
+        if(!energyBar->get_isActiveAndEnabled())
+            return;
         static auto RebindPlayableGraphOutputs = il2cpp_utils::resolve_icall<void, UnityEngine::Playables::PlayableDirector*>
             ("UnityEngine.Playables.PlayableDirector::RebindPlayableGraphOutputs");
         energyBar->playableDirector->Stop();
@@ -215,19 +217,20 @@ namespace Pause {
         gameEnergyCounter->ProcessEnergyChange(0);
         if(values.energy > 0 && !energyBar->energyBar->get_enabled())
             ResetEnergyBar();
-        energyBar->RefreshEnergyUI(values.energy);
+        if(energyBar->get_isActiveAndEnabled())
+            energyBar->RefreshEnergyUI(values.energy);
         scoreController->multipliedScore = values.score;
         scoreController->modifiedScore = values.score * modifierMult;
         scoreController->immediateMaxPossibleMultipliedScore = values.maxScore;
         scoreController->immediateMaxPossibleModifiedScore = values.maxScore * modifierMult;
         if(values.maxScore == 0)
             scoreController->immediateMaxPossibleModifiedScore = 1;
-        if(!scoreController->scoreDidChangeEvent->Equals(nullptr))
-            scoreController->scoreDidChangeEvent->Invoke(values.score, values.score * modifierMult);
-        comboController->combo = values.combo;
-        comboController->maxCombo = std::max(comboController->maxCombo, values.combo);
-        if(!comboController->comboDidChangeEvent->Equals(nullptr))
-            comboController->comboDidChangeEvent->Invoke(values.combo);
+        scoreController->scoreDidChangeEvent->Invoke(values.score, values.score * modifierMult);
+        comboController->combo = values.combo - 1;
+        comboController->maxCombo = std::max(comboController->maxCombo, values.combo) - 1;
+        // crashes on trying to invoke the event myself (with no hud) idk why
+        NoteCutInfo goodCut{}; goodCut.speedOK = goodCut.directionOK = goodCut.saberTypeOK = true; goodCut.wasCutTooSoon = false;
+        il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(goodCut));
     }
 
     void DespawnObjects() {
