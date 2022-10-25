@@ -10,12 +10,17 @@ using namespace GlobalNamespace;
 #include "GlobalNamespace/GameplayModifiers.hpp"
 #include "GlobalNamespace/PlayerSpecificSettings.hpp"
 #include "GlobalNamespace/PracticeSettings.hpp"
+#include "GlobalNamespace/VRCenterAdjust.hpp"
+#include "GlobalNamespace/Vector3SO.hpp"
+#include "GlobalNamespace/FloatSO.hpp"
+#include "UnityEngine/Resources.hpp"
 
 SafePtr<GameplayModifiers> modifierHolder{};
 PlayerSpecificSettings* playerSpecificSettings = nullptr;
 bool wasLeftHanded = false;
-
-#include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
+VRCenterAdjust* roomAdjust = nullptr;
+Vector3 oldPosAdj;
+float oldRotAdj;
 
 // set modifiers on replay start
 MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuTransitionsHelper::*)(StringW, IDifficultyBeatmap*, IPreviewBeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<StandardLevelScenesTransitionSetupDataSO*, LevelCompletionResults*>*, System::Action_2<LevelScenesTransitionSetupDataSO*, LevelCompletionResults*>*)>(&MenuTransitionsHelper::StartStandardLevel),
@@ -46,6 +51,12 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
         playerSpecificSettings = f7;
         wasLeftHanded = f7->leftHanded;
         f7->leftHanded = modifiers.leftHanded;
+
+        // setting the local transform doesn't work for some reason, even after the scene change
+        roomAdjust = UnityEngine::Resources::FindObjectsOfTypeAll<VRCenterAdjust*>().First();
+        oldPosAdj = roomAdjust->roomCenter->get_value();
+        oldRotAdj = roomAdjust->roomRotation->get_value();
+        roomAdjust->ResetRoom();
 
         if(info.practice)
             f8 = PracticeSettings::New_ctor(info.startTime, info.speed);
@@ -181,6 +192,12 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
     if(Manager::replaying) {
         if(playerSpecificSettings)
             playerSpecificSettings->leftHanded = wasLeftHanded;
+        playerSpecificSettings = nullptr;
+        if(roomAdjust) {
+            roomAdjust->roomCenter->set_value(oldPosAdj);
+            roomAdjust->roomRotation->set_value(oldRotAdj);
+        }
+        roomAdjust = nullptr;
         if(levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
             Manager::ReplayEnded();
     }
