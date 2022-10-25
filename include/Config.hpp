@@ -35,6 +35,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(FOV, float, "FOV", 80)
     CONFIG_VALUE(FPS, int, "FPS", 60)
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
+    CONFIG_VALUE(CameraOff, bool, "Disable Camera", false, "Disables the main camera to speed up renders")
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
     CONFIG_INIT_FUNCTION(
         CONFIG_INIT_VALUE(CamMode)
@@ -54,6 +55,7 @@ DECLARE_CONFIG(Config,
         CONFIG_INIT_VALUE(FOV)
         CONFIG_INIT_VALUE(FPS)
         CONFIG_INIT_VALUE(Pauses)
+        CONFIG_INIT_VALUE(CameraOff)
         CONFIG_INIT_VALUE(AudioMode)
     )
 )

@@ -16,6 +16,7 @@ Hollywood::AudioCapture* audioCapture = nullptr;
 UnityEngine::Camera* customCamera = nullptr;
 
 ReplayHelpers::CameraRig* cameraRig = nullptr;
+UnityEngine::Camera* mainCamera = nullptr;
 
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
@@ -110,14 +111,14 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             textObj->set_alignment(TMPro::TextAlignmentOptions::Center);
         }
 
-        // set culling matrix for moved camera modes and for rendering
         if(Manager::Camera::GetMode() == (int) CameraMode::Headset)
             return;
         
+        // set culling matrix for moved camera modes and for rendering
         static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
             ("UnityEngine.Camera::set_cullingMatrix_Injected");
 
-        auto mainCamera = UnityEngine::Camera::get_main();
+        mainCamera = UnityEngine::Camera::get_main();
         set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
@@ -166,7 +167,9 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
             UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
-            // mainCamera->set_enabled(false);
+
+            if(getConfig().CameraOff.GetValue())
+                mainCamera->set_enabled(false);
         } else {
             auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
                 return x->get_gameObject()->get_activeInHierarchy();
@@ -192,8 +195,9 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
     if(cameraRig)
         UnityEngine::Object::Destroy(cameraRig);
     cameraRig = nullptr;
-
-    // UnityEngine::Camera::get_main()->set_enabled(true);
+    if(mainCamera)
+        mainCamera->set_enabled(true);
+    mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
 

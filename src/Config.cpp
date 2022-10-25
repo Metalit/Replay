@@ -133,8 +133,10 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     
     SetButtons(AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150));
     
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120))->get_gameObject();
+    SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120));
     
+    AddConfigValueToggle(transform, getConfig().CameraOff);
+
     AddConfigValueToggle(transform, getConfig().AudioMode);
 }
 
