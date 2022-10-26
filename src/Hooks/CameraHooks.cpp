@@ -111,73 +111,71 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             textObj->set_alignment(TMPro::TextAlignmentOptions::Center);
         }
 
-        if(Manager::Camera::GetMode() == (int) CameraMode::Headset)
-            return;
-        
         // set culling matrix for moved camera modes and for rendering
         static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
             ("UnityEngine.Camera::set_cullingMatrix_Injected");
-
         mainCamera = UnityEngine::Camera::get_main();
-        set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
-        auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
-        cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
-        auto trans = mainCamera->get_transform();
-        cameraGO->get_transform()->SetPositionAndRotation(trans->get_position(), trans->get_rotation());
-        cameraGO->get_transform()->SetParent(trans->GetParent(), false);
-        trans->SetParent(cameraGO->get_transform(), false);
+        if(Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+            set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+                MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
-        if(!Manager::Camera::rendering)
-            return;
-        
-        if(!getConfig().AudioMode.GetValue()) {
-            LOG_INFO("Beginning video capture");
-            customCamera = UnityEngine::Object::Instantiate(mainCamera);
-            customCamera->set_enabled(true);
+            auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
+            cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
+            auto trans = mainCamera->get_transform();
+            cameraGO->get_transform()->SetPositionAndRotation(trans->get_position(), trans->get_rotation());
+            cameraGO->get_transform()->SetParent(trans->GetParent(), false);
+            trans->SetParent(cameraGO->get_transform(), false);
+        }
 
-            while (customCamera->get_transform()->get_childCount() > 0)
-                UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
-            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
-            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
-            UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
-            
-            customCamera->set_clearFlags(mainCamera->get_clearFlags());
-            customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
-            customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
-            customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
-            customCamera->set_hideFlags(mainCamera->get_hideFlags());
-            customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
-            // debris culling mask is set later in the frame, in a different Start() method
-            SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
-            // Makes the camera render before the main
-            customCamera->set_depth(mainCamera->get_depth() - 1);
+        if(Manager::Camera::rendering) {
+            if(!getConfig().AudioMode.GetValue()) {
+                LOG_INFO("Beginning video capture");
+                customCamera = UnityEngine::Object::Instantiate(mainCamera);
+                customCamera->set_enabled(true);
 
-            set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-                MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
-            
-            Hollywood::CameraRecordingSettings settings{
-                .width = resolutions[getConfig().Resolution.GetValue()].first,
-                .height = resolutions[getConfig().Resolution.GetValue()].second,
-                .fps = getConfig().FPS.GetValue(),
-                .bitrate = getConfig().Bitrate.GetValue(),
-                .movieModeRendering = true,
-                .fov = getConfig().FOV.GetValue()
-            };
-            Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
+                while (customCamera->get_transform()->get_childCount() > 0)
+                    UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
+                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
+                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
+                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
+                
+                customCamera->set_clearFlags(mainCamera->get_clearFlags());
+                customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
+                customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
+                customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
+                customCamera->set_hideFlags(mainCamera->get_hideFlags());
+                customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
+                // debris culling mask is set later in the frame, in a different Start() method
+                SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
+                // Makes the camera render before the main
+                customCamera->set_depth(mainCamera->get_depth() - 1);
 
-            UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+                set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+                    MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
+                
+                Hollywood::CameraRecordingSettings settings{
+                    .width = resolutions[getConfig().Resolution.GetValue()].first,
+                    .height = resolutions[getConfig().Resolution.GetValue()].second,
+                    .fps = getConfig().FPS.GetValue(),
+                    .bitrate = getConfig().Bitrate.GetValue(),
+                    .movieModeRendering = true,
+                    .fov = getConfig().FOV.GetValue()
+                };
+                Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
-            if(getConfig().CameraOff.GetValue())
-                mainCamera->set_enabled(false);
-        } else {
-            LOG_INFO("Beginning audio capture");
-            auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
-                return x->get_gameObject()->get_activeInHierarchy();
-            });
-            audioCapture = Hollywood::SetAudioCapture(audioListener);
-            audioCapture->OpenFile("/sdcard/audio.wav");
+                UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+
+                if(getConfig().CameraOff.GetValue())
+                    mainCamera->set_enabled(false);
+            } else {
+                LOG_INFO("Beginning audio capture");
+                auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
+                    return x->get_gameObject()->get_activeInHierarchy();
+                });
+                audioCapture = Hollywood::SetAudioCapture(audioListener);
+                audioCapture->OpenFile("/sdcard/audio.wav");
+            }
         }
     }
 }
