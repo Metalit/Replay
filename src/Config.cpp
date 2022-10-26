@@ -136,8 +136,6 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120));
     
     AddConfigValueToggle(transform, getConfig().CameraOff);
-
-    AddConfigValueToggle(transform, getConfig().AudioMode);
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"

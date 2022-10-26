@@ -162,11 +162,22 @@ namespace Menu {
     }
 }
 
-TMPro::TextMeshProUGUI* CreateCenteredText(UnityEngine::UI::VerticalLayoutGroup* parent) {
+void SetPreferred(auto* object, std::optional<float> width, std::optional<float> height) {
+    UnityEngine::UI::LayoutElement* layout = object->template GetComponent<UnityEngine::UI::LayoutElement*>();
+    if(!layout)
+        layout = object->get_gameObject()->template AddComponent<UnityEngine::UI::LayoutElement*>();
+    if(width.has_value())
+        layout->set_preferredWidth(*width);
+    if(height.has_value())
+        layout->set_preferredHeight(*height);
+}
+
+TMPro::TextMeshProUGUI* CreateCenteredText(UnityEngine::UI::HorizontalLayoutGroup* parent) {
     auto text = BeatSaberUI::CreateText(parent->get_transform(), "");
     text->set_fontSize(4.5);
     text->set_alignment(TMPro::TextAlignmentOptions::Center);
     text->set_lineSpacing(-35);
+    SetPreferred(text, 40, 15);
     return text;
 }
 
@@ -177,52 +188,67 @@ std::string GetLayeredText(const std::string& label, const std::string& text, bo
 void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
-        
-    auto levelBarTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<LevelBar*>().First([](LevelBar* x) {
+    
+    using namespace UnityEngine;
+    
+    auto mainLayout = BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
+    mainLayout->set_childControlWidth(true);
+    mainLayout->set_childForceExpandWidth(true);
+    mainLayout->set_childControlHeight(false);
+    mainLayout->set_childForceExpandHeight(false);
+    SetPreferred(mainLayout, 80, std::nullopt);
+    // mainLayout->get_rectTransform()->set_anchoredPosition({0, 25});
+
+    auto levelBarTemplate = Resources::FindObjectsOfTypeAll<LevelBar*>().First([](LevelBar* x) {
         return x->get_transform()->GetParent()->get_name() == "PracticeViewController";
     });
-    levelBar = UnityEngine::Object::Instantiate(levelBarTemplate->get_gameObject(), get_transform())->GetComponent<LevelBar*>();
+    levelBar = Object::Instantiate(levelBarTemplate->get_gameObject(), mainLayout->get_transform())->GetComponent<LevelBar*>();
     levelBar->set_name("ReplayLevelBarSimple");
-    levelBar->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({0, -2});
+    SetPreferred(levelBar, std::nullopt, 20);
 
-    sourceText = BeatSaberUI::CreateText(get_transform(), "", {0, 19});
+    sourceText = BeatSaberUI::CreateText(mainLayout, "");
     sourceText->set_fontSize(4.5);
     sourceText->set_alignment(TMPro::TextAlignmentOptions::Center);
+    // SetPreferred(sourceText, std::nullopt, 5);
 
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(get_transform());
-    horizontal->set_spacing(5);
-    horizontal->set_childControlWidth(false);
-    horizontal->set_childForceExpandWidth(false);
-    horizontal->get_rectTransform()->set_anchoredPosition({38.5, -10});
+    auto horizontal1 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
+
+    dateText = CreateCenteredText(horizontal1);
+    modifiersText = CreateCenteredText(horizontal1);
     
-    auto layout1 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout1->set_spacing(3);
-    layout1->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
+    auto horizontal2 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
+
+    scoreText = CreateCenteredText(horizontal2);
+    failText = CreateCenteredText(horizontal2);
     
-    auto layout2 = BeatSaberUI::CreateVerticalLayoutGroup(horizontal);
-    layout2->set_spacing(3);
-    layout2->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
+    auto horizontal3 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
+    horizontal3->set_spacing(5);
 
-    dateText = CreateCenteredText(layout1);
-    modifiersText = CreateCenteredText(layout2);
-    scoreText = CreateCenteredText(layout1);
-    failText = CreateCenteredText(layout2);
-
-    auto layout3 = BeatSaberUI::CreateVerticalLayoutGroup(layout1);
-    layout3->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
-    auto layout4 = BeatSaberUI::CreateVerticalLayoutGroup(layout2);
-    layout4->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(40);
-
-    watchButton = BeatSaberUI::CreateUIButton(layout3, "Watch Replay", "ActionButton", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnWatchButtonClick);
-    renderButton = BeatSaberUI::CreateUIButton(layout4, "Record Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), OnRenderButtonClick);
+    watchButton = BeatSaberUI::CreateUIButton(horizontal3, "Watch Replay", "ActionButton", Vector2(), Vector2(0, 10), OnWatchButtonClick);
+    renderButton = BeatSaberUI::CreateUIButton(horizontal3, "Record Replay", Vector2(), Vector2(0, 10), OnRenderButtonClick);
+    
+    auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
+    horizontal4->set_spacing(5);
+    
     std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
-    BeatSaberUI::CreateDropdown(layout3, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet)
-        ->get_transform()->get_parent()->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(10);
-    deleteButton = BeatSaberUI::CreateUIButton(layout4, "Delete Replay", UnityEngine::Vector2(), UnityEngine::Vector2(0, 10), [this]() {
+    auto dropdown = BeatSaberUI::CreateDropdown(horizontal4, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet);
+    SetPreferred(dropdown->get_transform()->get_parent(), std::nullopt, 10);
+    
+    auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode);
+    Object::Destroy(toggle->GetComponent<UI::LayoutElement*>());
+    
+    deleteButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(48, -22), Vector2(10, 10), [this]() {
         confirmModal->Show(true, true, nullptr);
     });
+    deleteButton->get_gameObject()->SetActive(true);
+    UnityEngine::Object::Destroy(deleteButton->get_transform()->Find("Content")->GetComponent<UI::LayoutElement*>());
+    auto icon = BeatSaberUI::CreateImage(deleteButton, GetDeleteIcon());
+    icon->get_transform()->set_localScale({0.8, 0.8, 0.8});
+    icon->set_preserveAspect(true);
 
-    increment = BeatSaberUI::CreateIncrementSetting(get_transform(), "", 0, 1, currentReplay + 1, 1, replayInfos.size(), {-60, -74}, OnIncrementChanged);
+    increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, currentReplay + 1, 1, replayInfos.size(), OnIncrementChanged);
+    Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
+    ((RectTransform*) increment->get_transform()->GetChild(1))->set_anchoredPosition({-20, 0});
     
     confirmModal = BeatSaberUI::CreateModal(get_transform(), {58, 24}, nullptr);
     
@@ -236,11 +262,11 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
         confirmModal->Hide(true, nullptr);
         OnDeleteButtonClick();
     });
-    UnityEngine::Object::Destroy(confirmButton->get_transform()->Find(contentName)->GetComponent<UnityEngine::UI::LayoutElement*>());
+    Object::Destroy(confirmButton->get_transform()->Find(contentName)->GetComponent<UI::LayoutElement*>());
     auto cancelButton = BeatSaberUI::CreateUIButton(confirmModal->get_transform(), "Cancel", {-11.5, -6}, {20, 10}, [this] {
         confirmModal->Hide(true, nullptr);
     });
-    UnityEngine::Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UnityEngine::UI::LayoutElement*>());
+    Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UI::LayoutElement*>());
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
@@ -301,7 +327,7 @@ void Menu::ReplayViewController::UpdateUI() {
     scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
 
-    deleteButton->set_interactable(usingLocalReplays);
+    deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 
     auto buttons = increment->get_transform()->GetChild(1)->GetComponentsInChildren<UnityEngine::UI::Button*>();
     buttons.First()->set_interactable(currentReplay + 1 != increment->MinValue);
