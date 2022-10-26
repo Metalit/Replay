@@ -133,6 +133,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             return;
         
         if(!getConfig().AudioMode.GetValue()) {
+            LOG_INFO("Beginning video capture");
             customCamera = UnityEngine::Object::Instantiate(mainCamera);
             customCamera->set_enabled(true);
 
@@ -171,6 +172,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             if(getConfig().CameraOff.GetValue())
                 mainCamera->set_enabled(false);
         } else {
+            LOG_INFO("Beginning audio capture");
             auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
                 return x->get_gameObject()->get_activeInHierarchy();
             });

@@ -91,12 +91,14 @@ namespace Manager {
         }
 
         int GetMode() {
-            if(getConfig().CamMode.GetValue() == (int) CameraMode::Headset && rendering)
+            if(getConfig().CamMode.GetValue() == (int) CameraMode::Headset && !getConfig().AudioMode.GetValue() && rendering)
                 return (int) CameraMode::Smooth;
             return getConfig().CamMode.GetValue();
         }
 
         void SetGraphicsSettings() {
+            if(getConfig().AudioMode.GetValue())
+                return;
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             int shockwaves = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
             settings->maxShockwaveParticles->set_value(shockwaves);
@@ -115,6 +117,8 @@ namespace Manager {
             }
         }
         void UnsetGraphicsSettings() {
+            if(getConfig().AudioMode.GetValue())
+                return;
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
             settings->screenDisplacementEffectsEnabled->set_value(false);

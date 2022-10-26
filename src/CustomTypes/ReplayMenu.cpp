@@ -68,7 +68,7 @@ void OnCameraModeSet(StringW value) {
 }
 
 void OnRenderButtonClick() {
-    Manager::Camera::rendering = !getConfig().AudioMode.GetValue();
+    Manager::Camera::rendering = true;
     Manager::ReplayStarted(viewController->GetReplay());
     levelView->actionButton->get_onClick()->Invoke();
 }
@@ -197,7 +197,6 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     mainLayout->set_childControlHeight(false);
     mainLayout->set_childForceExpandHeight(false);
     SetPreferred(mainLayout, 80, std::nullopt);
-    // mainLayout->get_rectTransform()->set_anchoredPosition({0, 25});
 
     auto levelBarTemplate = Resources::FindObjectsOfTypeAll<LevelBar*>().First([](LevelBar* x) {
         return x->get_transform()->GetParent()->get_name() == "PracticeViewController";
@@ -209,7 +208,6 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     sourceText = BeatSaberUI::CreateText(mainLayout, "");
     sourceText->set_fontSize(4.5);
     sourceText->set_alignment(TMPro::TextAlignmentOptions::Center);
-    // SetPreferred(sourceText, std::nullopt, 5);
 
     auto horizontal1 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
 
@@ -240,7 +238,6 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     deleteButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(48, -22), Vector2(10, 10), [this]() {
         confirmModal->Show(true, true, nullptr);
     });
-    deleteButton->get_gameObject()->SetActive(true);
     UnityEngine::Object::Destroy(deleteButton->get_transform()->Find("Content")->GetComponent<UI::LayoutElement*>());
     auto icon = BeatSaberUI::CreateImage(deleteButton, GetDeleteIcon());
     icon->get_transform()->set_localScale({0.8, 0.8, 0.8});
