@@ -4,6 +4,7 @@
 #include "Formats/FrameReplay.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
+#include "Sprites.hpp"
 #include "Config.hpp"
 
 #include "GlobalNamespace/BeatmapDifficulty.hpp"

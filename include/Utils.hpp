@@ -19,8 +19,6 @@ std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
 
 std::unordered_map<std::string, ReplayWrapper> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
 
-UnityEngine::Sprite* GetReplayIcon();
-
 std::string SecondsToString(int value);
 
 std::string GetStringForTimeSinceNow(std::time_t start);
