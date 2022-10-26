@@ -104,7 +104,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(transform);
     horizontal->set_childControlWidth(true);
-    BeatSaberUI::CreateText(horizontal, "Render Settings")->set_alignment(TMPro::TextAlignmentOptions::Center);
+    BeatSaberUI::CreateText(horizontal, "Recording Settings")->set_alignment(TMPro::TextAlignmentOptions::Center);
 
     AddConfigValueToggle(transform, getConfig().Pauses);
 

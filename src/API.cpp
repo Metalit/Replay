@@ -28,6 +28,20 @@ EXPOSE_API(PlayBSORFromFile, bool, std::string filePath) {
     return false;
 }
 
+EXPOSE_API(PlayBSORFromFileForced, bool, std::string filePath) {
+    auto replay = ReadBSOR(filePath);
+    if (replay.IsValid()) {
+        auto levelView = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::StandardLevelDetailView*>().First();
+
+        Manager::Camera::rendering = false;
+        Manager::ReplayStarted(replay);
+        levelView->actionButton->get_onClick()->Invoke();
+
+        return true;
+    }
+    return false;
+}
+
 EXPOSE_API(IsInReplay, bool) {
     return Manager::replaying;
 }
