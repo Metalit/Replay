@@ -185,6 +185,18 @@ std::string GetLayeredText(const std::string& label, const std::string& text, bo
     return fmt::format("<i><uppercase><color=#bdbdbd>{}</color></uppercase>{}{}</i>", label, newline ? "\n" : "", text);
 }
 
+inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), 
+        [&configValue, callback = std::move(callback)](bool value) { 
+            configValue.SetValue(value);
+            callback(value); 
+        }
+    );
+    if(!configValue.GetHoverHint().empty())
+        BeatSaberUI::AddHoverHint(object->get_gameObject(), configValue.GetHoverHint());
+    return object;
+}
+
 void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
@@ -223,7 +235,8 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     horizontal3->set_spacing(5);
 
     watchButton = BeatSaberUI::CreateUIButton(horizontal3, "Watch Replay", "ActionButton", Vector2(), Vector2(0, 10), OnWatchButtonClick);
-    renderButton = BeatSaberUI::CreateUIButton(horizontal3, "Record Replay", Vector2(), Vector2(0, 10), OnRenderButtonClick);
+    std::string text = getConfig().AudioMode.GetValue() ? "Record Replay" : "Render Replay";
+    renderButton = BeatSaberUI::CreateUIButton(horizontal3, text, Vector2(), Vector2(0, 10), OnRenderButtonClick);
     
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
@@ -232,7 +245,10 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto dropdown = BeatSaberUI::CreateDropdown(horizontal4, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet);
     SetPreferred(dropdown->get_transform()->get_parent(), std::nullopt, 10);
     
-    auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode);
+    auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode, [this](bool audioMode) {
+        std::string text = audioMode ? "Record Replay" : "Render Replay";
+        BeatSaberUI::SetButtonText(renderButton, text);
+    });
     Object::Destroy(toggle->GetComponent<UI::LayoutElement*>());
     
     deleteButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(48, -22), Vector2(10, 10), [this]() {
