@@ -78,15 +78,15 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
 #include "GlobalNamespace/PauseMenuManager.hpp"
 
 // handle pause, resume, and restart
-MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
+MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Replay, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
     if(Manager::replaying)
         Manager::ReplayPaused();
-    PauseMenuManager_ShowMenu(self);
+    PauseMenuManager_ShowMenu_Replay(self);
 }
-MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
+MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
     if(Manager::replaying)
         Manager::ReplayUnpaused();
-    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish(self);
+    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_RestartButtonPressed, &PauseMenuManager::RestartButtonPressed, void, PauseMenuManager* self) {
     if(Manager::replaying)
@@ -208,8 +208,8 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
-    INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
-    INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish);
+    INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Replay);
+    INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay);
     INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
     INSTALL_HOOK(logger, Saber_ManualUpdate);
     INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);

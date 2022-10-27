@@ -205,14 +205,25 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
 }
 
 #include "GlobalNamespace/PauseController.hpp"
+#include "GlobalNamespace/PauseMenuManager.hpp"
 
-// prevent pauses during recording
+// prevent pauses during recording or enable camera if allowed
 MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
     
     if(Manager::replaying && Manager::Camera::rendering)
         return getConfig().Pauses.GetValue();
     
     return PauseController_get_canPause(self);
+}
+MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Camera, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
+    if(Manager::replaying && Manager::Camera::rendering && !getConfig().AudioMode.GetValue() && getConfig().CameraOff.GetValue() && mainCamera) // wow
+        mainCamera->set_enabled(true);
+    PauseMenuManager_ShowMenu_Camera(self);
+}
+MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
+    if(Manager::replaying && Manager::Camera::rendering && !getConfig().AudioMode.GetValue() && getConfig().CameraOff.GetValue() && mainCamera)
+        mainCamera->set_enabled(false);
+    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera(self);
 }
 
 #include "GlobalNamespace/MainSystemInit.hpp"
@@ -233,5 +244,7 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults);
     INSTALL_HOOK(logger, PauseController_get_canPause);
+    INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Camera);
+    INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera);
     INSTALL_HOOK(logger, MainSystemInit_Init);
 )
