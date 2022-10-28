@@ -263,7 +263,8 @@ namespace Manager {
 
     void SetLevel(IDifficultyBeatmap* level) {
         beatmap = level;
-        RefreshLevelReplays();
+        if(!replaying)
+            RefreshLevelReplays();
     }
 
     void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external) {
