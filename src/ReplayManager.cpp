@@ -254,6 +254,7 @@ namespace Manager {
     
     bool replaying = false;
     bool paused = false;
+    bool externalReplays = false;
     ReplayWrapper currentReplay;
     IDifficultyBeatmap* beatmap = nullptr;
 
@@ -262,12 +263,17 @@ namespace Manager {
     }
 
     void SetLevel(IDifficultyBeatmap* level) {
+        
+        if (!externalReplays || (beatmap != NULL && beatmap != level)) {
+            beatmap = level;
+            RefreshLevelReplays();
+        }
         beatmap = level;
-        RefreshLevelReplays();
     }
 
     void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external) {
         currentReplays = replays;
+        externalReplays = external;
         if(currentReplays.size() > 0) {
             if(!external)
                 Menu::SetButtonEnabled(true);

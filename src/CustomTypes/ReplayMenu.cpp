@@ -36,7 +36,7 @@ const std::vector<std::string> dropdownStrings = {
 };
 
 void OnReplayButtonClick() {
-    if(!usingLocalReplays)
+    if(usingLocalReplays)
         Manager::RefreshLevelReplays();
     Menu::PresentMenu();
 }
