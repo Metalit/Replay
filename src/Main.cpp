@@ -14,7 +14,7 @@
 
 #include "hollywood/shared/Hollywood.hpp"
 
-#include "QuestUI/shared/QuestUI.hpp"
+#include "questui/shared/QuestUI.hpp"
 
 #include "custom-types/shared/register.hpp"
 
