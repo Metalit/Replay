@@ -70,6 +70,9 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
         }
     }
 
+    if(!std::filesystem::exists(GetBSORsPath()))
+        return replays;
+    
     std::string bsorDiffName;
     switch ((int) beatmap->get_difficulty()) {
     case 0:
