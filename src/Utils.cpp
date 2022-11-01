@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "Utils.hpp"
+#include "Config.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
@@ -12,6 +13,7 @@
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
+#include "GlobalNamespace/OVRInput_Button.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
 
 #include "custom-types/shared/coroutine.hpp"
@@ -422,4 +424,40 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
             .maxScore = maxScore
         };
     }
+}
+
+const std::vector<OVRInput::Button> buttons = {
+    OVRInput::Button::None,
+    OVRInput::Button::PrimaryHandTrigger,
+    OVRInput::Button::PrimaryIndexTrigger,
+    OVRInput::Button::One,
+    OVRInput::Button::Two,
+    OVRInput::Button::PrimaryThumbstickUp,
+    OVRInput::Button::PrimaryThumbstickDown,
+    OVRInput::Button::PrimaryThumbstickLeft,
+    OVRInput::Button::PrimaryThumbstickRight
+};
+const std::vector<OVRInput::Controller> controllers = {
+    OVRInput::Controller::LTouch,
+    OVRInput::Controller::RTouch
+};
+
+inline bool IsButtonDown(const int& buttonIdx, int controller) {
+    if(buttonIdx <= 0) return false;
+    auto button = buttons[buttonIdx];
+    if(controller == 2)
+        return OVRInput::GetDown(button, controllers[0]) || OVRInput::GetDown(button, controllers[1]);
+    return OVRInput::GetDown(button, controllers[controller]);
+}
+
+bool IsButtonDown(const Button& button) {
+    return IsButtonDown(button.Button, button.Controller);
+}
+
+int IsButtonDown(const ButtonPair& button) {
+    if(IsButtonDown(button.ForwardButton, button.ForwardController))
+        return 1;
+    else if(IsButtonDown(button.BackButton, button.BackController))
+        return -1;
+    return 0;
 }

@@ -15,8 +15,37 @@ struct NoteEvent;
 struct WallEvent;
 struct HeightEvent;
 struct PauseEvent;
+namespace GlobalNamespace {
+    class Saber;
+    class PlayerHeadAndObstacleInteraction;
+    class PlayerTransforms;
+    class PauseMenuManager;
+    class ScoreController;
+    class ComboController;
+    class GameEnergyCounter;
+    class GameEnergyUIPanel;
+    class NoteCutSoundEffectManager;
+    class AudioManagerSO;
+    class BeatmapObjectManager;
+    class BeatmapCallbacksController;
+}
 
 namespace Manager {
+
+    namespace Objects {
+        extern GlobalNamespace::Saber *leftSaber, *rightSaber;
+        extern GlobalNamespace::PlayerHeadAndObstacleInteraction* obstacleChecker;
+        extern GlobalNamespace::PlayerTransforms* playerTransforms;
+        extern GlobalNamespace::PauseMenuManager* pauseManager;
+        extern GlobalNamespace::ScoreController* scoreController;
+        extern GlobalNamespace::ComboController* comboController;
+        extern GlobalNamespace::GameEnergyCounter* gameEnergyCounter;
+        extern GlobalNamespace::GameEnergyUIPanel* energyBar;
+        extern GlobalNamespace::NoteCutSoundEffectManager* noteSoundManager;
+        extern GlobalNamespace::AudioManagerSO* audioManager;
+        extern GlobalNamespace::BeatmapObjectManager* beatmapObjectManager;
+        extern GlobalNamespace::BeatmapCallbacksController* callbackController;
+    }
 
     namespace Camera {
         extern bool rendering;
@@ -64,6 +93,7 @@ namespace Manager {
     const ReplayInfo& GetCurrentInfo();
 
     void UpdateTime(float songTime);
+    void CheckInputs();
     float GetSongTime();
     const Frame& GetFrame();
     const Frame& GetNextFrame();

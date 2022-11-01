@@ -66,12 +66,13 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
 
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 
-// keep song time and current frame up to date
+// keep song time and current frame up to date, plus controller inputs
 MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
 
-    if(Manager::replaying && !Manager::paused)
+    if(Manager::replaying && !Manager::paused) {
         Manager::UpdateTime(self->songTime);
-
+        Manager::CheckInputs();
+    }
     AudioTimeSyncController_Update(self);
 }
 

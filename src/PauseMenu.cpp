@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "PauseMenu.hpp"
+#include "Config.hpp"
 
 #include "ReplayManager.hpp"
 #include "Formats/FrameReplay.hpp"
@@ -19,10 +20,8 @@
 #include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
 #include "GlobalNamespace/MemoryPoolContainer_1.hpp"
 #include "GlobalNamespace/GameplayModifiersModelSO.hpp"
-#include "GlobalNamespace/BeatmapObjectSpawnController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksController.hpp"
 #include "GlobalNamespace/CallbacksInTime.hpp"
-#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
 #include "GlobalNamespace/SliderController.hpp"
 #include "GlobalNamespace/AudioManagerSO.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
@@ -41,6 +40,7 @@
 
 using namespace GlobalNamespace;
 using namespace QuestUI;
+using namespace Manager::Objects;
 
 void InsertIntoSortedListFromEnd(List<ScoringElement*>* sortedList, ScoringElement* newItem) {
     static auto* ___internal__method = il2cpp_utils::FindMethodUnsafe("", "ListExtensions", "InsertIntoSortedListFromEnd", 2);
@@ -104,14 +104,6 @@ namespace Pause {
     UnityEngine::GameObject* parent;
     SliderSetting* timeSlider;
     SliderSetting* speedSlider;
-    ScoreController* scoreController;
-    ComboController* comboController;
-    GameEnergyCounter* gameEnergyCounter;
-    GameEnergyUIPanel* energyBar;
-    NoteCutSoundEffectManager* noteSoundManager;
-    AudioManagerSO* audioManager;
-    BeatmapObjectManager* beatmapObjectManager;
-    BeatmapCallbacksController* callbackController;
     PauseMenuManager* lastPauseMenu = nullptr;
 
     bool touchedTime = false, touchedSpeed = false;
@@ -120,15 +112,6 @@ namespace Pause {
         static ConstString menuName("ReplayPauseMenu");
         if(lastPauseMenu != pauseMenu && !pauseMenu->pauseContainerTransform->Find(menuName)) {
             LOG_INFO("Creating pause UI");
-            auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>().First();
-            scoreController = (ScoreController*) hasOtherObjects->scoreController;
-            comboController = hasOtherObjects->comboController;
-            gameEnergyCounter = hasOtherObjects->gameEnergyCounter;
-            energyBar = UnityEngine::Resources::FindObjectsOfTypeAll<GameEnergyUIPanel*>().First();
-            noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>().First();
-            audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>().First();
-            beatmapObjectManager = noteSoundManager->beatmapObjectManager;
-            callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>().First()->beatmapCallbacksController;
 
             parent = BeatSaberUI::CreateCanvas();
             parent->set_name(menuName);
@@ -136,7 +119,7 @@ namespace Pause {
             parent->get_transform()->set_localScale(Vector3::one());
             SetTransform(parent, {0, -15}, {90, 25});
             
-            float time = scoreController->audioTimeSyncController->songTime;
+            float time = Manager::GetSongTime();
             float startTime = scoreController->audioTimeSyncController->startSongTime;
             float endTime = scoreController->audioTimeSyncController->get_songLength();
             auto& info = Manager::GetCurrentInfo();
@@ -332,13 +315,22 @@ namespace Pause {
     }
 
     void SetTime(float time) {
+        float startTime = scoreController->audioTimeSyncController->startSongTime;
+        float endTime = scoreController->audioTimeSyncController->get_songLength();
+        auto& info = Manager::GetCurrentInfo();
+        if(info.practice)
+            startTime = info.startTime;
+        if(info.failed)
+            endTime = info.failTime;
+        if(time < startTime)
+            time = startTime;
+        if(time > endTime)
+            time = endTime;
         LOG_INFO("Time set to {}", time);
         DespawnObjects();
         ResetControllers();
         callbackController->startFilterTime = time;
         Manager::ReplayRestarted(false);
-        // restarted resets pause value as well
-        Manager::paused = true;
         Manager::UpdateTime(time);
         float controllerTime = (time - scoreController->audioTimeSyncController->startSongTime) / scoreController->audioTimeSyncController->timeScale;
         scoreController->audioTimeSyncController->SeekTo(controllerTime);

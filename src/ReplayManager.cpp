@@ -18,6 +18,14 @@
 #include "GlobalNamespace/Saber.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
+#include "GlobalNamespace/GameEnergyUIPanel.hpp"
+#include "GlobalNamespace/ScoreController.hpp"
+#include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
+#include "GlobalNamespace/AudioManagerSO.hpp"
+#include "GlobalNamespace/BeatmapObjectSpawnController.hpp"
+#include "GlobalNamespace/BeatmapCallbacksController.hpp"
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/MainSettingsModelSO.hpp"
 #include "GlobalNamespace/IntSO.hpp"
 #include "GlobalNamespace/BoolSO.hpp"
@@ -47,18 +55,37 @@ namespace Manager {
     float songTime = -1;
     float lerpAmount = 0;
 
-    Saber *leftSaber, *rightSaber;
-    PlayerHeadAndObstacleInteraction* obstacleChecker;
-    PlayerTransforms* playerTransforms;
-    PauseMenuManager* pauseManager;
+    namespace Objects {
+        Saber *leftSaber, *rightSaber;
+        PlayerHeadAndObstacleInteraction* obstacleChecker;
+        PlayerTransforms* playerTransforms;
+        PauseMenuManager* pauseManager;
+        ScoreController* scoreController;
+        ComboController* comboController;
+        GameEnergyCounter* gameEnergyCounter;
+        GameEnergyUIPanel* energyBar;
+        NoteCutSoundEffectManager* noteSoundManager;
+        AudioManagerSO* audioManager;
+        BeatmapObjectManager* beatmapObjectManager;
+        BeatmapCallbacksController* callbackController;
 
-    void GetObjects() {
-        auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
-        leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
-        rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
-        obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
-        playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
-        pauseManager = UnityEngine::Resources::FindObjectsOfTypeAll<PauseMenuManager*>().First();
+        void GetObjects() {
+            auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
+            leftSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
+            rightSaber = sabers.First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
+            obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>().First();
+            playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
+            pauseManager = UnityEngine::Resources::FindObjectsOfTypeAll<PauseMenuManager*>().First();
+            auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>().First();
+            scoreController = (ScoreController*) hasOtherObjects->scoreController;
+            comboController = hasOtherObjects->comboController;
+            gameEnergyCounter = hasOtherObjects->gameEnergyCounter;
+            energyBar = UnityEngine::Resources::FindObjectsOfTypeAll<GameEnergyUIPanel*>().First();
+            noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>().First();
+            audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>().First();
+            beatmapObjectManager = noteSoundManager->beatmapObjectManager;
+            callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>().First()->beatmapCallbacksController;
+        }
     }
 
     namespace Camera {
@@ -207,7 +234,7 @@ namespace Manager {
                         && noteData->colorType == info.colorType
                         && noteData->cutDirection == info.cutDirection) {
                     found = true;
-                    auto saber = event.noteCutInfo.saberType == SaberType::SaberA ? leftSaber : rightSaber;
+                    Saber* saber = event.noteCutInfo.saberType == SaberType::SaberA ? Objects::leftSaber : Objects::rightSaber;
                     if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
                         auto cutInfo = GetNoteCutInfo(controller, saber, event.noteCutInfo);
                         il2cpp_utils::RunMethodUnsafe(controller, "SendNoteWasCutEvent", byref(cutInfo));
@@ -215,7 +242,7 @@ namespace Manager {
                         controller->SendNoteWasMissedEvent();
                         notes.erase(iter); // note will despawn and be removed in the other cases
                     } else if(info.eventType == NoteEventInfo::Type::BOMB) {
-                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber,controller->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
+                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber, controller->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
                     }
                     break;
                 }
@@ -227,8 +254,8 @@ namespace Manager {
         }
 
         void ProcessWallEvent(const WallEvent& event) {
-            obstacleChecker->headDidEnterObstacleEvent->Invoke(nullptr);
-            obstacleChecker->headDidEnterObstaclesEvent->Invoke();
+            Objects::obstacleChecker->headDidEnterObstacleEvent->Invoke(nullptr);
+            Objects::obstacleChecker->headDidEnterObstaclesEvent->Invoke();
             float diffStartTime = std::max(wallEndTime, event.time);
             wallEndTime = std::max(wallEndTime, event.endTime);
             wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
@@ -315,7 +342,8 @@ namespace Manager {
     }
 
     void ReplayRestarted(bool full) {
-        paused = false;
+        if(full)
+            paused = false;
         currentFrame = 0;
         songTime = full ? -1 : 0;
         if(currentReplay.type == ReplayType::Event)
@@ -329,7 +357,7 @@ namespace Manager {
     }
 
     void ReplayPaused() {
-        Pause::EnsureSetup(pauseManager);
+        Pause::EnsureSetup(Objects::pauseManager);
         paused = true;
     }
 
@@ -342,7 +370,7 @@ namespace Manager {
         if(songTime < 0) {
             if(time != 0)
                 return;
-            GetObjects();
+            Objects::GetObjects();
         }
         if(currentReplay.type == ReplayType::Frame)
             time += 0.01;
@@ -364,6 +392,27 @@ namespace Manager {
         if(currentReplay.type == ReplayType::Event)
             Events::UpdateTime();
         Camera::UpdateTime();
+    }
+
+    bool timeForwardPressed = false, timeBackPressed = false;
+    bool speedUpPressed = false, slowDownPressed = false;
+
+    void CheckInputs() {
+        int timeState = IsButtonDown(getConfig().TimeButton.GetValue());
+        if(timeState == 1 && !timeForwardPressed)
+            Pause::SetTime(GetSongTime() + getConfig().TimeSkip.GetValue());
+        else if(timeState == -1 && !timeBackPressed)
+            Pause::SetTime(GetSongTime() - getConfig().TimeSkip.GetValue());
+        timeForwardPressed = timeState == 1;
+        timeBackPressed = timeState == -1;
+
+        int speedState = IsButtonDown(getConfig().SpeedButton.GetValue());
+        if(speedState == 1 && !speedUpPressed)
+            Pause::SetSpeed(Objects::scoreController->audioTimeSyncController->timeScale + 0.1);
+        else if(speedState == -1 && !slowDownPressed)
+            Pause::SetSpeed(Objects::scoreController->audioTimeSyncController->timeScale - 0.1);
+        speedUpPressed = speedState == 1;
+        slowDownPressed = speedState == -1;
     }
 
     float GetSongTime() {
