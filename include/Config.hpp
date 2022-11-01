@@ -17,14 +17,48 @@ enum struct CameraMode {
     ThirdPerson
 };
 
+enum struct InputButton {
+    None,
+    SideTrigger,
+    FrontTrigger,
+    LowerButton,
+    UpperButton,
+    JoystickUp,
+    JoystickDown,
+    JoystickLeft,
+    JoystickRight
+};
+
+enum struct InputController {
+    None,
+    Left,
+    Right
+};
+
+DECLARE_JSON_CLASS(Button,
+    VALUE(int, Button)
+    VALUE(int, Controller)
+)
+DECLARE_JSON_CLASS(ButtonPair,
+    VALUE(int, ForwardButton)
+    VALUE(int, ForwardController)
+    VALUE(int, BackButton)
+    VALUE(int, BackController)
+)
+
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
+    CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
+
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
     CONFIG_VALUE(Correction, bool, "Correct Camera", true, "Whether to adjust the camera rotation to remove tilt")
-    CONFIG_VALUE(Offset, UnityEngine::Vector3, "Position Offset", {0, 0, -0.5}, "The offset of the camera in smooth camera mode")
+    CONFIG_VALUE(Offset, UnityEngine::Vector3, "Position Offset", ConfigUtils::Vector3(0, 0, -0.5), "The offset of the camera in smooth camera mode")
     CONFIG_VALUE(Relative, bool, "Relative Offset", true, "Whether the offset is dependent on the camera rotation (recommended for 360 levels)")
     CONFIG_VALUE(HideText, bool, "Hide Player Text", true, "Whether to hide the REPLAY player text for locally saved replays")
     CONFIG_VALUE(TextHeight, float, "Player Text Height", 7, "The height of the REPLAY player text when visible")
+    CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
+    CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
+
     CONFIG_VALUE(Walls, bool, "PC Walls", true, "Whether to use PC walls when rendering")
     CONFIG_VALUE(Mirrors, int, "PC Mirrors", 3, "PC Mirrors level to use when rendering")
     // CONFIG_VALUE(Bloom, int, "Bloom", 3, "PC bloom level to use when rendering")
@@ -36,26 +70,11 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(FPS, int, "FPS", 60)
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
     CONFIG_VALUE(CameraOff, bool, "Disable Camera", false, "Disables the main camera to speed up renders")
-    CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
-    CONFIG_INIT_FUNCTION(
-        CONFIG_INIT_VALUE(CamMode)
-        CONFIG_INIT_VALUE(Smoothing)
-        CONFIG_INIT_VALUE(Correction)
-        CONFIG_INIT_VALUE(Offset)
-        CONFIG_INIT_VALUE(Relative)
-        CONFIG_INIT_VALUE(HideText)
-        CONFIG_INIT_VALUE(TextHeight)
-        CONFIG_INIT_VALUE(Walls)
-        CONFIG_INIT_VALUE(Mirrors)
-        // CONFIG_INIT_VALUE(Bloom)
-        CONFIG_INIT_VALUE(ShockwavesOn)
-        CONFIG_INIT_VALUE(Shockwaves)
-        CONFIG_INIT_VALUE(Resolution)
-        CONFIG_INIT_VALUE(Bitrate)
-        CONFIG_INIT_VALUE(FOV)
-        CONFIG_INIT_VALUE(FPS)
-        CONFIG_INIT_VALUE(Pauses)
-        CONFIG_INIT_VALUE(CameraOff)
-        CONFIG_INIT_VALUE(AudioMode)
-    )
+
+    CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay")
+    CONFIG_VALUE(TimeSkip, int, "Time Skip Amount", 5, "Number of seconds to skip per button press")
+    CONFIG_VALUE(SpeedButton, ButtonPair, "Speed Up|Slow Down", {}, "Changes playback speed while watching a replay")
+    CONFIG_VALUE(MoveButton, Button, "Movement Button", {}, "Enables moving to a desired third person position when held")
+    CONFIG_VALUE(TravelButton, ButtonPair, "Move Forward|Move Backward", {}, "Moves the environment around you in third person")
+    CONFIG_VALUE(MoveTravel, bool, "Require Movement for Travel", true, "Requires the movement button to be held for travel to work")
 )

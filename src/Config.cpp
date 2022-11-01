@@ -6,10 +6,11 @@
 
 #include "HMUI/Touchable.hpp"
 
-DEFINE_CONFIG(Config)
+#include "UnityEngine/RectTransform_Axis.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
+DEFINE_TYPE(ReplaySettings, InputSettings)
 DEFINE_TYPE(ReplaySettings, ModSettings)
 
 using namespace GlobalNamespace;
@@ -49,6 +50,127 @@ inline IncrementSetting* SetButtons(IncrementSetting* increment) {
     return increment;
 }
 
+const std::vector<const char*> buttonNames = {
+    "None",
+    "Side Trigger",
+    "Front Trigger",
+    "A/X Button",
+    "B/Y Button",
+    "Joystick Up",
+    "Joystick Down",
+    "Joystick Left",
+    "Joystick Right"
+};
+const std::vector<const char*> controllerNames = {
+    "Left",
+    "Right",
+    "Both"
+};
+
+void CreateInputDropdowns(UnityEngine::Transform* parent, std::string_view name, std::string_view hint, int buttonValue, int controllerValue, auto buttonCallback, auto controllerCallback) {
+    static ConstString labelName("Label");
+
+    auto layout = BeatSaberUI::CreateHorizontalLayoutGroup(parent)->get_transform();
+    layout->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(7);
+
+    std::vector<StringW> buttonNamesList(buttonNames.begin(), buttonNames.end());
+    auto dropdown = BeatSaberUI::CreateDropdown(layout, name, buttonNamesList[buttonValue], buttonNamesList, [callback = std::move(buttonCallback)](StringW value){
+        for(int i = 0; i < buttonNames.size(); i++) {
+            if(value == buttonNames[i]) {
+                callback(i);
+                break;
+            }
+        }
+    });
+    BeatSaberUI::AddHoverHint(dropdown, hint);
+    ((UnityEngine::RectTransform*) dropdown->get_transform())->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 30);
+
+    UnityEngine::Transform* dropdownParent = dropdown->get_transform()->get_parent();
+    ((UnityEngine::RectTransform*) dropdownParent->Find(labelName))->set_anchorMax({2, 1});
+    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(53);
+
+    std::vector<StringW> controllerNamesList(controllerNames.begin(), controllerNames.end());
+    dropdown = BeatSaberUI::CreateDropdown(layout, "  Controller", controllerNamesList[controllerValue], controllerNamesList, [callback = std::move(controllerCallback)](StringW value){
+        for(int i = 0; i < controllerNames.size(); i++) {
+            if(value == controllerNames[i]) {
+                callback(i);
+                break;
+            }
+        }
+    });
+    BeatSaberUI::AddHoverHint(dropdown, hint);
+    ((UnityEngine::RectTransform*) dropdown->get_transform())->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 22);
+
+    dropdownParent = dropdown->get_transform()->get_parent();
+    ((UnityEngine::RectTransform*) dropdownParent->Find(labelName))->set_anchorMax({2, 1});
+    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(38);
+}
+
+std::pair<std::string, std::string> split(const std::string& str, auto delimiter) {
+    auto pos = str.find(delimiter);
+    return std::make_pair(str.substr(0, pos), str.substr(pos + 1, std::string::npos));
+}
+
+inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
+    auto strs = split(configValue.GetName(), "|");
+    auto value = configValue.GetValue();
+    CreateInputDropdowns(parent, strs.first, configValue.GetHoverHint(), value.ForwardButton, value.ForwardController,
+        [&configValue](int newButton) {
+            auto value = configValue.GetValue();
+            value.ForwardButton = newButton;
+            configValue.SetValue(value);
+        },
+        [&configValue](int newController) {
+            auto value = configValue.GetValue();
+            value.ForwardController = newController;
+            configValue.SetValue(value);
+        }
+    );
+    CreateInputDropdowns(parent, strs.second, configValue.GetHoverHint(), value.BackButton, value.BackController,
+        [&configValue](int newButton) {
+            auto value = configValue.GetValue();
+            value.BackButton = newButton;
+            configValue.SetValue(value);
+        },
+        [&configValue](int newController) {
+            auto value = configValue.GetValue();
+            value.BackController = newController;
+            configValue.SetValue(value);
+        }
+    );
+}
+
+inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<Button>& configValue) {
+    auto value = configValue.GetValue();
+    CreateInputDropdowns(parent, configValue.GetName(), configValue.GetHoverHint(), value.Button, value.Controller,
+        [&configValue](int newButton) {
+            auto value = configValue.GetValue();
+            value.Button = newButton;
+            configValue.SetValue(value);
+        },
+        [&configValue](int newController) {
+            auto value = configValue.GetValue();
+            value.Controller = newController;
+            configValue.SetValue(value);
+        }
+    );
+}
+
+inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self) {
+    self->get_gameObject()->AddComponent<HMUI::Touchable*>();
+    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(self);
+    vertical->set_childControlHeight(false);
+    vertical->set_childForceExpandHeight(false);
+    vertical->set_spacing(1);
+    return vertical->get_transform();
+}
+
+inline void MakeTitle(UnityEngine::Transform* vertical, std::string text) {
+    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(vertical);
+    horizontal->set_childControlWidth(true);
+    BeatSaberUI::CreateText(horizontal, text)->set_alignment(TMPro::TextAlignmentOptions::Center);
+}
+
 const std::vector<const char*> resolutionStrings = {
     "480 x 640",
     "720 x 1280",
@@ -67,16 +189,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     if(!firstActivation)
         return;
 
-    get_gameObject()->AddComponent<HMUI::Touchable*>();
-    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(this);
-    vertical->set_childControlHeight(false);
-    vertical->set_childForceExpandHeight(false);
-    vertical->set_spacing(1);
-    auto transform = vertical->get_transform();
-
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(transform);
-    horizontal->set_childControlWidth(true);
-    BeatSaberUI::CreateText(horizontal, "Main Settings")->set_alignment(TMPro::TextAlignmentOptions::Center);
+    auto transform = MakeLayout(this);
 
     SetButtons(AddConfigValueIncrementFloat(transform, getConfig().Smoothing, 1, 0.1, 0.1, 5));
     
@@ -89,22 +202,18 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().HideText);
 
     SetButtons(AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10));
+
+    AddConfigValueToggle(transform, getConfig().SimMode);
+
+    AddConfigValueToggle(transform, getConfig().Ding);
 }
 
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
 
-    get_gameObject()->AddComponent<HMUI::Touchable*>();
-    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(this);
-    vertical->set_childControlHeight(false);
-    vertical->set_childForceExpandHeight(false);
-    vertical->set_spacing(1);
-    auto transform = vertical->get_transform();
-
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(transform);
-    horizontal->set_childControlWidth(true);
-    BeatSaberUI::CreateText(horizontal, "Render Settings")->set_alignment(TMPro::TextAlignmentOptions::Center);
+    auto transform = MakeLayout(this);
+    MakeTitle(transform, "Render Settings");
 
     AddConfigValueToggle(transform, getConfig().Pauses);
 
@@ -138,6 +247,26 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     AddConfigValueToggle(transform, getConfig().CameraOff);
 }
 
+void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
+    if(!firstActivation)
+        return;
+    
+    auto transform = MakeLayout(this);
+    MakeTitle(transform, "Input Settings");
+
+    AddConfigValueDropdown(transform, getConfig().TimeButton);
+
+    SetButtons(AddConfigValueIncrementInt(transform, getConfig().TimeSkip, 1, 1, 30));
+    
+    AddConfigValueDropdown(transform, getConfig().SpeedButton);
+
+    AddConfigValueDropdown(transform, getConfig().MoveButton);
+
+    AddConfigValueDropdown(transform, getConfig().TravelButton);
+
+    AddConfigValueToggle(transform, getConfig().MoveTravel);
+}
+
 #include "HMUI/ViewController_AnimationType.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 
@@ -149,12 +278,14 @@ void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool 
         mainSettings = BeatSaberUI::CreateViewController<MainSettings*>();
     if(!renderSettings)
         renderSettings = BeatSaberUI::CreateViewController<RenderSettings*>();
+    if(!inputSettings)
+        inputSettings = BeatSaberUI::CreateViewController<InputSettings*>();
     
     showBackButton = true;
     static ConstString title("Replay Settings");
     SetTitle(title, HMUI::ViewController::AnimationType::In);
 
-    ProvideInitialViewControllers(mainSettings, renderSettings, nullptr, nullptr, nullptr);
+    ProvideInitialViewControllers(mainSettings, renderSettings, inputSettings, nullptr, nullptr);
 }
 
 void ModSettings::BackButtonWasPressed(HMUI::ViewController* topViewController) {
