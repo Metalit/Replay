@@ -32,7 +32,8 @@ bool usingLocalReplays = true;
 
 const std::vector<std::string> dropdownStrings = {
     "Normal",
-    "Smooth Camera"
+    "Smooth Camera",
+    "Third Person"
 };
 
 void OnReplayButtonClick() {
@@ -241,7 +242,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
     
-    std::vector<StringW> dropdownWs; for(auto str : dropdownStrings) dropdownWs.emplace_back(str);
+    std::vector<StringW> dropdownWs(dropdownStrings.begin(), dropdownStrings.end());
     auto dropdown = BeatSaberUI::CreateDropdown(horizontal4, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet);
     SetPreferred(dropdown->get_transform()->get_parent(), std::nullopt, 10);
     

@@ -9,6 +9,7 @@
 #include "hollywood/shared/Hollywood.hpp"
 
 #include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/TransformExtensions.hpp"
 
 using namespace GlobalNamespace;
 
@@ -18,24 +19,37 @@ UnityEngine::Camera* customCamera = nullptr;
 ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
 
+bool wasMoving = false;
+
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
-    if(Manager::replaying && !Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-        // head tranform IS the camera, but we can set its position anyway for some reason
-        Vector3 targetPos;
-        Quaternion targetRot;
-        if(Manager::GetCurrentInfo().positionsAreLocal) {
+    if(Manager::replaying) {
+        if(wasMoving && !Manager::Camera::moving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            ThirdPerson newTrans{};
             auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
-            auto rot = parent->get_rotation();
-            targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
-            targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
-        } else {
-            targetPos = Manager::Camera::GetHeadPosition();
-            targetRot = Manager::Camera::GetHeadRotation();
+            newTrans.Position = parent->InverseTransformPoint(self->headTransform->get_position());
+            newTrans.Rotation = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
+            getConfig().ThirdTrans.SetValue(newTrans);
+            Manager::Camera::RefreshConfig();
         }
-        self->headTransform->SetPositionAndRotation(targetPos, targetRot);
-        if(customCamera)
-            customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
+        wasMoving = Manager::Camera::moving;
+        if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+            // head tranform IS the camera, but we can set its position anyway for some reason
+            Vector3 targetPos;
+            Quaternion targetRot;
+            if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+                auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+                auto rot = parent->get_rotation();
+                targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
+                targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
+            } else {
+                targetPos = Manager::Camera::GetHeadPosition();
+                targetRot = Manager::Camera::GetHeadRotation();
+            }
+            self->headTransform->SetPositionAndRotation(targetPos, targetRot);
+            if(customCamera)
+                customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
+        }
     }
     PlayerTransforms_Update_Camera(self);
 }

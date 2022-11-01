@@ -446,8 +446,8 @@ inline bool IsButtonDown(const int& buttonIdx, int controller) {
     if(buttonIdx <= 0) return false;
     auto button = buttons[buttonIdx];
     if(controller == 2)
-        return OVRInput::GetDown(button, controllers[0]) || OVRInput::GetDown(button, controllers[1]);
-    return OVRInput::GetDown(button, controllers[controller]);
+        return OVRInput::Get(button, controllers[0]) || OVRInput::Get(button, controllers[1]);
+    return OVRInput::Get(button, controllers[controller]);
 }
 
 bool IsButtonDown(const Button& button) {

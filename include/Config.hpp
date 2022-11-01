@@ -46,9 +46,15 @@ DECLARE_JSON_CLASS(ButtonPair,
     VALUE(int, BackController)
 )
 
+DECLARE_JSON_CLASS(ThirdPerson,
+    VALUE(ConfigUtils::Vector3, Position)
+    VALUE(ConfigUtils::Vector3, Rotation)
+)
+
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
+    CONFIG_VALUE(ThirdTrans, ThirdPerson, "Third Person Transform", {})
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
     CONFIG_VALUE(Correction, bool, "Correct Camera", true, "Whether to adjust the camera rotation to remove tilt")

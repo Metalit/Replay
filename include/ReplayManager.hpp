@@ -49,12 +49,14 @@ namespace Manager {
 
     namespace Camera {
         extern bool rendering;
+        extern bool moving;
 
         // extern GlobalNamespace::BloomPrePassGraphicsSettingsPresetsSO* bloomPresets;
         // extern GlobalNamespace::BloomPrePassEffectContainerSO* bloomContainer;
         extern GlobalNamespace::MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         extern GlobalNamespace::MirrorRendererSO* mirrorRenderer;
 
+        void RefreshConfig();
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
         int GetMode();
