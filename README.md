@@ -37,11 +37,36 @@ Watch back your best scores!
 
 ## Processing renders
 
-After rendering a video using the mod, a file will be created (or a previously existing file overwritten) called `video.h264` in the top level directory of your Quest. Recording audio will create a similar file named `audio.wav`, or alternatively you can use the audio file from the map itself instead of recording if you are fine without having hitsounds. You will want to pull both a video file and an audio file to your PC.
+__This guide assumes that you know how to use Window File Explorer or SideQuest Advanced Installer (if you aren’t on Windows) to access the Quest’s files.__
 
-Next, you need to have [ffmpeg](https://ffmpeg.org/) installed. With that, running the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" "path/to/output/video.mp4"` will churn for a while and produce a `mp4` file (or another format if you specify) which can be watched or uploaded to YouTube as desired.
+After rendering a video using the mod, a file will be created (or a previously existing file overwritten) called `video.h264` in the top level directory of your Quest. Recording audio will create a similar file named `audio.wav`, or alternatively you can use the audio file from the map itself instead of recording if you are fine without having hitsounds. You will want to pull both the video file and audio file to your PC.
 
-### Important Notes
+### Using Handbreak
+
+Handbreak is a user-friendly option for processing renders if you want to avoid the command line. However, it cannot add audio to the video - you will have to use either any other video editor or ffmpeg (see below) to do that.
+
+- Install and open [HandBreak](https://handbrake.fr/).
+- Drag the `video.h264` file into HandBreak. If successfully detected, it will then show you a preview of the video.
+- Select the `Dimensions` tab. 
+  - Under `Orientation & Cropping`, set `Cropping` to `None`.
+  - Under `Resolution & Scaling`, set `Resolution Limit` to whatever resolution you have rendered the video at (if you are unsure, check the Replay mod settings).
+- Select the `Video` tab.
+   - Set the `Framerate (FPS)` setting to whatever framerate you rendered at (again, check Replays mod settings if you are unsure).
+   - Below the framerate setting, select `Constant Framerate`.
+   - In the `Quality` section, select `Average Bitrate (kbps)` and in the text box next to it put the bitrate you rendered at (which can be found in the Replay mod settings).
+   - Optionally, deselect `Turbo First Pass` for a higher quality, but be warned: this will drastically increase conversion time.
+- You can now hit the `Start` button to begin conversion. This will take a while. You can view the progress in the bottom left.
+
+You can prevent having to set these settings every time you launch HandBreak by selecting the `Presets` button on the top right, and selecting the `+` in the bottom left of the new window that has opened. You will now be able to select that preset every time you open HandBreak.
+### Using FFMPEG
+
+FFMPEG is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized).
+
+- Install [ffmpeg](https://ffmpeg.org/) and add it to `PATH`.
+- Run the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" "path/to/output/video.mp4"` with the paths replaced with wherever you put your files when you downloaded them.
+- It will take a while depending on the speed of your computer. You can view the conversion rate in the text it writes to the command prompt.
+
+## Important Notes
 
 The video output, in both `h264` and `mp4` formats, may not be watchable with all programs due to how the video is encoded. [VLC Media Player](https://www.videolan.org/) is a program that can view both if you have trouble, and YouTube has no issue with uploaded `mp4`s either.
 
