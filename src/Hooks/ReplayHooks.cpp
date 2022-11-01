@@ -1,5 +1,7 @@
 #include "Main.hpp"
 #include "Hooks.hpp"
+#include "Assets.hpp"
+#include "Config.hpp"
 
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
@@ -185,6 +187,9 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
 
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
+#include "UnityEngine/GameObject.hpp"
+#include "UnityEngine/AudioClip.hpp"
+#include "UnityEngine/AudioSource.hpp"
 
 // watch for level ending
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish, &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
@@ -203,6 +208,29 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
         roomAdjust = nullptr;
         if(levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart)
             Manager::ReplayEnded();
+
+        // play ding audio if configured to
+        if(Manager::Camera::rendering && getConfig().Ding.GetValue()) {
+            static const int offset = 44;
+            static const int frequency = 44100;
+            static const int sampleSize = 2;
+            using sampleSizeType = int16_t;
+            int length = (Ding_wav::getLength() - offset) / sampleSize;
+            length -= frequency * 2.5; // remove some static that shows up at the end for some reason
+            auto arr = ArrayW<float>(length);
+            for(int i = 0; i < length; i++) {
+                arr[i] = *((sampleSizeType*) Ding_wav::getData() + offset + i * sampleSize);
+                arr[i] /= std::numeric_limits<sampleSizeType>::max();
+            }
+            auto clip = UnityEngine::AudioClip::Create("Ding", length, 1, frequency, false);
+            clip->SetData(arr, 0);
+            auto audioClipGO = UnityEngine::GameObject::New_ctor("DingAudioClip");
+            auto audioSource = audioClipGO->AddComponent<UnityEngine::AudioSource*>();
+            audioSource->set_playOnAwake(false);
+            audioSource->set_clip(clip);
+            audioSource->set_volume(5);
+            audioSource->Play();
+        }
     }
 }
 
