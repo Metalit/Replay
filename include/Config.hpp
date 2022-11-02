@@ -47,8 +47,8 @@ DECLARE_JSON_CLASS(ButtonPair,
 )
 
 DECLARE_JSON_CLASS(ThirdPerson,
-    VALUE(ConfigUtils::Vector3, Position)
-    VALUE(ConfigUtils::Vector3, Rotation)
+    VALUE_DEFAULT(ConfigUtils::Vector3, Position, ConfigUtils::Vector3(0, 2, -0.5))
+    VALUE_DEFAULT(ConfigUtils::Vector3, Rotation, {})
 )
 
 DECLARE_CONFIG(Config,
@@ -81,6 +81,6 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(TimeSkip, int, "Time Skip Amount", 5, "Number of seconds to skip per button press")
     CONFIG_VALUE(SpeedButton, ButtonPair, "Speed Up|Slow Down", {}, "Changes playback speed while watching a replay")
     CONFIG_VALUE(MoveButton, Button, "Movement Button", {}, "Enables moving to a desired third person position when held")
-    CONFIG_VALUE(TravelButton, ButtonPair, "Move Forward|Move Backward", {}, "Moves the environment around you in third person")
-    CONFIG_VALUE(MoveTravel, bool, "Require Movement for Travel", true, "Requires the movement button to be held for travel to work")
+    CONFIG_VALUE(TravelButton, ButtonPair, "Travel Forward|Travel Backward", {}, "Moves the environment around you in third person")
+    CONFIG_VALUE(TravelSpeed, float, "Travel Speed", 1, "The speed multiplier for the travel function")
 )

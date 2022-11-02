@@ -100,18 +100,31 @@ namespace Manager {
         MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         MirrorRendererSO* mirrorRenderer;
 
+        void SetFromConfig() {
+            smoothPosition = (Vector3) getConfig().ThirdTrans.GetValue().Position;
+            smoothRotation = Quaternion::Euler(getConfig().ThirdTrans.GetValue().Rotation);
+        }
+
         void UpdateTime() {
             if(GetMode() == (int) CameraMode::Smooth) {
                 float deltaTime = UnityEngine::Time::get_deltaTime();
                 smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
                 smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
-            }
+            } else if(GetMode() == (int) CameraMode::ThirdPerson)
+                SetFromConfig();
         }
 
-        void RefreshConfig() {
+        void Move(int direction) {
+            if(direction == 0)
+                return;
+            static const Vector3 move = {0, 0, 1.5};
             if(GetMode() == (int) CameraMode::ThirdPerson) {
-                smoothPosition = (UnityEngine::Vector3) getConfig().ThirdTrans.GetValue().Position;
-                smoothRotation = Quaternion::Euler(getConfig().ThirdTrans.GetValue().Rotation);
+                float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
+                smoothPosition += Sombrero::QuaternionMultiply(smoothRotation, move * delta * direction);
+                ThirdPerson newTrans{};
+                newTrans.Position = smoothPosition;
+                newTrans.Rotation = getConfig().ThirdTrans.GetValue().Rotation;
+                getConfig().ThirdTrans.SetValue(newTrans);
             }
         }
 
@@ -133,11 +146,10 @@ namespace Manager {
         }
 
         int GetMode() {
-            if(getConfig().CamMode.GetValue() == (int) CameraMode::Headset && !getConfig().AudioMode.GetValue() && rendering)
+            CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
+            if(mode == CameraMode::Headset && !getConfig().AudioMode.GetValue() && rendering)
                 return (int) CameraMode::Smooth;
-            if(getConfig().CamMode.GetValue() == (int) CameraMode::ThirdPerson && moving)
-                return (int) CameraMode::Headset;
-            return getConfig().CamMode.GetValue();
+            return (int) mode;
         }
 
         void SetGraphicsSettings() {
@@ -179,16 +191,18 @@ namespace Manager {
         void ReplayStarted() {
             if(rendering)
                 SetGraphicsSettings();
-            smoothRotation = GetFrame().head.rotation;
-            // undo rotation by average rotation offset
-            if(getConfig().Correction.GetValue())
-                smoothRotation = Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
-            // add position offset, potentially relative to rotation
-            auto offset = getConfig().Offset.GetValue();
-            if(getConfig().Relative.GetValue())
-                offset = Sombrero::QuaternionMultiply(smoothRotation, offset);
-            smoothPosition = GetFrame().head.position + offset;
-            RefreshConfig();
+            if(GetMode() == (int) CameraMode::Smooth) {
+                smoothRotation = GetFrame().head.rotation;
+                // undo rotation by average rotation offset
+                if(getConfig().Correction.GetValue())
+                    smoothRotation = Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
+                // add position offset, potentially relative to rotation
+                auto offset = getConfig().Offset.GetValue();
+                if(getConfig().Relative.GetValue())
+                    offset = Sombrero::QuaternionMultiply(smoothRotation, offset);
+                smoothPosition = GetFrame().head.position + offset;
+            } else if(GetMode() == (int) CameraMode::ThirdPerson)
+                SetFromConfig();
         }
 
         void ReplayEnded() {
@@ -377,6 +391,7 @@ namespace Manager {
     void ReplayPaused() {
         Pause::EnsureSetup(Objects::pauseManager);
         paused = true;
+        Camera::moving = false;
     }
 
     void ReplayUnpaused() {
@@ -416,6 +431,9 @@ namespace Manager {
     bool speedUpPressed = false, slowDownPressed = false;
 
     void CheckInputs() {
+        if(Camera::rendering)
+            return;
+        
         int timeState = IsButtonDown(getConfig().TimeButton.GetValue());
         if(timeState == 1 && !timeForwardPressed)
             Pause::SetTime(GetSongTime() + getConfig().TimeSkip.GetValue());
@@ -433,6 +451,8 @@ namespace Manager {
         slowDownPressed = speedState == -1;
 
         Camera::moving = IsButtonDown(getConfig().MoveButton.GetValue());
+
+        Camera::Move(IsButtonDown(getConfig().TravelButton.GetValue()));
     }
 
     float GetSongTime() {

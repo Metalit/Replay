@@ -11,6 +11,8 @@
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
 
+#include "UnityEngine/Camera.hpp"
+
 using namespace GlobalNamespace;
 
 Hollywood::AudioCapture* audioCapture = nullptr;
@@ -19,22 +21,23 @@ UnityEngine::Camera* customCamera = nullptr;
 ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
 
-bool wasMoving = false;
+static bool wasMoving = false;
 
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
     if(Manager::replaying) {
-        if(wasMoving && !Manager::Camera::moving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            ThirdPerson newTrans{};
+        if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            auto newTrans = getConfig().ThirdTrans.GetValue();
             auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
-            newTrans.Position = parent->InverseTransformPoint(self->headTransform->get_position());
+            // always update rotation but only update position when releasing
+            if(!Manager::Camera::moving)
+                newTrans.Position = parent->InverseTransformPoint(self->headTransform->get_position());
             newTrans.Rotation = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
             getConfig().ThirdTrans.SetValue(newTrans);
-            Manager::Camera::RefreshConfig();
         }
         wasMoving = Manager::Camera::moving;
         if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-            // head tranform IS the camera, but we can set its position anyway for some reason
+            // head tranform IS the camera
             Vector3 targetPos;
             Quaternion targetRot;
             if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
@@ -46,7 +49,7 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void,
                 targetPos = Manager::Camera::GetHeadPosition();
                 targetRot = Manager::Camera::GetHeadRotation();
             }
-            self->headTransform->SetPositionAndRotation(targetPos, targetRot);
+            cameraRig->SetPositionAndRotation(targetPos, targetRot);
             if(customCamera)
                 customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
         }
@@ -80,7 +83,6 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "GlobalNamespace/CoreGameHUDController.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Transform.hpp"
-#include "UnityEngine/Camera.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
 #include "UnityEngine/HideFlags.hpp"
 #include "UnityEngine/DepthTextureMode.hpp"
@@ -134,12 +136,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
                 MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
-            auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
-            cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
-            auto trans = mainCamera->get_transform();
-            cameraGO->get_transform()->SetPositionAndRotation(trans->get_position(), trans->get_rotation());
-            cameraGO->get_transform()->SetParent(trans->GetParent(), false);
-            trans->SetParent(cameraGO->get_transform(), false);
+            cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
         }
 
         if(Manager::Camera::rendering) {

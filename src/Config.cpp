@@ -264,7 +264,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     AddConfigValueDropdown(transform, getConfig().TravelButton);
 
-    AddConfigValueToggle(transform, getConfig().MoveTravel);
+    SetButtons(AddConfigValueIncrementFloat(transform, getConfig().TravelSpeed, 1, 0.1, 0.2, 5));
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"

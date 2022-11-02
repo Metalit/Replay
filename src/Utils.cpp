@@ -455,9 +455,10 @@ bool IsButtonDown(const Button& button) {
 }
 
 int IsButtonDown(const ButtonPair& button) {
+    int ret = 0;
     if(IsButtonDown(button.ForwardButton, button.ForwardController))
-        return 1;
-    else if(IsButtonDown(button.BackButton, button.BackController))
-        return -1;
-    return 0;
+        ret += 1;
+    if(IsButtonDown(button.BackButton, button.BackController))
+        ret -= 1;
+    return ret;
 }

@@ -56,7 +56,6 @@ namespace Manager {
         extern GlobalNamespace::MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         extern GlobalNamespace::MirrorRendererSO* mirrorRenderer;
 
-        void RefreshConfig();
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
         int GetMode();
