@@ -1,6 +1,5 @@
 #pragma once
 
-#define HAS_CODEGEN
 #include "config-utils/shared/config-utils.hpp"
 
 const std::vector<std::pair<int, int>> resolutions = {

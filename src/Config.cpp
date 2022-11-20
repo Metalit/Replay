@@ -17,39 +17,6 @@ using namespace GlobalNamespace;
 using namespace QuestUI;
 using namespace ReplaySettings;
 
-inline IncrementSetting* AddConfigValueIncrementEnum(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<int>& configValue, int increment, int min, int max, auto& strings) {
-    auto inc = BeatSaberUI::CreateIncrementSetting(parent, configValue.GetName(), 0, increment, configValue.GetValue(), min, max);
-    auto child = inc->get_gameObject()->get_transform()->GetChild(1);
-    auto decButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().First();
-    auto incButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().Last();
-    inc->OnValueChange = [&configValue, inc, &strings, decButton, incButton](float value) {
-        configValue.SetValue((int) value);
-        inc->Text->set_text(strings[value]);
-        decButton->set_interactable(value > inc->MinValue);
-        incButton->set_interactable(value < inc->MaxValue);
-    };
-    inc->Text->set_text(strings[inc->CurrentValue]);
-    decButton->set_interactable(inc->CurrentValue > inc->MinValue);
-    incButton->set_interactable(inc->CurrentValue < inc->MaxValue);
-    if(!configValue.GetHoverHint().empty())
-        BeatSaberUI::AddHoverHint(inc, configValue.GetHoverHint());
-    return inc;
-}
-
-inline IncrementSetting* SetButtons(IncrementSetting* increment) {
-    auto child = increment->get_gameObject()->get_transform()->GetChild(1);
-    auto decButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().First();
-    auto incButton = child->GetComponentsInChildren<UnityEngine::UI::Button*>().Last();
-    increment->OnValueChange = [oldFunc = std::move(increment->OnValueChange), increment, decButton, incButton](float value) {
-        oldFunc(value);
-        decButton->set_interactable(value > increment->MinValue);
-        incButton->set_interactable(value < increment->MaxValue);
-    };
-    decButton->set_interactable(increment->CurrentValue > increment->MinValue);
-    incButton->set_interactable(increment->CurrentValue < increment->MaxValue);
-    return increment;
-}
-
 const std::vector<const char*> buttonNames = {
     "None",
     "Side Trigger",
@@ -171,14 +138,14 @@ inline void MakeTitle(UnityEngine::Transform* vertical, std::string text) {
     BeatSaberUI::CreateText(horizontal, text)->set_alignment(TMPro::TextAlignmentOptions::Center);
 }
 
-const std::vector<const char*> resolutionStrings = {
+const std::vector<std::string> resolutionStrings = {
     "480 x 640",
     "720 x 1280",
     "1080 x 1920",
     "1440 x 2560",
     "2160 x 3840"
 };
-const std::vector<const char*> fourLevelStrings = {
+const std::vector<std::string> fourLevelStrings = {
     "Off",
     "Low",
     "Medium",
@@ -191,7 +158,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     auto transform = MakeLayout(this);
 
-    SetButtons(AddConfigValueIncrementFloat(transform, getConfig().Smoothing, 1, 0.1, 0.1, 5));
+    AddConfigValueIncrementFloat(transform, getConfig().Smoothing, 1, 0.1, 0.1, 5);
     
     AddConfigValueToggle(transform, getConfig().Correction);
 
@@ -201,7 +168,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     AddConfigValueToggle(transform, getConfig().HideText);
 
-    SetButtons(AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10));
+    AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10);
 
     AddConfigValueToggle(transform, getConfig().SimMode);
 
@@ -219,11 +186,11 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(transform, getConfig().Walls);
 
-    // AddConfigValueIncrementEnum(transform, getConfig().Bloom, 1, 0, 3, fourLevelStrings);
+    // AddConfigValueIncrementEnum(transform, getConfig().Bloom, fourLevelStrings);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Mirrors, 1, 0, 3, fourLevelStrings);
+    AddConfigValueIncrementEnum(transform, getConfig().Mirrors, fourLevelStrings);
     
-    shockwaveSetting = SetButtons(AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 1, 20))->get_gameObject();
+    shockwaveSetting = AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 1, 20)->get_gameObject();
     auto incrementObject = shockwaveSetting->get_transform()->GetChild(1);
     incrementObject->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
     incrementObject->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({-20, 0});
@@ -236,13 +203,13 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     shockwaveToggle->SetParent(shockwaveSetting->get_transform(), false);
     UnityEngine::Object::Destroy(oldParent);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Resolution, 1, 0, resolutions.size() - 1, resolutionStrings);
+    AddConfigValueIncrementEnum(transform, getConfig().Resolution, resolutionStrings);
     
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().Bitrate, 1000, 0, 100000));
+    AddConfigValueIncrementInt(transform, getConfig().Bitrate, 1000, 0, 100000);
     
-    SetButtons(AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150));
+    AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150);
     
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120));
+    AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120);
     
     AddConfigValueToggle(transform, getConfig().CameraOff);
 }
@@ -256,7 +223,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     AddConfigValueDropdown(transform, getConfig().TimeButton);
 
-    SetButtons(AddConfigValueIncrementInt(transform, getConfig().TimeSkip, 1, 1, 30));
+    AddConfigValueIncrementInt(transform, getConfig().TimeSkip, 1, 1, 30);
     
     AddConfigValueDropdown(transform, getConfig().SpeedButton);
 
@@ -264,7 +231,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     AddConfigValueDropdown(transform, getConfig().TravelButton);
 
-    SetButtons(AddConfigValueIncrementFloat(transform, getConfig().TravelSpeed, 1, 0.1, 0.2, 5));
+    AddConfigValueIncrementFloat(transform, getConfig().TravelSpeed, 1, 0.1, 0.2, 5);
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"
