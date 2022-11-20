@@ -49,7 +49,8 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void,
                 targetPos = Manager::Camera::GetHeadPosition();
                 targetRot = Manager::Camera::GetHeadRotation();
             }
-            cameraRig->SetPositionAndRotation(targetPos, targetRot);
+            if(cameraRig)
+                cameraRig->SetPositionAndRotation(targetPos, targetRot);
             if(customCamera)
                 customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
         }
