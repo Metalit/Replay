@@ -54,6 +54,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
     CONFIG_VALUE(ThirdTrans, ThirdPerson, "Third Person Transform", {})
+    CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
     CONFIG_VALUE(Correction, bool, "Correct Camera", true, "Whether to adjust the camera rotation to remove tilt")
@@ -61,7 +62,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(Relative, bool, "Relative Offset", true, "Whether the offset is dependent on the camera rotation (recommended for 360 levels)")
     CONFIG_VALUE(HideText, bool, "Hide Player Text", true, "Whether to hide the REPLAY player text for locally saved replays")
     CONFIG_VALUE(TextHeight, float, "Player Text Height", 7, "The height of the REPLAY player text when visible")
-    CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
+    CONFIG_VALUE(Avatar, bool, "Enable Avatar", true, "Shows avatar when in third person camera mode")
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
 
     CONFIG_VALUE(Walls, bool, "PC Walls", true, "Whether to use PC walls when rendering")

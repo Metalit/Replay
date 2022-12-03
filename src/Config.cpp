@@ -170,7 +170,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10);
 
-    AddConfigValueToggle(transform, getConfig().SimMode);
+    AddConfigValueToggle(transform, getConfig().Avatar);
 
     AddConfigValueToggle(transform, getConfig().Ding);
 }
