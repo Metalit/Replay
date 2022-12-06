@@ -260,31 +260,50 @@ namespace Pause {
     void UpdateScoreController() {
         // literally the exact implementation of ScoreController::LateUpdate
         auto& self = scoreController;
+        // Get the time of the next note that should be scored, or a large value if there are no more notes.
         float num = self->sortedNoteTimesWithoutScoringElements->get_Count() > 0 ? self->sortedNoteTimesWithoutScoringElements->get_Item(0) : 3000000000;
+        // Get the current game time, plus a small offset.
         float num2 = self->audioTimeSyncController->get_songTime() + 0.15;
+        // A counter for the number of scoring elements that have been processed.
         int num3 = 0;
+        // A flag indicating whether the score multiplier has changed.
         bool flag = false;
         for(int i = 0; i < self->sortedScoringElementsWithoutMultiplier->get_Count(); i++) {
             auto item = self->sortedScoringElementsWithoutMultiplier->get_Item(i);
+            // If the element's time is outside of the range of the current game time and the next note's time,
+            // process the element's multiplier event and add it to the list of scoring elements with multipliers.
             if(item->get_time() < num2 || item->get_time() > num) {
+                // Process the multiplier event for the element.
                 flag |= self->scoreMultiplierCounter->ProcessMultiplierEvent(item->get_multiplierEventType());
+                // If the element would have given a positive multiplier, also process it for the maximum score multiplier counter.
                 if(item->get_wouldBeCorrectCutBestPossibleMultiplierEventType() == ScoreMultiplierCounter::MultiplierEventType::Positive)
                     self->maxScoreMultiplierCounter->ProcessMultiplierEvent(ScoreMultiplierCounter::MultiplierEventType::Positive);
                 item->SetMultipliers(self->scoreMultiplierCounter->get_multiplier(), self->maxScoreMultiplierCounter->get_multiplier());
                 self->scoringElementsWithMultiplier->Add(item);
+                // Increment the counter for processed elements.
                 num3++;
+                // Skip to the next element.
                 continue;
             }
+            // If the element's time is within the range of the current game time and the next note's time,
+            // stop processing elements.
             break;
         }
+        // Remove the processed elements from the list of scoring elements without multipliers.
         self->sortedScoringElementsWithoutMultiplier->RemoveRange(0, num3);
+        // If the score multiplier has changed, invoke the appropriate event.
         if(flag)
             self->multiplierDidChangeEvent->Invoke(self->scoreMultiplierCounter->get_multiplier(), self->scoreMultiplierCounter->get_normalizedProgress());
+        // A flag indicating whether the score has changed.
         bool flag2 = false;
         self->scoringElementsToRemove->Clear();
         for(int i = 0; i < self->scoringElementsWithMultiplier->get_Count(); i++) {
             auto item2 = self->scoringElementsWithMultiplier->get_Item(i);
+            // If the element is finished, add it to the list of elements to remove and add its score
+            // to the current multiplied and modified scores.
             if (item2->get_isFinished()) {
+                // If the element has a positive maximum possible cut score, set the flag indicating that
+                // the score has changed and add the element's score to the current multiplied and modified scores.
                 if (item2->get_maxPossibleCutScore() > 0) {
                     flag2 = true;
                     self->multipliedScore += item2->get_cutScore() * item2->get_multiplier();
@@ -302,10 +321,12 @@ namespace Pause {
         }
         self->scoringElementsToRemove->Clear();
         float totalMultiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, self->gameEnergyCounter->get_energy());
+        // If the total multiplier has changed, set the flag indicating that the score has changed.
         if (self->prevMultiplierFromModifiers != totalMultiplier) {
             self->prevMultiplierFromModifiers = totalMultiplier;
             flag2 = true;
         }
+        // If the score has changed, update the current multiplied and modified scores and invoke the appropriate event.
         if (flag2) {
             self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->multipliedScore, totalMultiplier);
             self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->immediateMaxPossibleMultipliedScore, totalMultiplier);
