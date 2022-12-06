@@ -4,7 +4,7 @@
   "name": "${mod_name}",
   "id": "${mod_id}",
   "author": "Metalit",
-  "version": "0.1.0",
+  "version": "${version}",
   "packageId": "com.beatgames.beatsaber",
   "packageVersion": "1.25.1",
   "description": "Watch back your best scores!",
