@@ -29,7 +29,7 @@ Logger& getLogger() {
 
 MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
     StandardLevelDetailView_RefreshContent(self);
-    
+
     Menu::EnsureSetup(self);
     Manager::SetLevel(self->selectedDifficultyBeatmap);
     Menu::CheckMultiplayer();
@@ -37,7 +37,7 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView
 
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange, &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* oldViewController, HMUI::ViewController* newViewController, HMUI::ViewController::AnimationType animationType) {
-    
+
     if(newViewController->get_name() == "ReplayViewController") {
         self->SetLeftScreenViewController(nullptr, animationType);
         self->SetRightScreenViewController(nullptr, animationType);
@@ -46,18 +46,18 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoor
         self->set_showBackButton(true);
         return;
     }
-    
+
     SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange(self, oldViewController, newViewController, animationType);
 }
 
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, &SinglePlayerLevelSelectionFlowCoordinator::BackButtonWasPressed,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* topViewController) {
-    
+
     if(topViewController->get_name() == "ReplayViewController") {
         self->DismissViewController(topViewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
         return;
     }
-    
+
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
 }
 
@@ -65,17 +65,17 @@ extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
     modInfo = info;
-    
+
     Hollywood::initialize();
 
     getConfig().Init(info);
-	
+
     getLogger().info("Completed setup!");
 }
 
 extern "C" void load() {
     Paper::Logger::RegisterFileContextId("Replay");
-    
+
     il2cpp_functions::Init();
 
     custom_types::Register::AutoRegister();

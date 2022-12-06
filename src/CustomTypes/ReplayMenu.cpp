@@ -80,7 +80,7 @@ void OnIncrementChanged(float value) {
 
 custom_types::Helpers::Coroutine MatchRequirementsCoroutine(UnityEngine::UI::Button* replayButton) {
     co_yield nullptr;
-    
+
     bool interactable = levelView->actionButton->get_interactable();
     replayButton->set_interactable(interactable);
     co_return;
@@ -90,7 +90,7 @@ namespace Menu {
     void EnsureSetup(StandardLevelDetailView* view) {
         static ConstString canvasName("ReplayButtonCanvas");
         levelView = view;
-        
+
         auto parent = view->practiceButton->get_transform()->GetParent();
         auto canvasTransform = (UnityEngine::RectTransform*) parent->Find(canvasName);
 
@@ -122,7 +122,7 @@ namespace Menu {
             viewController = BeatSaberUI::CreateViewController<ReplayViewController*>();
             viewController->set_name("ReplayViewController");
         }
-        
+
         auto replayButton = canvasTransform->GetComponentInChildren<UnityEngine::UI::Button*>();
         SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(MatchRequirementsCoroutine(replayButton)));
     }
@@ -187,10 +187,10 @@ std::string GetLayeredText(const std::string& label, const std::string& text, bo
 }
 
 inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
-    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), 
-        [&configValue, callback = std::move(callback)](bool value) { 
+    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(),
+        [&configValue, callback = std::move(callback)](bool value) {
             configValue.SetValue(value);
-            callback(value); 
+            callback(value);
         }
     );
     if(!configValue.GetHoverHint().empty())
@@ -201,9 +201,9 @@ inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* par
 void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
-    
+
     using namespace UnityEngine;
-    
+
     auto mainLayout = BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
     mainLayout->set_childControlWidth(true);
     mainLayout->set_childForceExpandWidth(true);
@@ -226,32 +226,32 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 
     dateText = CreateCenteredText(horizontal1);
     modifiersText = CreateCenteredText(horizontal1);
-    
+
     auto horizontal2 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
 
     scoreText = CreateCenteredText(horizontal2);
     failText = CreateCenteredText(horizontal2);
-    
+
     auto horizontal3 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal3->set_spacing(5);
 
     watchButton = BeatSaberUI::CreateUIButton(horizontal3, "Watch Replay", "ActionButton", Vector2(), Vector2(0, 10), OnWatchButtonClick);
     std::string text = getConfig().AudioMode.GetValue() ? "Record Replay" : "Render Replay";
     renderButton = BeatSaberUI::CreateUIButton(horizontal3, text, Vector2(), Vector2(0, 10), OnRenderButtonClick);
-    
+
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
-    
+
     std::vector<StringW> dropdownWs(dropdownStrings.begin(), dropdownStrings.end());
     auto dropdown = BeatSaberUI::CreateDropdown(horizontal4, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet);
     SetPreferred(dropdown->get_transform()->get_parent(), std::nullopt, 10);
-    
+
     auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode, [this](bool audioMode) {
         std::string text = audioMode ? "Record Replay" : "Render Replay";
         BeatSaberUI::SetButtonText(renderButton, text);
     });
     Object::Destroy(toggle->GetComponent<UI::LayoutElement*>());
-    
+
     deleteButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(48, -22), Vector2(10, 10), [this]() {
         confirmModal->Show(true, true, nullptr);
     });
@@ -263,9 +263,9 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, currentReplay + 1, 1, replayInfos.size(), OnIncrementChanged);
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
     ((RectTransform*) increment->get_transform()->GetChild(1))->set_anchoredPosition({-20, 0});
-    
+
     confirmModal = BeatSaberUI::CreateModal(get_transform(), {58, 24}, nullptr);
-    
+
     static ConstString dialogText("Are you sure you would like to delete this\nreplay? This cannot be undone.");
 
     auto removeText = BeatSaberUI::CreateText(confirmModal->get_transform(), dialogText, false, {0, 5});

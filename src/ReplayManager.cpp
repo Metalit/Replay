@@ -228,7 +228,7 @@ namespace Manager {
             return false;
         }
     }
-    
+
     namespace Events {
         std::set<NoteController*, NoteCompare> notes;
         decltype(EventReplay::events)::iterator event;
@@ -292,7 +292,7 @@ namespace Manager {
             wallEndTime = std::max(wallEndTime, event.endTime);
             wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
         }
-        
+
         void UpdateTime() {
             while(event != ((EventReplay*) currentReplay.replay.get())->events.end() && event->time < songTime) {
                 switch(event->eventType) {
@@ -310,7 +310,7 @@ namespace Manager {
             }
         }
     }
-    
+
     bool replaying = false;
     bool paused = false;
     ReplayWrapper currentReplay;
@@ -398,7 +398,7 @@ namespace Manager {
         Pause::OnUnpause();
         paused = false;
     }
-    
+
     void UpdateTime(float time) {
         if(songTime < 0) {
             if(time != 0)
@@ -414,7 +414,7 @@ namespace Manager {
             currentFrame++;
         if(currentFrame > 0)
             currentFrame--;
-        
+
         if(currentFrame == frameCount - 1)
             lerpAmount = 0;
         else {
@@ -433,7 +433,7 @@ namespace Manager {
     void CheckInputs() {
         if(Camera::rendering)
             return;
-        
+
         int timeState = IsButtonDown(getConfig().TimeButton.GetValue());
         if(timeState == 1 && !timeForwardPressed)
             Pause::SetTime(GetSongTime() + getConfig().TimeSkip.GetValue());

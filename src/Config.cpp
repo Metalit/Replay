@@ -159,7 +159,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     auto transform = MakeLayout(this);
 
     AddConfigValueIncrementFloat(transform, getConfig().Smoothing, 1, 0.1, 0.1, 5);
-    
+
     AddConfigValueToggle(transform, getConfig().Correction);
 
     AddConfigValueIncrementVector3(transform, getConfig().Offset, 1, 0.1);
@@ -189,7 +189,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     // AddConfigValueIncrementEnum(transform, getConfig().Bloom, fourLevelStrings);
 
     AddConfigValueIncrementEnum(transform, getConfig().Mirrors, fourLevelStrings);
-    
+
     shockwaveSetting = AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 1, 20)->get_gameObject();
     auto incrementObject = shockwaveSetting->get_transform()->GetChild(1);
     incrementObject->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
@@ -204,27 +204,27 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     UnityEngine::Object::Destroy(oldParent);
 
     AddConfigValueIncrementEnum(transform, getConfig().Resolution, resolutionStrings);
-    
+
     AddConfigValueIncrementInt(transform, getConfig().Bitrate, 1000, 0, 100000);
-    
+
     AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150);
-    
+
     AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120);
-    
+
     AddConfigValueToggle(transform, getConfig().CameraOff);
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
-    
+
     auto transform = MakeLayout(this);
     MakeTitle(transform, "Input Settings");
 
     AddConfigValueDropdown(transform, getConfig().TimeButton);
 
     AddConfigValueIncrementInt(transform, getConfig().TimeSkip, 1, 1, 30);
-    
+
     AddConfigValueDropdown(transform, getConfig().SpeedButton);
 
     AddConfigValueDropdown(transform, getConfig().MoveButton);
@@ -240,14 +240,14 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
-    
+
     if(!mainSettings)
         mainSettings = BeatSaberUI::CreateViewController<MainSettings*>();
     if(!renderSettings)
         renderSettings = BeatSaberUI::CreateViewController<RenderSettings*>();
     if(!inputSettings)
         inputSettings = BeatSaberUI::CreateViewController<InputSettings*>();
-    
+
     showBackButton = true;
     static ConstString title("Replay Settings");
     SetTitle(title, HMUI::ViewController::AnimationType::In);

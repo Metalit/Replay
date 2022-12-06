@@ -160,7 +160,7 @@ ReplayWrapper ReadFromV3(std::ifstream& input) {
 
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
-    
+
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
     replay->info.modifiers = ConvertModifiers(modifiers);
@@ -184,11 +184,11 @@ ReplayWrapper ReadFromV4(std::ifstream& input) {
 
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
-    
+
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
     replay->info.modifiers = ConvertModifiers(modifiers);
-    
+
     READ_TO(replay->info.reached0Energy);
     READ_TO(replay->info.reached0Time);
 
@@ -210,11 +210,11 @@ ReplayWrapper ReadFromV5(std::ifstream& input) {
 
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
-    
+
     auto modifiers = V2Modifiers();
     READ_TO(modifiers);
     replay->info.modifiers = ConvertModifiers(modifiers);
-    
+
     READ_TO(replay->info.reached0Energy);
     READ_TO(replay->info.reached0Time);
 
@@ -236,11 +236,11 @@ ReplayWrapper ReadFromV6(std::ifstream& input) {
 
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
-    
+
     auto modifiers = V6Modifiers();
     READ_TO(modifiers);
     replay->info.modifiers = modifiers;
-    
+
     READ_TO(replay->info.reached0Energy);
     READ_TO(replay->info.reached0Time);
 
@@ -297,7 +297,7 @@ ReplayWrapper _ReadReqlay(const std::string& path) {
 
 ReplayWrapper ReadReqlay(const std::string& path) {
     ReplayWrapper ret = _ReadReqlay(path);
-    
+
     auto modified = std::filesystem::last_write_time(path);
     ret.replay->info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
     ret.replay->info.source = "Replay Mod (Old)";

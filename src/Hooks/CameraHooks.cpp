@@ -151,7 +151,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                 UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
                 UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
                 UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
-                
+
                 customCamera->set_clearFlags(mainCamera->get_clearFlags());
                 customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
                 customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
@@ -165,7 +165,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
                 set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
                     MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
-                
+
                 Hollywood::CameraRecordingSettings settings{
                     .width = resolutions[getConfig().Resolution.GetValue()].first,
                     .height = resolutions[getConfig().Resolution.GetValue()].second,
@@ -221,10 +221,10 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
 
 // prevent pauses during recording or enable camera if allowed
 MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
-    
+
     if(Manager::replaying && Manager::Camera::rendering)
         return getConfig().Pauses.GetValue();
-    
+
     return PauseController_get_canPause(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Camera, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {

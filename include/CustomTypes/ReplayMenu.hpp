@@ -30,7 +30,7 @@ namespace Menu {
 }
 
 DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
-    
+
     DECLARE_OVERRIDE_METHOD(void, DidActivate,
         il2cpp_utils::il2cpp_type_check::MetadataGetter<&HMUI::ViewController::DidActivate>::get(),
         bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);

@@ -61,14 +61,14 @@ static inline Quaternion InverseSignQuaternion(Quaternion q) {
 struct QuaternionAverage {
     public:
     QuaternionAverage(Quaternion baseRot) : baseRotation(baseRot) {}
-    
+
     void AddRotation(Quaternion& rot) {
         //Before we add the new rotation to the average (mean), we have to check whether the quaternion has to be inverted. Because
         //q and -q are the same rotation, but cannot be averaged, we have to make sure they are all the same.
         if(Quaternion::Dot(rot, baseRotation) < 0) {
             rot = InverseSignQuaternion(rot);
         }
-        
+
         num++;
         cumulative.w += rot.w;
         cumulative.x += rot.x;

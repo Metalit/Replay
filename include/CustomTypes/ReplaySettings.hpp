@@ -26,7 +26,7 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController,
 DECLARE_CLASS_CODEGEN(ReplaySettings, ModSettings, HMUI::FlowCoordinator,
     DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(FlowCoordinator::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
     DECLARE_OVERRIDE_METHOD(void, BackButtonWasPressed, METHOD(FlowCoordinator::BackButtonWasPressed), HMUI::ViewController* topViewController);
-    
+
     DECLARE_INSTANCE_FIELD(ReplaySettings::MainSettings*, mainSettings);
     DECLARE_INSTANCE_FIELD(ReplaySettings::RenderSettings*, renderSettings);
     DECLARE_INSTANCE_FIELD(ReplaySettings::InputSettings*, inputSettings);

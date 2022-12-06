@@ -19,7 +19,7 @@ void CameraRig::Update() {
         ("UnityEngine.XR.InputTracking::GetLocalPosition_Injected");
     static auto GetLocalRotation = il2cpp_utils::resolve_icall<void, XRNode, ByRef<Quaternion>>
         ("UnityEngine.XR.InputTracking::GetLocalRotation_Injected");
-    
+
     auto trans = get_transform();
     if(Manager::replaying && !Manager::paused) {
         if(avatar) {

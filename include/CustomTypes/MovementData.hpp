@@ -15,9 +15,9 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, INTE
     GlobalNamespace::ISaberMovementData* baseData;
     float beforeCutRating, afterCutRating;
     GlobalNamespace::ISaberMovementDataProcessor* dataProcessor;
-    
+
     DECLARE_OVERRIDE_METHOD(GlobalNamespace::BladeMovementDataElement, get_lastAddedData, METHOD(ISaberMovementData::get_lastAddedData));
-    
+
     DECLARE_OVERRIDE_METHOD(void, AddDataProcessor, METHOD(ISaberMovementData::AddDataProcessor), GlobalNamespace::ISaberMovementDataProcessor* dataProcessor);
     DECLARE_OVERRIDE_METHOD(void, RemoveDataProcessor, METHOD(ISaberMovementData::RemoveDataProcessor), GlobalNamespace::ISaberMovementDataProcessor* dataProcessor);
     DECLARE_OVERRIDE_METHOD(void, RequestLastDataProcessing, METHOD(ISaberMovementData::RequestLastDataProcessing), GlobalNamespace::ISaberMovementDataProcessor* dataProcessor);

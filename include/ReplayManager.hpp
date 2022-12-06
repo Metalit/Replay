@@ -60,12 +60,12 @@ namespace Manager {
         Quaternion GetHeadRotation();
         int GetMode();
     }
-    
+
     namespace Frames {
         ScoreFrame* GetScoreFrame();
         bool AllowComboDrop();
     }
-    
+
     namespace Events {
         extern float wallEnergyLoss;
         void AddNoteController(GlobalNamespace::NoteController* note);
@@ -73,11 +73,11 @@ namespace Manager {
     }
 
     void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);
-    
+
     void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external = false);
     void RefreshLevelReplays();
     bool AreReplaysLocal();
-    
+
     void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);
     void ReplayRestarted(bool full = true);

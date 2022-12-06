@@ -74,7 +74,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
 
     if(!std::filesystem::exists(GetBSORsPath()))
         return replays;
-    
+
     std::string bsorDiffName;
     switch ((int) beatmap->get_difficulty()) {
     case 0:
@@ -97,7 +97,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
         break;
     }
     std::string characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
-    
+
     std::string bsorHash = regex_replace((std::string)((IPreviewBeatmapLevel*)beatmap->get_level())->get_levelID(), std::basic_regex("custom_level_"), "");
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
     std::string search = fmt::format("{}-{}-{}", bsorDiffName, characteristic, bsorHash);
@@ -113,7 +113,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
             }
         }
     }
-    
+
     return replays;
 }
 
@@ -171,7 +171,7 @@ std::string SecondsToString(int value) {
     if(seconds < 10) {
         secondsString = "0" + secondsString;
     }
-    
+
     return minutesString + ":" + secondsString;
 }
 
@@ -295,10 +295,10 @@ int BSORNoteID(GlobalNamespace::NoteData* note) {
     int colorType = note->colorType.value;
     if (colorType < 0) colorType = 3;
 
-    return (note->scoringType.value + 2) * 10000 + 
-            note->lineIndex * 1000 + 
-            note->noteLineLayer.value * 100 + 
-            colorType * 10 + 
+    return (note->scoringType.value + 2) * 10000 +
+            note->lineIndex * 1000 +
+            note->noteLineLayer.value * 100 +
+            colorType * 10 +
             note->cutDirection.value;
 }
 
@@ -306,10 +306,10 @@ int BSORNoteID(NoteEventInfo note) {
     int colorType = note.colorType;
     if (colorType < 0) colorType = 3;
 
-    return (note.scoringType + 2) * 10000 + 
-            note.lineIndex * 1000 + 
-            note.lineLayer * 100 + 
-            colorType * 10 + 
+    return (note.scoringType + 2) * 10000 +
+            note.lineIndex * 1000 +
+            note.lineLayer * 100 +
+            colorType * 10 +
             note.cutDirection;
 }
 

@@ -118,7 +118,7 @@ namespace Pause {
             parent->get_transform()->SetParent(pauseMenu->restartButton->get_transform()->GetParent(), false);
             parent->get_transform()->set_localScale(Vector3::one());
             SetTransform(parent, {0, -15}, {90, 25});
-            
+
             float time = Manager::GetSongTime();
             float startTime = scoreController->audioTimeSyncController->startSongTime;
             float endTime = scoreController->audioTimeSyncController->get_songLength();
