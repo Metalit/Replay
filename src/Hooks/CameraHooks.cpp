@@ -10,6 +10,8 @@
 
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "UnityEngine/AudioSource.hpp"
 
 #include "UnityEngine/Camera.hpp"
 
@@ -22,18 +24,18 @@ ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
 
 static bool wasMoving = false;
+static float lastVolume = -1;
 
 MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
 
     if(Manager::replaying) {
         if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            auto newTrans = getConfig().ThirdTrans.GetValue();
             auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
             // always update rotation but only update position when releasing
             if(!Manager::Camera::moving)
-                newTrans.Position = parent->InverseTransformPoint(self->headTransform->get_position());
-            newTrans.Rotation = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
-            getConfig().ThirdTrans.SetValue(newTrans);
+                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
+            auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
+            getConfig().ThirdPerRot.SetValue(rot);
         }
         wasMoving = Manager::Camera::moving;
         if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
@@ -108,6 +110,8 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
     CoreGameHUDController_Start(self);
 
+    lastVolume = -1;
+
     if(Manager::replaying) {
         // TODO: maybe move elsewhere
         auto& player = Manager::GetCurrentInfo().playerName;
@@ -180,6 +184,11 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 
                 if(getConfig().CameraOff.GetValue())
                     mainCamera->set_enabled(false);
+
+                auto audio = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::AudioTimeSyncController*>().First()->audioSource;
+                lastVolume = audio->get_volume();
+                audio->set_volume(0);
+                LOG_INFO("volume was {}", lastVolume);
             } else {
                 LOG_INFO("Beginning audio capture");
                 auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
@@ -212,6 +221,8 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
     mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
+    if(lastVolume >= 0)
+        self->audioTimeSyncController->audioSource->set_volume(lastVolume);
 
     return PrepareLevelCompletionResults_FillLevelCompletionResults(self, levelEndStateType, levelEndAction);
 }
