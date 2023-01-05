@@ -101,8 +101,8 @@ namespace Manager {
         MirrorRendererSO* mirrorRenderer;
 
         void SetFromConfig() {
-            smoothPosition = (Vector3) getConfig().ThirdTrans.GetValue().Position;
-            smoothRotation = Quaternion::Euler(getConfig().ThirdTrans.GetValue().Rotation);
+            smoothPosition = (Vector3) getConfig().ThirdPerPos.GetValue();
+            smoothRotation = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
         }
 
         void UpdateTime() {
@@ -121,10 +121,7 @@ namespace Manager {
             if(GetMode() == (int) CameraMode::ThirdPerson) {
                 float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
                 smoothPosition += Sombrero::QuaternionMultiply(smoothRotation, move * delta * direction);
-                ThirdPerson newTrans{};
-                newTrans.Position = smoothPosition;
-                newTrans.Rotation = getConfig().ThirdTrans.GetValue().Rotation;
-                getConfig().ThirdTrans.SetValue(newTrans);
+                getConfig().ThirdPerPos.SetValue(smoothPosition);
             }
         }
 

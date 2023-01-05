@@ -4,7 +4,11 @@
 
 #include "questui/shared/BeatSaberUI.hpp"
 
+#include "custom-types/shared/delegate.hpp"
+#include "System/Action_2.hpp"
+
 #include "HMUI/Touchable.hpp"
+#include "HMUI/TextSegmentedControl.hpp"
 
 #include "UnityEngine/RectTransform_Axis.hpp"
 
@@ -34,11 +38,12 @@ const std::vector<const char*> controllerNames = {
     "Both"
 };
 
-void CreateInputDropdowns(UnityEngine::Transform* parent, std::string_view name, std::string_view hint, int buttonValue, int controllerValue, auto buttonCallback, auto controllerCallback) {
+template<BeatSaberUI::HasTransform P>
+void CreateInputDropdowns(P parent, std::string_view name, std::string_view hint, int buttonValue, int controllerValue, auto buttonCallback, auto controllerCallback) {
     static ConstString labelName("Label");
 
     auto layout = BeatSaberUI::CreateHorizontalLayoutGroup(parent)->get_transform();
-    layout->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(7);
+    layout->template GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(7);
 
     std::vector<StringW> buttonNamesList(buttonNames.begin(), buttonNames.end());
     auto dropdown = BeatSaberUI::CreateDropdown(layout, name, buttonNamesList[buttonValue], buttonNamesList, [callback = std::move(buttonCallback)](StringW value){
@@ -73,12 +78,21 @@ void CreateInputDropdowns(UnityEngine::Transform* parent, std::string_view name,
     dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(38);
 }
 
+template<BeatSaberUI::HasTransform P>
+inline UnityEngine::UI::Button* CreateSmallButton(P parent, std::string text, auto callback) {
+    auto button = BeatSaberUI::CreateUIButton(parent, text, callback);
+    static ConstString contentName("Content");
+    UnityEngine::Object::Destroy(button->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
+    return button;
+}
+
 std::pair<std::string, std::string> split(const std::string& str, auto delimiter) {
     auto pos = str.find(delimiter);
     return std::make_pair(str.substr(0, pos), str.substr(pos + 1, std::string::npos));
 }
 
-inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
+template<BeatSaberUI::HasTransform P>
+inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
     auto strs = split(configValue.GetName(), "|");
     auto value = configValue.GetValue();
     CreateInputDropdowns(parent, strs.first, configValue.GetHoverHint(), value.ForwardButton, value.ForwardController,
@@ -107,7 +121,8 @@ inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::
     );
 }
 
-inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::ConfigValue<Button>& configValue) {
+template<BeatSaberUI::HasTransform P>
+inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<Button>& configValue) {
     auto value = configValue.GetValue();
     CreateInputDropdowns(parent, configValue.GetName(), configValue.GetHoverHint(), value.Button, value.Controller,
         [&configValue](int newButton) {
@@ -123,19 +138,76 @@ inline void AddConfigValueDropdown(UnityEngine::Transform* parent, ConfigUtils::
     );
 }
 
-inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self) {
-    self->get_gameObject()->AddComponent<HMUI::Touchable*>();
-    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(self);
+template<BeatSaberUI::HasTransform P>
+inline UnityEngine::Transform* MakeVertical(P parent) {
+    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(parent);
     vertical->set_childControlHeight(false);
     vertical->set_childForceExpandHeight(false);
     vertical->set_spacing(1);
     return vertical->get_transform();
 }
 
-inline void MakeTitle(UnityEngine::Transform* vertical, std::string text) {
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(vertical);
-    horizontal->set_childControlWidth(true);
-    BeatSaberUI::CreateText(horizontal, text)->set_alignment(TMPro::TextAlignmentOptions::Center);
+inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self) {
+    self->get_gameObject()->AddComponent<HMUI::Touchable*>();
+    return MakeVertical(self->get_transform());
+}
+
+template<BeatSaberUI::HasTransform P>
+HMUI::TextSegmentedControl* MakeTabSelector(P parent, std::vector<std::string> texts, auto callback) {
+    static SafePtrUnity<HMUI::TextSegmentedControl> tabSelectorTagTemplate;
+    if (!tabSelectorTagTemplate) {
+        tabSelectorTagTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::TextSegmentedControl*>().FirstOrDefault(
+            [](auto x) {
+                auto parent = x->get_transform()->get_parent();
+                if(!parent) return false;
+                if(parent->get_name() != "PlayerStatisticsViewController") return false;
+                return x->container != nullptr;
+            }
+        );
+    }
+
+    auto textSegmentedControl = UnityEngine::Object::Instantiate(tabSelectorTagTemplate.ptr(), parent->get_transform(), false);
+    textSegmentedControl->dataSource = nullptr;
+
+    auto gameObject = textSegmentedControl->get_gameObject();
+    gameObject->set_name("ReplayTabSelector");
+    textSegmentedControl->container = tabSelectorTagTemplate->container;
+
+    auto transform = gameObject->template GetComponent<UnityEngine::RectTransform*>();
+    transform->set_anchoredPosition({0, 0});
+    int childCount = transform->get_childCount();
+    for (int i = 1; i <= childCount; i++) {
+        UnityEngine::Object::DestroyImmediate(transform->GetChild(childCount - i)->get_gameObject());
+    }
+
+    auto textList = List<StringW>::New_ctor(texts.size());
+    for(auto text : texts)
+        textList->Add(text);
+    textSegmentedControl->SetTexts(textList->i_IReadOnlyList_1_T());
+
+    auto delegate = custom_types::MakeDelegate<System::Action_2<HMUI::SegmentedControl*, int>*>(
+        (std::function<void(HMUI::SegmentedControl*, int)>) [callback](HMUI::SegmentedControl* _, int selectedIndex) {
+            callback(selectedIndex);
+        }
+    );
+    textSegmentedControl->add_didSelectCellEvent(delegate);
+
+    gameObject->SetActive(true);
+    return textSegmentedControl;
+}
+
+template<BeatSaberUI::HasTransform P>
+inline UnityEngine::UI::Toggle* AddConfigValueToggle(P parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(),
+        [&configValue, callback](bool value) {
+            configValue.SetValue(value);
+            callback(value);
+        }
+    );
+    if(!configValue.GetHoverHint().empty())
+        BeatSaberUI::AddHoverHint(object->get_gameObject(), configValue.GetHoverHint());
+    ((UnityEngine::RectTransform*) object->get_transform())->set_sizeDelta({18, 8});
+    return object;
 }
 
 const std::vector<std::string> resolutionStrings = {
@@ -171,8 +243,6 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10);
 
     AddConfigValueToggle(transform, getConfig().Avatar);
-
-    AddConfigValueToggle(transform, getConfig().Ding);
 }
 
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -180,38 +250,50 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         return;
 
     auto transform = MakeLayout(this);
-    MakeTitle(transform, "Render Settings");
+    auto graphics = MakeVertical(transform);
+    auto rendering = MakeVertical(transform);
+    MakeTabSelector(transform, {"Graphics", "Rendering"}, [graphics, rendering](int selected) {
+        graphics->get_gameObject()->SetActive(selected == 0);
+        rendering->get_gameObject()->SetActive(selected == 1);
+    })->get_transform()->SetAsFirstSibling();
 
-    AddConfigValueToggle(transform, getConfig().Pauses);
+    AddConfigValueToggle(graphics, getConfig().Walls);
 
-    AddConfigValueToggle(transform, getConfig().Walls);
+    // AddConfigValueIncrementEnum(graphics, getConfig().Bloom, fourLevelStrings);
 
-    // AddConfigValueIncrementEnum(transform, getConfig().Bloom, fourLevelStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, fourLevelStrings);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Mirrors, fourLevelStrings);
-
-    shockwaveSetting = AddConfigValueIncrementInt(transform, getConfig().Shockwaves, 1, 1, 20)->get_gameObject();
+    shockwaveSetting = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20)->get_gameObject();
     auto incrementObject = shockwaveSetting->get_transform()->GetChild(1);
     incrementObject->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
     incrementObject->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({-20, 0});
 
-    auto shockwaveToggle = BeatSaberUI::CreateToggle(transform, "", getConfig().ShockwavesOn.GetValue(), [this](bool enabled) {
-        getConfig().ShockwavesOn.SetValue(enabled);
-        shockwaveSetting->get_transform()->GetChild(1)->get_gameObject()->SetActive(enabled);
+    auto shockwaveToggle = AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [this](bool enabled) {
+        shockwaveSetting->get_gameObject()->SetActive(enabled);
     })->get_transform();
     auto oldParent = shockwaveToggle->GetParent()->get_gameObject();
     shockwaveToggle->SetParent(shockwaveSetting->get_transform(), false);
     UnityEngine::Object::Destroy(oldParent);
 
-    AddConfigValueIncrementEnum(transform, getConfig().Resolution, resolutionStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Resolution, resolutionStrings);
 
-    AddConfigValueIncrementInt(transform, getConfig().Bitrate, 1000, 0, 100000);
+    AddConfigValueIncrementInt(graphics, getConfig().Bitrate, 5000, 10000, 1000000);
 
-    AddConfigValueIncrementFloat(transform, getConfig().FOV, 0, 5, 30, 150);
+    AddConfigValueIncrementFloat(graphics, getConfig().FOV, 0, 5, 30, 90);
 
-    AddConfigValueIncrementInt(transform, getConfig().FPS, 5, 5, 120);
+    AddConfigValueIncrementInt(graphics, getConfig().FPS, 5, 5, 120);
 
-    AddConfigValueToggle(transform, getConfig().CameraOff);
+    AddConfigValueToggle(graphics, getConfig().CameraOff);
+
+    AddConfigValueToggle(rendering, getConfig().Pauses);
+
+    AddConfigValueToggle(rendering, getConfig().Restart); // does nothing
+
+    AddConfigValueToggle(rendering, getConfig().Ding);
+
+    AddConfigValueToggle(rendering, getConfig().AutoAudio); // does nothing
+
+    rendering->get_gameObject()->SetActive(false);
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -219,19 +301,55 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         return;
 
     auto transform = MakeLayout(this);
-    MakeTitle(transform, "Input Settings");
+    auto inputs = MakeVertical(transform);
+    auto position = MakeVertical(transform);
+    MakeTabSelector(transform, {"Inputs", "Position"}, [inputs, position](int selected) {
+        inputs->get_gameObject()->SetActive(selected == 0);
+        position->get_gameObject()->SetActive(selected == 1);
+    })->get_transform()->SetAsFirstSibling();
 
-    AddConfigValueDropdown(transform, getConfig().TimeButton);
+    AddConfigValueDropdown(inputs, getConfig().TimeButton);
 
-    AddConfigValueIncrementInt(transform, getConfig().TimeSkip, 1, 1, 30);
+    AddConfigValueIncrementInt(inputs, getConfig().TimeSkip, 1, 1, 30);
 
-    AddConfigValueDropdown(transform, getConfig().SpeedButton);
+    AddConfigValueDropdown(inputs, getConfig().SpeedButton);
 
-    AddConfigValueDropdown(transform, getConfig().MoveButton);
+    AddConfigValueDropdown(inputs, getConfig().MoveButton);
 
-    AddConfigValueDropdown(transform, getConfig().TravelButton);
+    AddConfigValueDropdown(inputs, getConfig().TravelButton);
 
-    AddConfigValueIncrementFloat(transform, getConfig().TravelSpeed, 1, 0.1, 0.2, 5);
+    AddConfigValueIncrementFloat(inputs, getConfig().TravelSpeed, 1, 0.1, 0.2, 5);
+
+    auto positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
+
+    CreateSmallButton(position, "Reset Position", [positionSettings]() {
+        auto def = getConfig().ThirdPerPos.GetDefaultValue();
+        positionSettings[0]->CurrentValue = def.x;
+        positionSettings[0]->UpdateValue();
+        positionSettings[1]->CurrentValue = def.y;
+        positionSettings[1]->UpdateValue();
+        positionSettings[2]->CurrentValue = def.z;
+        positionSettings[2]->UpdateValue();
+    });
+
+    auto rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 1, 0.1);
+
+    CreateSmallButton(position, "Level Rotation", [rotationSettings]() {
+        rotationSettings[0]->CurrentValue = 0;
+        rotationSettings[0]->UpdateValue();
+    });
+
+    CreateSmallButton(position, "Reset Rotation", [rotationSettings]() {
+        auto def = getConfig().ThirdPerRot.GetDefaultValue();
+        rotationSettings[0]->CurrentValue = def.x;
+        rotationSettings[0]->UpdateValue();
+        rotationSettings[1]->CurrentValue = def.y;
+        rotationSettings[1]->UpdateValue();
+        rotationSettings[2]->CurrentValue = def.z;
+        rotationSettings[2]->UpdateValue();
+    });
+
+    position->get_gameObject()->SetActive(false);
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"
