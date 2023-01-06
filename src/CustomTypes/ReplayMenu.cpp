@@ -6,6 +6,7 @@
 #include "Utils.hpp"
 #include "Sprites.hpp"
 #include "Config.hpp"
+#include "CustomTypes/ReplaySettings.hpp"
 
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
@@ -29,12 +30,6 @@ UnityEngine::GameObject* canvas;
 Menu::ReplayViewController* viewController;
 StandardLevelDetailView* levelView;
 bool usingLocalReplays = true;
-
-const std::vector<std::string> dropdownStrings = {
-    "Normal",
-    "Smooth Camera",
-    "Third Person"
-};
 
 void OnReplayButtonClick() {
     if(!usingLocalReplays)
@@ -60,8 +55,8 @@ void OnWatchButtonClick() {
 }
 
 void OnCameraModeSet(StringW value) {
-    for(int i = 0; i < dropdownStrings.size(); i++) {
-        if(dropdownStrings[i] == value) {
+    for(int i = 0; i < cameraModes.size(); i++) {
+        if(cameraModes[i] == value) {
             getConfig().CamMode.SetValue(i);
             return;
         }
@@ -242,9 +237,9 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
 
-    std::vector<StringW> dropdownWs(dropdownStrings.begin(), dropdownStrings.end());
-    auto dropdown = BeatSaberUI::CreateDropdown(horizontal4, "", dropdownWs[getConfig().CamMode.GetValue()], dropdownWs, OnCameraModeSet);
-    SetPreferred(dropdown->get_transform()->get_parent(), std::nullopt, 10);
+    auto dropdown = AddConfigValueDropdownEnum(horizontal4, getConfig().CamMode, cameraModes)->get_transform()->GetParent();
+    dropdown->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
+    SetPreferred(dropdown, std::nullopt, 10);
 
     auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode, [this](bool audioMode) {
         std::string text = audioMode ? "Record Replay" : "Render Replay";
@@ -252,13 +247,25 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     });
     Object::Destroy(toggle->GetComponent<UI::LayoutElement*>());
 
+    auto settingsButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(-48, -22), Vector2(10, 10), [this]() {
+        static SafePtrUnity<HMUI::FlowCoordinator> settings;
+        if(!settings)
+            settings = (HMUI::FlowCoordinator*) BeatSaberUI::CreateFlowCoordinator<ReplaySettings::ModSettings*>();
+        auto flow = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
+        flow->PresentFlowCoordinator(settings.ptr(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
+    });
+    UnityEngine::Object::Destroy(settingsButton->get_transform()->Find("Content")->GetComponent<UI::LayoutElement*>());
+    auto settigsIcon = BeatSaberUI::CreateImage(settingsButton, GetSettingsIcon());
+    settigsIcon->get_transform()->set_localScale({0.8, 0.8, 0.8});
+    settigsIcon->set_preserveAspect(true);
+
     deleteButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(48, -22), Vector2(10, 10), [this]() {
         confirmModal->Show(true, true, nullptr);
     });
     UnityEngine::Object::Destroy(deleteButton->get_transform()->Find("Content")->GetComponent<UI::LayoutElement*>());
-    auto icon = BeatSaberUI::CreateImage(deleteButton, GetDeleteIcon());
-    icon->get_transform()->set_localScale({0.8, 0.8, 0.8});
-    icon->set_preserveAspect(true);
+    auto deleteIcon = BeatSaberUI::CreateImage(deleteButton, GetDeleteIcon());
+    deleteIcon->get_transform()->set_localScale({0.8, 0.8, 0.8});
+    deleteIcon->set_preserveAspect(true);
 
     increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, currentReplay + 1, 1, replayInfos.size(), OnIncrementChanged);
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());

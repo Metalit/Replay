@@ -2,3 +2,4 @@
 DECLARE_FILE(Delete_png,)
 DECLARE_FILE(Ding_wav,)
 DECLARE_FILE(Replay_png,)
+DECLARE_FILE(Settings_png,)

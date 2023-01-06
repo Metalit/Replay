@@ -2,3 +2,4 @@
 
 UnityEngine::Sprite* GetReplayIcon();
 UnityEngine::Sprite* GetDeleteIcon();
+UnityEngine::Sprite* GetSettingsIcon();

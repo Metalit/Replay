@@ -12,3 +12,4 @@ UnityEngine::Sprite* Get##name##Icon() { \
 
 SPRITE_FUNC(Replay)
 SPRITE_FUNC(Delete)
+SPRITE_FUNC(Settings)

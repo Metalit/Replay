@@ -10,6 +10,12 @@ const std::vector<std::pair<int, int>> resolutions = {
     {3840, 2160}
 };
 
+const std::vector<std::string> cameraModes = {
+    "Normal",
+    "Smooth Camera",
+    "Third Person"
+};
+
 enum struct CameraMode {
     Headset,
     Smooth,
