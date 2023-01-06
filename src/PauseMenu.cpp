@@ -86,13 +86,13 @@ void AddIncrement(SliderSetting* slider, float increment) {
     auto width = rect->get_rect().get_width() / 2;
     auto delta = rect->get_sizeDelta();
     rect->set_sizeDelta({delta.x - 16, delta.y});
-    BeatSaberUI::CreateUIButton(rect, "", "DecButton", {4 - width, 0}, {6, 20}, [slider, increment] {
+    BeatSaberUI::CreateUIButton(rect, "", "DecButton", {4 - width, 0}, {6, 10}, [slider, increment] {
         float newValue = slider->slider->get_value() - increment;
         slider->slider->set_value(newValue);
         // get_value to let it handle min/max
         slider->OnChange(slider->slider, slider->slider->get_value());
     });
-    BeatSaberUI::CreateUIButton(rect, "", "IncButton", {-6 + width, 0}, {10, 20}, [slider, increment] {
+    BeatSaberUI::CreateUIButton(rect, "", "IncButton", {-6 + width, 0}, {10, 10}, [slider, increment] {
         float newValue = slider->slider->get_value() + increment;
         slider->slider->set_value(newValue);
         // get_value to let it handle min/max
@@ -114,10 +114,11 @@ namespace Pause {
             LOG_INFO("Creating pause UI");
 
             parent = BeatSaberUI::CreateCanvas();
+            parent->AddComponent<HMUI::Screen*>();
             parent->set_name(menuName);
             parent->get_transform()->SetParent(pauseMenu->restartButton->get_transform()->GetParent(), false);
             parent->get_transform()->set_localScale(Vector3::one());
-            SetTransform(parent, {0, -15}, {90, 25});
+            SetTransform(parent, {0, -15}, {110, 25});
 
             float time = Manager::GetSongTime();
             float startTime = scoreController->audioTimeSyncController->startSongTime;
@@ -128,10 +129,13 @@ namespace Pause {
             if(info.failed)
                 endTime = info.failTime;
             timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
-            SetTransform(timeSlider, {0, 6}, {90, 10});
+            SetTransform(timeSlider, {0, 6}, {100, 10});
             speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, [](float _) { touchedSpeed = true; }, [](float speed) { return string_format("%.1fx", speed); });
-            SetTransform(speedSlider, {0, -6}, {90, 10});
+            SetTransform(speedSlider, {-18, -4}, {65, 10});
             AddIncrement(speedSlider, 0.1);
+            auto dropdown = AddConfigValueDropdownEnum(parent, getConfig().CamMode, cameraModes)->get_transform()->GetParent();
+            dropdown->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
+            SetTransform(dropdown, {-10, -11.5}, {10, 10});
         }
         timeSlider->set_value(scoreController->audioTimeSyncController->songTime);
         float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;

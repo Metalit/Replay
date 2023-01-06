@@ -149,6 +149,19 @@ namespace Manager {
             return (int) mode;
         }
 
+        void SetMode(int value) {
+            CameraMode oldMode = (CameraMode) getConfig().CamMode.GetValue();
+            CameraMode mode = (CameraMode) value;
+            if(mode == oldMode)
+                return;
+            getConfig().CamMode.SetValue(value);
+            if(mode == CameraMode::Smooth) {
+                smoothPosition = GetFrame().head.position;
+                smoothRotation = GetFrame().head.rotation;
+            } else if(GetMode() == (int) CameraMode::ThirdPerson)
+                SetFromConfig();
+        }
+
         void SetGraphicsSettings() {
             if(getConfig().AudioMode.GetValue())
                 return;

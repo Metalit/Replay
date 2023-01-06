@@ -5,6 +5,7 @@
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "HMUI/ViewController.hpp"
 #include "HMUI/ModalView.hpp"
+#include "HMUI/SimpleTextDropdown.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
 
@@ -53,6 +54,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         UnityEngine::UI::Button* watchButton;
         UnityEngine::UI::Button* renderButton;
         UnityEngine::UI::Button* deleteButton;
+        HMUI::SimpleTextDropdown* cameraDropdown;
         QuestUI::IncrementSetting* increment;
         HMUI::ModalView* confirmModal;
 

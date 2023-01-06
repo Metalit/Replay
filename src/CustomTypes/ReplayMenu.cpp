@@ -194,8 +194,10 @@ inline UnityEngine::UI::Toggle* AddConfigValueToggle(UnityEngine::Transform* par
 }
 
 void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    if(!firstActivation)
+    if(!firstActivation) {
+        cameraDropdown->SelectCellWithIdx(getConfig().CamMode.GetValue());
         return;
+    }
 
     using namespace UnityEngine;
 
@@ -237,9 +239,9 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
 
-    auto dropdown = AddConfigValueDropdownEnum(horizontal4, getConfig().CamMode, cameraModes)->get_transform()->GetParent();
-    dropdown->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
-    SetPreferred(dropdown, std::nullopt, 10);
+    cameraDropdown = AddConfigValueDropdownEnum(horizontal4, getConfig().CamMode, cameraModes);
+    cameraDropdown->get_transform()->GetParent()->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
+    SetPreferred(cameraDropdown->get_transform()->GetParent(), std::nullopt, 10);
 
     auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode, [this](bool audioMode) {
         std::string text = audioMode ? "Record Replay" : "Render Replay";

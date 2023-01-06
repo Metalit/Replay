@@ -59,6 +59,7 @@ namespace Manager {
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
         int GetMode();
+        void SetMode(int mode);
     }
 
     namespace Frames {
