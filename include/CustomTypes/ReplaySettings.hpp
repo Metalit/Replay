@@ -15,8 +15,6 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController,
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController,
     DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
-
-    DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, shockwaveSetting);
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController,

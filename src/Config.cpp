@@ -83,6 +83,9 @@ inline UnityEngine::UI::Button* CreateSmallButton(P parent, std::string text, au
     auto button = BeatSaberUI::CreateUIButton(parent, text, callback);
     static ConstString contentName("Content");
     UnityEngine::Object::Destroy(button->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
+    auto fitter = button->get_gameObject()->template AddComponent<UnityEngine::UI::ContentSizeFitter*>();
+    fitter->set_horizontalFit(UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize);
+    fitter->set_verticalFit(UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize);
     return button;
 }
 
@@ -263,16 +266,15 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, fourLevelStrings);
 
-    shockwaveSetting = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20)->get_gameObject();
-    auto incrementObject = shockwaveSetting->get_transform()->GetChild(1);
-    incrementObject->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
-    incrementObject->GetComponent<UnityEngine::RectTransform*>()->set_anchoredPosition({-20, 0});
+    auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20)->get_transform()->GetChild(1);
+    shockwaveIncrement->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
+    ((UnityEngine::RectTransform*) shockwaveIncrement)->set_anchoredPosition({-20, 0});
 
-    auto shockwaveToggle = AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [this](bool enabled) {
-        shockwaveSetting->get_gameObject()->SetActive(enabled);
+    auto shockwaveToggle = AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [shockwaveIncrement](bool enabled) {
+        shockwaveIncrement->get_gameObject()->SetActive(enabled);
     })->get_transform();
     auto oldParent = shockwaveToggle->GetParent()->get_gameObject();
-    shockwaveToggle->SetParent(shockwaveSetting->get_transform(), false);
+    shockwaveToggle->SetParent(shockwaveIncrement->GetParent(), false);
     UnityEngine::Object::Destroy(oldParent);
 
     AddConfigValueIncrementEnum(graphics, getConfig().Resolution, resolutionStrings);
@@ -334,12 +336,14 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     auto rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 1, 0.1);
 
-    CreateSmallButton(position, "Level Rotation", [rotationSettings]() {
+    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(position);
+
+    CreateSmallButton(horizontal, "Level Rotation", [rotationSettings]() {
         rotationSettings[0]->CurrentValue = 0;
         rotationSettings[0]->UpdateValue();
     });
 
-    CreateSmallButton(position, "Reset Rotation", [rotationSettings]() {
+    CreateSmallButton(horizontal, "Reset Rotation", [rotationSettings]() {
         auto def = getConfig().ThirdPerRot.GetDefaultValue();
         rotationSettings[0]->CurrentValue = def.x;
         rotationSettings[0]->UpdateValue();
