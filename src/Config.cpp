@@ -248,6 +248,8 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
 
+// #include "JNIUtils.hpp"
+
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
         return;
@@ -289,11 +291,15 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Pauses);
 
-    AddConfigValueToggle(rendering, getConfig().Restart); // does nothing
+    // AddConfigValueToggle(rendering, getConfig().Restart);
 
     AddConfigValueToggle(rendering, getConfig().Ding);
 
-    AddConfigValueToggle(rendering, getConfig().AutoAudio); // does nothing
+    AddConfigValueToggle(rendering, getConfig().AutoAudio);
+
+    // CreateSmallButton(rendering, "Restart?", []() {
+    //     JNIUtils::RestartApp();
+    // });
 
     rendering->get_gameObject()->SetActive(false);
 }

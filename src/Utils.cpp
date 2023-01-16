@@ -1,6 +1,7 @@
 #include "Main.hpp"
 #include "Utils.hpp"
 #include "Config.hpp"
+#include "Assets.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
@@ -14,6 +15,9 @@
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
 #include "GlobalNamespace/OVRInput_Button.hpp"
+#include "UnityEngine/GameObject.hpp"
+#include "UnityEngine/AudioClip.hpp"
+#include "UnityEngine/AudioSource.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
 
 #include "custom-types/shared/coroutine.hpp"
@@ -461,4 +465,26 @@ int IsButtonDown(const ButtonPair& button) {
     if(IsButtonDown(button.BackButton, button.BackController))
         ret -= 1;
     return ret;
+}
+
+void PlayDing() {
+    static const int offset = 44;
+    static const int frequency = 44100;
+    static const int sampleSize = 2;
+    using sampleSizeType = int16_t;
+    int length = (Ding_wav::getLength() - offset) / sampleSize;
+    length -= frequency * 2.5; // remove some static that shows up at the end for some reason
+    auto arr = ArrayW<float>(length);
+    for(int i = 0; i < length; i++) {
+        arr[i] = *((sampleSizeType*) Ding_wav::getData() + offset + i * sampleSize);
+        arr[i] /= std::numeric_limits<sampleSizeType>::max();
+    }
+    auto clip = UnityEngine::AudioClip::Create("Ding", length, 1, frequency, false);
+    clip->SetData(arr, 0);
+    auto audioClipGO = UnityEngine::GameObject::New_ctor("DingAudioClip");
+    auto audioSource = audioClipGO->AddComponent<UnityEngine::AudioSource*>();
+    audioSource->set_playOnAwake(false);
+    audioSource->set_clip(clip);
+    audioSource->set_volume(5);
+    audioSource->Play();
 }

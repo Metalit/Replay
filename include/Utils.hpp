@@ -50,3 +50,5 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time);
 bool IsButtonDown(const class Button& button);
 
 int IsButtonDown(const class ButtonPair& button);
+
+void PlayDing();

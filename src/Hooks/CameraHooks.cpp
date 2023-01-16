@@ -145,7 +145,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
         }
 
         if(Manager::Camera::rendering) {
-            if(!getConfig().AudioMode.GetValue()) {
+            if(!Manager::Camera::GetAudioMode()) {
                 LOG_INFO("Beginning video capture");
                 customCamera = UnityEngine::Object::Instantiate(mainCamera);
                 customCamera->set_enabled(true);
@@ -239,12 +239,12 @@ MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bo
     return PauseController_get_canPause(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Camera, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && !getConfig().AudioMode.GetValue() && getConfig().CameraOff.GetValue() && mainCamera) // wow
+    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode() && getConfig().CameraOff.GetValue() && mainCamera) // wow
         mainCamera->set_enabled(true);
     PauseMenuManager_ShowMenu_Camera(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && !getConfig().AudioMode.GetValue() && getConfig().CameraOff.GetValue() && mainCamera)
+    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode() && getConfig().CameraOff.GetValue() && mainCamera)
         mainCamera->set_enabled(false);
     PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera(self);
 }

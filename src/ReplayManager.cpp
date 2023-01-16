@@ -3,6 +3,7 @@
 #include "ReplayManager.hpp"
 #include "MathUtils.hpp"
 #include "Utils.hpp"
+#include "MenuSelection.hpp"
 
 #include "Formats/FrameReplay.hpp"
 #include "Formats/EventReplay.hpp"
@@ -142,9 +143,15 @@ namespace Manager {
             return smoothRotation;
         }
 
+        bool GetAudioMode() {
+            if(getConfig().NextIsAudio.GetValue())
+                return true;
+            return getConfig().AudioMode.GetValue();
+        }
+
         int GetMode() {
             CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
-            if(mode == CameraMode::Headset && !getConfig().AudioMode.GetValue() && rendering)
+            if(mode == CameraMode::Headset && !GetAudioMode() && rendering)
                 return (int) CameraMode::Smooth;
             return (int) mode;
         }
@@ -163,7 +170,7 @@ namespace Manager {
         }
 
         void SetGraphicsSettings() {
-            if(getConfig().AudioMode.GetValue())
+            if(GetAudioMode())
                 return;
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             int shockwaves = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
@@ -183,7 +190,7 @@ namespace Manager {
             }
         }
         void UnsetGraphicsSettings() {
-            if(getConfig().AudioMode.GetValue())
+            if(GetAudioMode())
                 return;
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
@@ -396,6 +403,21 @@ namespace Manager {
         Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
+        if(Camera::rendering) {
+            if(getConfig().Restart.GetValue()) {
+                SaveCurrentLevelInConfig();
+                RestartGame();
+                return;
+            }
+            bool wasTempAudio = getConfig().NextIsAudio.GetValue();
+            if(wasTempAudio)
+                getConfig().NextIsAudio.SetValue(false);
+            if(getConfig().AutoAudio.GetValue() && !wasTempAudio) {
+                getConfig().NextIsAudio.SetValue(true);
+                RenderCurrentLevel();
+            } else if(getConfig().Ding.GetValue())
+                PlayDing();
+        }
     }
 
     void ReplayPaused() {

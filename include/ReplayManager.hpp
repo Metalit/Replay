@@ -58,6 +58,7 @@ namespace Manager {
 
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
+        bool GetAudioMode();
         int GetMode();
         void SetMode(int mode);
     }

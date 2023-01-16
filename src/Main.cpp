@@ -6,6 +6,7 @@
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
+#include "MenuSelection.hpp"
 
 #include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
@@ -17,6 +18,8 @@
 #include "questui/shared/QuestUI.hpp"
 
 #include "custom-types/shared/register.hpp"
+
+#include "songloader/shared/API.hpp"
 
 using namespace GlobalNamespace;
 
@@ -81,6 +84,10 @@ extern "C" void load() {
     custom_types::Register::AutoRegister();
 
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
+
+    RuntimeSongLoader::API::AddSongsLoadedEvent(*[](const std::vector<CustomPreviewBeatmapLevel*>& _) {
+        SelectLevelInConfig();
+    });
 
     LOG_INFO("Installing hooks...");
     auto& logger = getLogger();

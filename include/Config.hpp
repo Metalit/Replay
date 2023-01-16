@@ -51,11 +51,18 @@ DECLARE_JSON_CLASS(ButtonPair,
     VALUE(int, BackController)
 )
 
+DECLARE_JSON_CLASS(LevelSelection,
+    VALUE(std::string, ID)
+    VALUE(std::string, PackID)
+    VALUE(int, Difficulty)
+    VALUE(std::string, Characteristic)
+)
+
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
-    CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(0, 2, -0.5))
-    CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", {})
+    CONFIG_VALUE(LevelToSelect, LevelSelection, "Select Level On Start", {})
+    CONFIG_VALUE(NextIsAudio, bool, "Temp Audio Next Render", false)
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
@@ -88,4 +95,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(MoveButton, Button, "Movement Button", {}, "Enables moving to a desired third person position when held")
     CONFIG_VALUE(TravelButton, ButtonPair, "Travel Forward|Travel Backward", {}, "Moves the environment around you in third person")
     CONFIG_VALUE(TravelSpeed, float, "Travel Speed", 1, "The speed multiplier for the travel function")
+
+    CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(0, 2, -0.5))
+    CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", {})
 )
