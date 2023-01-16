@@ -185,9 +185,11 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                 if(getConfig().CameraOff.GetValue())
                     mainCamera->set_enabled(false);
 
-                auto audio = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::AudioTimeSyncController*>().First()->audioSource;
-                lastVolume = audio->get_volume();
-                audio->set_volume(0);
+                static auto get_volume = il2cpp_utils::resolve_icall<float>("UnityEngine.AudioListener::get_volume");
+                static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
+
+                lastVolume = get_volume();
+                set_volume(0);
                 LOG_INFO("volume was {}", lastVolume);
             } else {
                 LOG_INFO("Beginning audio capture");
@@ -221,8 +223,9 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
     mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
+    static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::get_volume");
     if(lastVolume >= 0)
-        self->audioTimeSyncController->audioSource->set_volume(lastVolume);
+        set_volume(lastVolume);
 
     return PrepareLevelCompletionResults_FillLevelCompletionResults(self, levelEndStateType, levelEndAction);
 }
