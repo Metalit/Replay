@@ -27,6 +27,7 @@
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/GameEnergyUIPanel.hpp"
 
+#include "UnityEngine/Time.hpp"
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Playables/PlayableDirector.hpp"
 
@@ -159,16 +160,18 @@ namespace Pause {
     }
 
     void SetSpeed(float speed) {
-        float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;
+        auto audio = scoreController->audioTimeSyncController;
+        float baseSpeed = audio->initData->timeScale;
         float modifiedSpeed = speed * baseSpeed;
         // audio pitch can't be adjusted past these for some reason
         if(modifiedSpeed > 2)
             modifiedSpeed = 2;
         if(modifiedSpeed < 0.5)
             modifiedSpeed = 0.5;
-        scoreController->audioTimeSyncController->timeScale = modifiedSpeed;
-        scoreController->audioTimeSyncController->audioSource->set_pitch(modifiedSpeed);
+        audio->timeScale = modifiedSpeed;
+        audio->audioSource->set_pitch(modifiedSpeed);
         audioManager->set_musicPitch(1 / modifiedSpeed);
+        audio->audioStartTimeOffsetSinceStart = (UnityEngine::Time::get_timeSinceLevelLoad() * modifiedSpeed) - (audio->songTime + audio->initData->songTimeOffset);
     }
 
     void ResetEnergyBar() {
