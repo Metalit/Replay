@@ -186,6 +186,8 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
 
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
+#include "GlobalNamespace/MenuLightsManager.hpp"
+#include "GlobalNamespace/MenuLightsPresetSO.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 
 // watch for level ending
@@ -206,6 +208,8 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
         if(levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart) {
             auto viewController = self->mainScreenViewControllers->get_Item(self->mainScreenViewControllers->get_Count() - 1);
             self->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+            auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
+            lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
             Manager::ReplayEnded();
         }
     }
