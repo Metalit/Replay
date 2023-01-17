@@ -139,9 +139,7 @@ namespace Pause {
             SetTransform(dropdown, {-10, -11.5}, {10, 10});
         }
         timeSlider->set_value(scoreController->audioTimeSyncController->songTime);
-        float baseSpeed = scoreController->audioTimeSyncController->initData->timeScale;
-        float speed = scoreController->audioTimeSyncController->timeScale;
-        speedSlider->set_value(speed / baseSpeed);
+        speedSlider->set_value(scoreController->audioTimeSyncController->timeScale);
         touchedTime = false;
         touchedSpeed = false;
         lastPauseMenu = pauseMenu;
@@ -161,17 +159,15 @@ namespace Pause {
 
     void SetSpeed(float speed) {
         auto audio = scoreController->audioTimeSyncController;
-        float baseSpeed = audio->initData->timeScale;
-        float modifiedSpeed = speed * baseSpeed;
         // audio pitch can't be adjusted past these for some reason
-        if(modifiedSpeed > 2)
-            modifiedSpeed = 2;
-        if(modifiedSpeed < 0.5)
-            modifiedSpeed = 0.5;
-        audio->timeScale = modifiedSpeed;
-        audio->audioSource->set_pitch(modifiedSpeed);
-        audioManager->set_musicPitch(1 / modifiedSpeed);
-        audio->audioStartTimeOffsetSinceStart = (UnityEngine::Time::get_timeSinceLevelLoad() * modifiedSpeed) - (audio->songTime + audio->initData->songTimeOffset);
+        if(speed > 2)
+            speed = 2;
+        if(speed < 0.5)
+            speed = 0.5;
+        audio->timeScale = speed;
+        audio->audioSource->set_pitch(speed);
+        audioManager->set_musicPitch(1 / speed);
+        audio->audioStartTimeOffsetSinceStart = (UnityEngine::Time::get_timeSinceLevelLoad() * speed) - (audio->songTime + audio->initData->songTimeOffset);
     }
 
     void ResetEnergyBar() {
