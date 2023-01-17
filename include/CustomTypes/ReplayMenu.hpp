@@ -22,7 +22,7 @@ namespace Menu {
 
     void CheckMultiplayer();
 
-    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths, bool external = false);
+    void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays, bool external = false);
 
     void PresentMenu();
     void DismissMenu();
@@ -41,7 +41,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
     DECLARE_DEFAULT_CTOR();
 
     public:
-        void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths);
+        void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays);
         void SelectReplay(int index);
         std::string& GetReplay();
     private:
@@ -58,9 +58,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         QuestUI::IncrementSetting* increment;
         HMUI::ModalView* confirmModal;
 
-        std::vector<ReplayInfo*> replayInfos;
-        std::vector<std::string> replayPaths;
-        int currentReplay;
+        std::vector<std::pair<std::string, ReplayInfo*>> replays;
         GlobalNamespace::IDifficultyBeatmap* beatmap;
         GlobalNamespace::IReadonlyBeatmapData* beatmapData;
 )

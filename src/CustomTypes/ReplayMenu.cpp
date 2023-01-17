@@ -135,9 +135,9 @@ namespace Menu {
             SetButtonEnabled(false);
     }
 
-    void SetReplays(std::vector<ReplayInfo*> replayInfos, std::vector<std::string> replayPaths, bool external) {
+    void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays, bool external) {
         usingLocalReplays = !external;
-        viewController->SetReplays(replayInfos, replayPaths);
+        viewController->SetReplays(replays);
     }
 
     void PresentMenu() {
@@ -269,7 +269,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     deleteIcon->get_transform()->set_localScale({0.8, 0.8, 0.8});
     deleteIcon->set_preserveAspect(true);
 
-    increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, currentReplay + 1, 1, replayInfos.size(), OnIncrementChanged);
+    increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, getConfig().LastReplayIdx.GetValue() + 1, 1, replays.size(), OnIncrementChanged);
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
     ((RectTransform*) increment->get_transform()->GetChild(1))->set_anchoredPosition({-20, 0});
 
@@ -292,35 +292,35 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UI::LayoutElement*>());
 }
 
-void Menu::ReplayViewController::SetReplays(std::vector<ReplayInfo*> infos, std::vector<std::string> paths) {
-    replayInfos = infos;
-    replayPaths = paths;
-    currentReplay = 0;
+void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replayInfos) {
+    replays = replayInfos;
+    if(getConfig().LastReplayIdx.GetValue() >= replayInfos.size())
+        getConfig().LastReplayIdx.SetValue(replayInfos.size() - 1);
     auto lastBeatmap = beatmap;
     beatmap = levelView->selectedDifficultyBeatmap;
     if(lastBeatmap != beatmap) {
         beatmapData = nullptr;
-        GetBeatmapData(beatmap, [this, infos](IReadonlyBeatmapData* data) {
+        GetBeatmapData(beatmap, [this, replayInfos](IReadonlyBeatmapData* data) {
             beatmapData = data;
-            if(replayInfos == infos && increment) {
+            if(replays == replayInfos && increment) {
                 UpdateUI();
             }
         });
     }
     if(increment) {
-        increment->MaxValue = infos.size();
-        increment->CurrentValue = 0;
+        increment->MaxValue = replayInfos.size();
+        increment->CurrentValue = getConfig().LastReplayIdx.GetValue() + 1;
         increment->UpdateValue();
     }
 }
 
 void Menu::ReplayViewController::SelectReplay(int index) {
-    currentReplay = index;
+    getConfig().LastReplayIdx.SetValue(index);
     UpdateUI();
 }
 
 std::string& Menu::ReplayViewController::GetReplay() {
-    return replayPaths[currentReplay];
+    return replays[getConfig().LastReplayIdx.GetValue()].first;
 }
 
 void Menu::ReplayViewController::UpdateUI() {
@@ -331,7 +331,7 @@ void Menu::ReplayViewController::UpdateUI() {
     levelBar->Setup(level, characteristic, difficulty);
     float songLength = level->get_songDuration();
 
-    auto info = replayInfos[currentReplay];
+    auto info = replays[getConfig().LastReplayIdx.GetValue()].second;
 
     sourceText->set_text(GetLayeredText("Replay Source:  ", info->source, false));
     std::string date = GetStringForTimeSinceNow(info->timestamp);
@@ -353,8 +353,8 @@ void Menu::ReplayViewController::UpdateUI() {
     deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 
     auto buttons = increment->get_transform()->GetChild(1)->GetComponentsInChildren<UnityEngine::UI::Button*>();
-    buttons.First()->set_interactable(currentReplay + 1 != increment->MinValue);
-    buttons.Last()->set_interactable(currentReplay + 1 != increment->MaxValue);
+    buttons.First()->set_interactable(getConfig().LastReplayIdx.GetValue() + 1 != increment->MinValue);
+    buttons.Last()->set_interactable(getConfig().LastReplayIdx.GetValue() + 1 != increment->MaxValue);
 
     increment->get_gameObject()->SetActive(increment->MinValue != increment->MaxValue);
 }

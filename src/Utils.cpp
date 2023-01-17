@@ -55,8 +55,8 @@ const std::string reqlaySuffix1 = ".reqlay";
 const std::string reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
 const std::string bsorSuffix = ".bsor";
 
-std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* beatmap) {
-    std::unordered_map<std::string, ReplayWrapper> replays;
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap* beatmap) {
+    std::vector<std::pair<std::string, ReplayWrapper>> replays;
 
     std::vector<std::string> tests;
 
@@ -70,7 +70,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
         if(fileexists(path)) {
             auto replay = ReadReqlay(path);
             if(replay.IsValid()) {
-                replays.insert({path, replay});
+                replays.emplace_back(path, replay);
                 LOG_INFO("Read reqlay from {}", path);
             }
         }
@@ -111,7 +111,7 @@ std::unordered_map<std::string, ReplayWrapper> GetReplays(IDifficultyBeatmap* be
             if(path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
                 auto replay = ReadBSOR(path.string());
                 if(replay.IsValid()) {
-                    replays.insert({path.string(), replay});
+                    replays.emplace_back(path.string(), replay);
                     LOG_INFO("Read bsor from {}", path.string());
                 }
             }

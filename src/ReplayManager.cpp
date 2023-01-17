@@ -47,7 +47,7 @@ struct NoteCompare {
     }
 };
 
-std::unordered_map<std::string, ReplayWrapper> currentReplays;
+std::vector<std::pair<std::string, ReplayWrapper>> currentReplays;
 
 namespace Manager {
 
@@ -343,18 +343,15 @@ namespace Manager {
             RefreshLevelReplays();
     }
 
-    void SetReplays(std::unordered_map<std::string, ReplayWrapper> replays, bool external) {
+    void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external) {
         currentReplays = replays;
         if(currentReplays.size() > 0) {
             if(!external)
                 Menu::SetButtonEnabled(true);
-            std::vector<std::string> paths;
-            std::vector<ReplayInfo*> infos;
-            for(auto& pair : currentReplays) {
-                paths.emplace_back(pair.first);
-                infos.emplace_back(&pair.second.replay->info);
-            }
-            Menu::SetReplays(infos, paths, external);
+            std::vector<std::pair<std::string, ReplayInfo*>> replayInfos;
+            for(auto& pair : currentReplays)
+                replayInfos.emplace_back(pair.first, &pair.second.replay->info);
+            Menu::SetReplays(replayInfos, external);
         } else if(!external) {
             Menu::SetButtonEnabled(false);
             Menu::DismissMenu();
@@ -383,11 +380,10 @@ namespace Manager {
     }
 
     void ReplayStarted(const std::string& path) {
-        auto replay = currentReplays.find(path);
-        if(replay != currentReplays.end())
-            ReplayStarted(replay->second);
-        else
-            return;
+        for(auto& pair : currentReplays) {
+            if(pair.first == path)
+                ReplayStarted(pair.second);
+        }
     }
 
     void ReplayRestarted(bool full) {

@@ -17,7 +17,7 @@ std::string GetBSORsPath();
 
 std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
 
-std::unordered_map<std::string, ReplayWrapper> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
 
 std::string SecondsToString(int value);
 

@@ -85,8 +85,13 @@ void RenderCurrentLevel() {
     if(!map)
         return;
     auto replays = GetReplays(map);
+    if(replays.empty())
+        return;
     Manager::Camera::rendering = true;
-    Manager::ReplayStarted(replays.begin()->second);
+    int idx = getConfig().LastReplayIdx.GetValue();
+    if(idx >= replays.size())
+        idx = replays.size() - 1;
+    Manager::ReplayStarted(replays[idx].second);
     levelSelection->StartLevel(nullptr, false);
 }
 

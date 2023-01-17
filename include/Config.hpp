@@ -63,6 +63,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
     CONFIG_VALUE(LevelToSelect, LevelSelection, "Select Level On Start", {})
     CONFIG_VALUE(NextIsAudio, bool, "Temp Audio Next Render", false)
+    CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0)
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
