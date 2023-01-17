@@ -22,19 +22,22 @@ void CameraRig::Update() {
 
     auto trans = get_transform();
     if(Manager::replaying && !Manager::paused) {
-        if(avatar) {
-            avatar->get_gameObject()->SetActive(true);
-            auto& frame = Manager::GetFrame();
-            auto& nextFrame = Manager::GetNextFrame();
-            float lerp = Manager::GetFrameProgress();
-            avatar->UpdateTransforms(
-                Vector3::Lerp(frame.head.position, nextFrame.head.position, lerp),
-                Vector3::Lerp(frame.leftHand.position, nextFrame.leftHand.position, lerp),
-                Vector3::Lerp(frame.rightHand.position, nextFrame.rightHand.position, lerp),
-                Quaternion::Lerp(frame.head.rotation, nextFrame.head.rotation, lerp),
-                Quaternion::Lerp(frame.leftHand.rotation, nextFrame.leftHand.rotation, lerp),
-                Quaternion::Lerp(frame.rightHand.rotation, nextFrame.rightHand.rotation, lerp)
-            );
+        if(getConfig().Avatar.GetValue()) {
+            bool enabled = Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson;
+            avatar->get_gameObject()->SetActive(enabled);
+            if(enabled) {
+                auto& frame = Manager::GetFrame();
+                auto& nextFrame = Manager::GetNextFrame();
+                float lerp = Manager::GetFrameProgress();
+                avatar->UpdateTransforms(
+                    Vector3::Lerp(frame.head.position, nextFrame.head.position, lerp),
+                    Vector3::Lerp(frame.leftHand.position, nextFrame.leftHand.position, lerp),
+                    Vector3::Lerp(frame.rightHand.position, nextFrame.rightHand.position, lerp),
+                    Quaternion::Lerp(frame.head.rotation, nextFrame.head.rotation, lerp),
+                    Quaternion::Lerp(frame.leftHand.rotation, nextFrame.leftHand.rotation, lerp),
+                    Quaternion::Lerp(frame.rightHand.rotation, nextFrame.rightHand.rotation, lerp)
+                );
+            }
         }
         if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && Manager::Camera::moving)
             return;
@@ -49,8 +52,7 @@ void CameraRig::Update() {
             child->set_localPosition(pos * -1);
         }
     } else {
-        if(avatar)
-            avatar->get_gameObject()->SetActive(false);
+        avatar->get_gameObject()->SetActive(false);
         trans->set_localPosition(Vector3::zero());
         trans->set_localRotation(Quaternion::identity());
         child->set_localPosition(Vector3::zero());
@@ -83,26 +85,25 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     child->SetPositionAndRotation(cameraTransform->get_position(), cameraTransform->get_rotation());
     cameraTransform->SetParent(child, false);
 
-    if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue()) {
-        auto playerAvatar = UnityEngine::Resources::FindObjectsOfTypeAll<AvatarPoseController*>().First([](auto x) {
-            return x->get_name() == "PlayerAvatar";
-        });
-        auto customAvatar = UnityEngine::Object::Instantiate(playerAvatar);
-        UnityEngine::GameObject::SetName(customAvatar, "ReplayCustomAvatar");
-        auto visualController = customAvatar->GetComponent<AvatarVisualController*>();
+    auto playerAvatar = UnityEngine::Resources::FindObjectsOfTypeAll<AvatarPoseController*>().First([](auto x) {
+        return x->get_name() == "PlayerAvatar";
+    });
+    auto customAvatar = UnityEngine::Object::Instantiate(playerAvatar);
+    UnityEngine::GameObject::SetName(customAvatar, "ReplayCustomAvatar");
+    auto visualController = customAvatar->GetComponent<AvatarVisualController*>();
 
-        auto dataModel = UnityEngine::Resources::FindObjectsOfTypeAll<AvatarDataModel*>().First();
-        visualController->avatarPartsModel = dataModel->avatarPartsModel;
-        visualController->UpdateAvatarVisual(dataModel->avatarData);
+    auto dataModel = UnityEngine::Resources::FindObjectsOfTypeAll<AvatarDataModel*>().First();
+    visualController->avatarPartsModel = dataModel->avatarPartsModel;
+    visualController->UpdateAvatarVisual(dataModel->avatarData);
 
-        auto transform = customAvatar->get_transform();
-        transform->SetParent(cameraRig->get_transform()->GetParent());
-        transform->set_position({0, 0, 0});
-        transform->set_localScale({1, 1, 1});
+    auto transform = customAvatar->get_transform();
+    transform->SetParent(cameraRig->get_transform()->GetParent());
+    transform->set_position({0, 0, 0});
+    transform->set_localScale({1, 1, 1});
 
-        cameraRig->avatar = customAvatar;
-    } else
-        cameraRig->avatar = nullptr;
+    customAvatar->get_gameObject()->SetActive(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue());
+
+    cameraRig->avatar = customAvatar;
 
     return cameraRig;
 }
