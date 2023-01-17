@@ -76,13 +76,11 @@ using namespace GlobalNamespace;
 CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
     auto cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
-    cameraGO->get_transform()->SetParent(cameraTransform->GetParent(), false);
+    cameraRig->get_transform()->SetParent(cameraTransform->GetParent(), false);
 
     auto child = UnityEngine::GameObject::New_ctor("ReplayCameraRigChild")->get_transform();
     cameraRig->child = child;
-    child->SetParent(cameraGO->get_transform(), false);
-
-    child->SetPositionAndRotation(cameraTransform->get_position(), cameraTransform->get_rotation());
+    child->SetParent(cameraRig->get_transform(), false);
     cameraTransform->SetParent(child, false);
 
     auto playerAvatar = UnityEngine::Resources::FindObjectsOfTypeAll<AvatarPoseController*>().First([](auto x) {
@@ -102,7 +100,6 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     transform->set_localScale({1, 1, 1});
 
     customAvatar->get_gameObject()->SetActive(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue());
-
     cameraRig->avatar = customAvatar;
 
     return cameraRig;

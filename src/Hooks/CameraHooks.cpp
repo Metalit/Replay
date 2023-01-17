@@ -137,12 +137,10 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             ("UnityEngine.Camera::set_cullingMatrix_Injected");
         mainCamera = UnityEngine::Camera::get_main();
 
-        if(Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-            set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-                MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
+        set_cullingMatrix(mainCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
-            cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
-        }
+        cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
 
         if(Manager::Camera::rendering) {
             if(!Manager::Camera::GetAudioMode()) {
