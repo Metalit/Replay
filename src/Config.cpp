@@ -340,7 +340,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         positionSettings[2]->UpdateValue();
     });
 
-    auto rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 1, 0.1);
+    auto rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(position);
 
