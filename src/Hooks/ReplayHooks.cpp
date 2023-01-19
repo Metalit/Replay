@@ -205,13 +205,14 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
             roomAdjust->roomRotation->set_value(oldRotAdj);
         }
         roomAdjust = nullptr;
-        if(levelCompletionResults->levelEndAction != LevelCompletionResults::LevelEndAction::Restart) {
+        bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
+        if(!quit) {
             auto viewController = self->mainScreenViewControllers->get_Item(self->mainScreenViewControllers->get_Count() - 1);
             self->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
             lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
-            Manager::ReplayEnded();
         }
+        Manager::ReplayEnded(quit);
     }
 }
 

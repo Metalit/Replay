@@ -395,11 +395,11 @@ namespace Manager {
             Events::ReplayStarted();
     }
 
-    void ReplayEnded() {
+    void ReplayEnded(bool quit) {
         Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
-        if(Camera::rendering) {
+        if(Camera::rendering && !quit) {
             if(getConfig().Restart.GetValue()) {
                 SaveCurrentLevelInConfig();
                 RestartGame();

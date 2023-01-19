@@ -83,7 +83,7 @@ namespace Manager {
     void ReplayStarted(ReplayWrapper& wrapper);
     void ReplayStarted(const std::string& path);
     void ReplayRestarted(bool full = true);
-    void ReplayEnded();
+    void ReplayEnded(bool quit);
     void ReplayPaused();
     void ReplayUnpaused();
 
