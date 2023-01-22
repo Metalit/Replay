@@ -1,14 +1,18 @@
-name: Build
+name: Publish
 
 env:
   module_id: replay
   qmodName: Replay
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      release_ver:
+        description: 'Version to tag release'
+        required: true
+      release_msg:
+        description: 'Message for release'
+        required: true
 
 jobs:
   build:
@@ -36,7 +40,7 @@ jobs:
           restore: true
           cache: true
 
-          publish: false # qpm package
+          publish: false
 
       - name: List Post Restore
         run: |
@@ -58,41 +62,22 @@ jobs:
           cd ./build/
           pattern="lib${module_id}*.so"
           files=( $pattern )
-          echo ::set-output name=NAME::"${files[0]}"
-
-      - name: Upload non-debug artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ steps.libname.outputs.NAME }}
-          path: ./build/${{ steps.libname.outputs.NAME }}
-          if-no-files-found: error
-
-      - name: Check for release
-        uses: actions-ecosystem/action-regex-match@v2
-        id: commit-regex
-        if: github.event_name != 'pull_request'
-        with:
-          text: ${{ github.event.head_commit.message }}
-          regex: ^release.*?((v?)((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)?)):?\W*(.*)
-          flags: i
+          echo NAME="${files[0]}" >> $GITHUB_OUTPUT
 
       - name: Rename debug
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
         run: |
           mv ./build/debug/${{ steps.libname.outputs.NAME }} ./build/debug/debug_${{ steps.libname.outputs.NAME }}
 
       - name: Create qmod
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
         run: |
           pwsh -Command ./createqmod.ps1 ${{env.qmodName}}
 
       - name: Upload to Release
         id: upload_file_release
         uses: softprops/action-gh-release@v0.1.12
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
         with:
-          name: ${{ steps.commit-regex.outputs.group4 }}
-          tag_name: ${{ steps.commit-regex.outputs.group1 }}
+          name: ${{ github.event.inputs.release_msg }}
+          tag_name: ${{ github.event.inputs.release_ver }}
           files: |
             ./build/${{ steps.libname.outputs.NAME }}
             ./build/debug/debug_${{ steps.libname.outputs.NAME }}
