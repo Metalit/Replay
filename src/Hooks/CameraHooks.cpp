@@ -221,7 +221,7 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
     mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
-    static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::get_volume");
+    static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
     if(lastVolume >= 0)
         set_volume(lastVolume);
 
