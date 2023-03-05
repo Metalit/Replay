@@ -113,14 +113,15 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     lastVolume = -1;
 
     if(Manager::replaying) {
+        auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
+        std::string songName = levelData->get_songName();
+        std::string songAuthor = levelData->get_songAuthorName();
+        std::string mapper = levelData->get_levelAuthorName();
+
         // TODO: maybe move elsewhere
         auto& player = Manager::GetCurrentInfo().playerName;
         if(player.has_value() && (!Manager::AreReplaysLocal() || !getConfig().HideText.GetValue())) {
             using namespace QuestUI;
-
-            auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
-            std::string songName = levelData->get_songName();
-            std::string mapper = levelData->get_levelAuthorName();
 
             std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", mapper, songName, player.value());
 
@@ -168,13 +169,15 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                 set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
                     MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
 
+                std::string videoFile = string_format("/sdcard/%s--%s.h264", songAuthor.c_str(), songName.c_str());
                 Hollywood::CameraRecordingSettings settings{
                     .width = resolutions[getConfig().Resolution.GetValue()].first,
                     .height = resolutions[getConfig().Resolution.GetValue()].second,
                     .fps = getConfig().FPS.GetValue(),
                     .bitrate = getConfig().Bitrate.GetValue(),
                     .movieModeRendering = true,
-                    .fov = getConfig().FOV.GetValue()
+                    .fov = getConfig().FOV.GetValue(),
+                    .filePath = videoFile
                 };
                 Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
@@ -195,7 +198,8 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                     return x->get_gameObject()->get_activeInHierarchy();
                 });
                 audioCapture = Hollywood::SetAudioCapture(audioListener);
-                audioCapture->OpenFile("/sdcard/audio.wav");
+                std::string audioFile = string_format("/sdcard/%s--%s.wav", songAuthor.c_str(), songName.c_str());
+                audioCapture->OpenFile(audioFile);
             }
         }
     }
