@@ -240,6 +240,29 @@ NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, const ReplayNoteC
     );
 }
 
+NoteCutInfo GetBombCutInfo(NoteController* note, Saber* saber) {
+    return NoteCutInfo(note ? note->noteData : nullptr,
+        true,
+        true,
+        false,
+        false,
+        saber->get_bladeSpeed(),
+        Vector3::zero(),
+        saber->get_saberType(),
+        0,
+        0,
+        note->get_transform()->get_position(),
+        Vector3::zero(),
+        0,
+        0,
+        note ? note->get_worldRotation() : Quaternion::identity(),
+        note ? note->get_inverseWorldRotation() : Quaternion::identity(),
+        note ? note->noteTransform->get_rotation() : Quaternion::identity(),
+        note ? note->noteTransform->get_position() : Vector3::zero(),
+        saber ? (ISaberMovementData*) saber->movementData : nullptr
+    );
+}
+
 float ModifierMultiplier(const ReplayWrapper& replay, bool failed) {
     auto mods = replay.replay->info.modifiers;
     float mult = 1;

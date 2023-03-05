@@ -29,6 +29,8 @@ void GetBeatmapData(GlobalNamespace::IDifficultyBeatmap* beatmap, std::function<
 
 GlobalNamespace::NoteCutInfo GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
 
+GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
+
 float ModifierMultiplier(const ReplayWrapper& replay, bool failed);
 
 float EnergyForNote(const class NoteEventInfo& noteEvent);

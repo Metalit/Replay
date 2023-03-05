@@ -262,7 +262,7 @@ namespace Manager {
         }
 
         void AddNoteController(NoteController* note) {
-            if(note->noteData->scoringType > NoteData::ScoringType::NoScore)
+            if(note->noteData->scoringType > NoteData::ScoringType::NoScore || note->noteData->gameplayType == NoteData::GameplayType::Bomb)
                 notes.insert(note);
         }
         void RemoveNoteController(NoteController* note) {
@@ -291,7 +291,8 @@ namespace Manager {
                         controller->SendNoteWasMissedEvent();
                         notes.erase(iter); // note will despawn and be removed in the other cases
                     } else if(info.eventType == NoteEventInfo::Type::BOMB) {
-                        il2cpp_utils::RunMethodUnsafe(*iter, "HandleWasCutBySaber", saber, controller->get_transform()->get_position(), Quaternion::identity(), Vector3::up());
+                        auto cutInfo = GetBombCutInfo(controller, saber);
+                        il2cpp_utils::RunMethodUnsafe(controller, "SendNoteWasCutEvent", byref(cutInfo));
                     }
                     break;
                 }
