@@ -380,30 +380,12 @@ namespace JNIUtils {
 		// Get Intent
 		CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
 
-		// Set Intent Flags
-		CALL_JOBJECT_METHOD(env, setFlagsSuccess, intent, "setFlags", "(I)Landroid/content/Intent;", 131072);
-
 		// Get Component Name
 		CALL_JOBJECT_METHOD(env, componentName, intent, "getComponent", "()Landroid/content/ComponentName;");
 
 		// Create Restart Intent
 		GET_JCLASS(env, intentClass, "android/content/Intent");
 		CALL_STATIC_JOBJECT_METHOD(env, restartIntent, intentClass, "makeRestartActivityTask", "(Landroid/content/ComponentName;)Landroid/content/Intent;", componentName);
-
-		// Create Main Intent
-		CALL_STATIC_JOBJECT_METHOD(env, mainIntent, intentClass, "makeMainActivity", "(Landroid/content/ComponentName;)Landroid/content/Intent;", componentName);
-
-		// Create Pending Intent From Main Intent
-		GET_JCLASS(env, pendingIntentClass, "android/app/PendingIntent");
-		CALL_STATIC_JOBJECT_METHOD(env, pendingIntent, pendingIntentClass, "getActivity", "(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;", appContext, 223344, mainIntent, 268435456);
-
-		// Get Alarm Service
-		jstring alarmServiceName = env->NewStringUTF("alarm");
-		CALL_JOBJECT_METHOD(env, alarmManager, appContext, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", alarmServiceName);
-
-		// Schedule Pending Intent In 200 MS
-		auto soonTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		CALL_VOID_METHOD(env, alarmManager, "set", "(IJLandroid/app/PendingIntent;)V", 1, soonTime + 500, pendingIntent);
 
 		// Restart Game
 		CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", restartIntent);

@@ -369,10 +369,13 @@ void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool 
     if(!firstActivation)
         return;
 
+    static SafePtrUnity<MainSettings> mainSettings;
     if(!mainSettings)
         mainSettings = BeatSaberUI::CreateViewController<MainSettings*>();
+    static SafePtrUnity<RenderSettings> renderSettings;
     if(!renderSettings)
         renderSettings = BeatSaberUI::CreateViewController<RenderSettings*>();
+    static SafePtrUnity<InputSettings> inputSettings;
     if(!inputSettings)
         inputSettings = BeatSaberUI::CreateViewController<InputSettings*>();
 
@@ -380,7 +383,7 @@ void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool 
     static ConstString title("Replay Settings");
     SetTitle(title, HMUI::ViewController::AnimationType::In);
 
-    ProvideInitialViewControllers(mainSettings, renderSettings, inputSettings, nullptr, nullptr);
+    ProvideInitialViewControllers(mainSettings.ptr(), renderSettings.ptr(), inputSettings.ptr(), nullptr, nullptr);
 }
 
 void ModSettings::BackButtonWasPressed(HMUI::ViewController* topViewController) {
