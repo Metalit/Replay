@@ -10,3 +10,5 @@
 #define LOG_ERROR(string, ...) Paper::Logger::fmtLogTag<Paper::LogLevel::ERR>(string, "Replay" __VA_OPT__(,) __VA_ARGS__)
 
 extern ModInfo modInfo;
+
+inline auto RendersFolder = "/sdcard/Renders";

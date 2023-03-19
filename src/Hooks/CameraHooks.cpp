@@ -169,7 +169,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                 set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
                     MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
 
-                std::string videoFile = string_format("/sdcard/%s--%s.h264", songAuthor.c_str(), songName.c_str());
+                std::string videoFile = string_format("%s/%s--%s.h264", RendersFolder, songAuthor.c_str(), songName.c_str());
                 Hollywood::CameraRecordingSettings settings{
                     .width = resolutions[getConfig().Resolution.GetValue()].first,
                     .height = resolutions[getConfig().Resolution.GetValue()].second,

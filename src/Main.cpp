@@ -6,20 +6,6 @@
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
-#include "MenuSelection.hpp"
-
-#include "GlobalNamespace/BeatmapData.hpp"
-#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
-#include "HMUI/ViewController_AnimationType.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
-
-#include "hollywood/shared/Hollywood.hpp"
-
-#include "questui/shared/QuestUI.hpp"
-
-#include "custom-types/shared/register.hpp"
-
-#include "songloader/shared/API.hpp"
 
 using namespace GlobalNamespace;
 
@@ -37,6 +23,10 @@ MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView
     Manager::SetLevel(self->selectedDifficultyBeatmap);
     Menu::CheckMultiplayer();
 }
+
+#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "HMUI/ViewController_AnimationType.hpp"
+#include "HMUI/ViewController_AnimationDirection.hpp"
 
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange, &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* oldViewController, HMUI::ViewController* newViewController, HMUI::ViewController::AnimationType animationType) {
@@ -64,6 +54,18 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
 }
 
+#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
+#include "MenuSelection.hpp"
+
+MAKE_HOOK_MATCH(LevelFilteringNavigationController_UpdateCustomSongs, &LevelFilteringNavigationController::UpdateCustomSongs, void, LevelFilteringNavigationController* self) {
+
+    LevelFilteringNavigationController_UpdateCustomSongs(self);
+
+    SelectLevelInConfig();
+}
+
+#include "hollywood/shared/Hollywood.hpp"
+
 extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
@@ -73,8 +75,15 @@ extern "C" void setup(ModInfo& info) {
 
     getConfig().Init(info);
 
+    if(!direxists(RendersFolder))
+        mkpath(RendersFolder);
+
     getLogger().info("Completed setup!");
 }
+
+#include "questui/shared/QuestUI.hpp"
+
+#include "custom-types/shared/register.hpp"
 
 extern "C" void load() {
     Paper::Logger::RegisterFileContextId("Replay");
@@ -85,15 +94,12 @@ extern "C" void load() {
 
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
 
-    RuntimeSongLoader::API::AddSongsLoadedEvent(*[](const std::vector<CustomPreviewBeatmapLevel*>& _) {
-        SelectLevelInConfig();
-    });
-
     LOG_INFO("Installing hooks...");
     auto& logger = getLogger();
     Hooks::Install(logger);
     INSTALL_HOOK(logger, StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
+    INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
     LOG_INFO("Installed all hooks!");
 }

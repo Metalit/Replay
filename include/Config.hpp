@@ -56,6 +56,7 @@ DECLARE_JSON_CLASS(LevelSelection,
     VALUE(std::string, PackID)
     VALUE(int, Difficulty)
     VALUE(std::string, Characteristic)
+    VALUE(int, Category)
 )
 
 DECLARE_CONFIG(Config,

@@ -6,7 +6,9 @@
 #include "JNIUtils.hpp"
 
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
-#include "GlobalNamespace/SelectLevelDestination.hpp"
+#include "GlobalNamespace/LevelSelectionFlowCoordinator_State.hpp"
+#include "GlobalNamespace/PlayerDataModel.hpp"
+#include "GlobalNamespace/PlayerData.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
@@ -26,6 +28,7 @@ void SelectLevelInConfig() {
     auto levelToSelect = getConfig().LevelToSelect.GetValue();
     if(levelToSelect.ID == "")
         return;
+    LOG_INFO("Selecting level from config");
     getConfig().LevelToSelect.SetValue({});
     auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
@@ -44,15 +47,17 @@ void SelectLevelInConfig() {
         return;
     auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>().First();
     auto characteristic = chars->GetBeatmapCharacteristicBySerializedName(levelToSelect.Characteristic);
-    mainCoordinator->ProcessMenuDestinationRequest(SelectLevelDestination::New_ctor(pack, level, levelToSelect.Difficulty, characteristic));
+    mainCoordinator->playerDataModel->playerData->SetLastSelectedBeatmapCharacteristic(characteristic);
+    mainCoordinator->playerDataModel->playerData->SetLastSelectedBeatmapDifficulty(levelToSelect.Difficulty);
+    auto state = LevelSelectionFlowCoordinator::State::New_ctor(pack, level);
+    state->levelCategory.value = levelToSelect.Category;
+    state->levelCategory.has_value = true;
+    mainCoordinator->soloFreePlayFlowCoordinator->Setup(state);
+    mainCoordinator->PresentFlowCoordinator(mainCoordinator->soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false);
     // this method should only be ran after restarting after a render
-    bool wasTempAudio = getConfig().NextIsAudio.GetValue();
-    if(wasTempAudio)
-        getConfig().NextIsAudio.SetValue(false);
-    if(getConfig().AutoAudio.GetValue() && !wasTempAudio) {
-        getConfig().NextIsAudio.SetValue(true);
+    if(getConfig().NextIsAudio.GetValue())
         RenderCurrentLevel();
-    } else if(getConfig().Ding.GetValue())
+    else if(getConfig().Ding.GetValue())
         PlayDing();
 }
 
@@ -72,6 +77,7 @@ void SaveCurrentLevelInConfig() {
     auto pack = levelSelection->get_selectedBeatmapLevelPack();
     if(pack)
         ret.PackID = (std::string) pack->get_packID();
+    ret.Category = levelSelection->get_selectedLevelCategory();
     getConfig().LevelToSelect.SetValue(ret);
 }
 
