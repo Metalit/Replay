@@ -57,11 +57,19 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
 #include "GlobalNamespace/LevelFilteringNavigationController.hpp"
 #include "MenuSelection.hpp"
 
+static bool selectedAlready = false;
 MAKE_HOOK_MATCH(LevelFilteringNavigationController_UpdateCustomSongs, &LevelFilteringNavigationController::UpdateCustomSongs, void, LevelFilteringNavigationController* self) {
 
     LevelFilteringNavigationController_UpdateCustomSongs(self);
 
-    SelectLevelInConfig();
+    if(!selectedAlready) {
+        selectedAlready = true;
+        RenderLevelInConfig();
+    }
+}
+
+void SelectLevelOnNextSongRefresh() {
+    selectedAlready = false;
 }
 
 #include "hollywood/shared/Hollywood.hpp"
@@ -100,6 +108,8 @@ extern "C" void load() {
     INSTALL_HOOK(logger, StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
-    INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    if(getConfig().RenderLaunch.GetValue())
+        INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    getConfig().RenderLaunch.SetValue(false);
     LOG_INFO("Installed all hooks!");
 }

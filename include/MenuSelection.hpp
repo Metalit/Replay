@@ -1,8 +1,9 @@
 #pragma once
 
-void SelectLevelInConfig();
+void RenderLevelInConfig();
 
 void SaveCurrentLevelInConfig();
+bool IsCurrentLevelInConfig();
 
 void RenderCurrentLevel();
 

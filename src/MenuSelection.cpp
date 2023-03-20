@@ -5,6 +5,7 @@
 #include "MenuSelection.hpp"
 #include "JNIUtils.hpp"
 
+#include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator_State.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
@@ -24,20 +25,20 @@
 using namespace GlobalNamespace;
 using namespace HMUI;
 
-void SelectLevelInConfig() {
-    auto levelToSelect = getConfig().LevelToSelect.GetValue();
-    if(levelToSelect.ID == "")
+void RenderLevelInConfig() {
+    auto levelsVec = getConfig().LevelsToSelect.GetValue();
+    if(levelsVec.empty())
         return;
     LOG_INFO("Selecting level from config");
-    getConfig().LevelToSelect.SetValue({});
+    auto levelToSelect = levelsVec[0];
+    levelsVec.erase(levelsVec.begin());
+    getConfig().LevelsToSelect.SetValue(levelsVec);
     auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
-    if(!flowCoordinator->isActivated)
+    if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator && !il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
+        SelectLevelOnNextSongRefresh();
+        UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
         return;
-    auto currentFlowCoordinator = flowCoordinator;
-    while((flowCoordinator = flowCoordinator->parentFlowCoordinator)) {
-        flowCoordinator->DismissFlowCoordinator(currentFlowCoordinator, ViewController::AnimationDirection::Horizontal, nullptr, true);
-        currentFlowCoordinator = flowCoordinator;
     }
     auto pack = mainCoordinator->beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
     if(!pack)
@@ -54,31 +55,56 @@ void SelectLevelInConfig() {
     state->levelCategory.has_value = true;
     mainCoordinator->soloFreePlayFlowCoordinator->Setup(state);
     mainCoordinator->PresentFlowCoordinator(mainCoordinator->soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false);
-    // this method should only be ran after restarting after a render
-    if(getConfig().NextIsAudio.GetValue())
-        RenderCurrentLevel();
-    else if(getConfig().Ding.GetValue())
-        PlayDing();
+    getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
+    RenderCurrentLevel();
 }
 
-void SaveCurrentLevelInConfig() {
-    LevelSelection ret;
-    auto flowCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-    auto opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
+std::optional<LevelSelection> GetCurrentLevel() {
+    std::optional<LevelSelection> ret = std::nullopt;
+    auto flowCoordinator = (HMUI::FlowCoordinator*) QuestUI::BeatSaberUI::GetMainFlowCoordinator();
+    std::optional<SinglePlayerLevelSelectionFlowCoordinator*> opt = std::nullopt;
+    do {
+        opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
+        if(opt)
+            break;
+    } while((flowCoordinator = flowCoordinator->get_childFlowCoordinator()));
     if(!opt)
-        return;
+        return ret;
     auto levelSelection = *opt;
     auto map = levelSelection->get_selectedDifficultyBeatmap();
     if(!map)
-        return;
-    ret.ID = (std::string) map->get_level()->i_IPreviewBeatmapLevel()->get_levelID();
-    ret.Difficulty = map->get_difficulty();
-    ret.Characteristic = (std::string) map->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
+        return ret;
+    ret.emplace();
+    ret->ID = (std::string) map->get_level()->i_IPreviewBeatmapLevel()->get_levelID();
+    ret->Difficulty = map->get_difficulty();
+    ret->Characteristic = (std::string) map->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
     auto pack = levelSelection->get_selectedBeatmapLevelPack();
     if(pack)
-        ret.PackID = (std::string) pack->get_packID();
-    ret.Category = levelSelection->get_selectedLevelCategory();
-    getConfig().LevelToSelect.SetValue(ret);
+        ret->PackID = (std::string) pack->get_packID();
+    ret->Category = levelSelection->get_selectedLevelCategory();
+    ret->ReplayIndex = getConfig().LastReplayIdx.GetValue();
+    return ret;
+}
+
+void SaveCurrentLevelInConfig() {
+    auto newLevel = GetCurrentLevel();
+    if(!newLevel)
+        return;
+    auto levelsVec = getConfig().LevelsToSelect.GetValue();
+    levelsVec.emplace_back(*newLevel);
+    getConfig().LevelsToSelect.SetValue(levelsVec);
+}
+
+bool IsCurrentLevelInConfig() {
+    auto currentLevel = GetCurrentLevel();
+    if(!currentLevel)
+        return false;
+    auto levelsVec = getConfig().LevelsToSelect.GetValue();
+    for(auto level : levelsVec) {
+        if(level == *currentLevel)
+            return true;
+    }
+    return false;
 }
 
 void RenderCurrentLevel() {

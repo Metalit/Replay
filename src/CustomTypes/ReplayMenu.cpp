@@ -6,6 +6,7 @@
 #include "Utils.hpp"
 #include "Sprites.hpp"
 #include "Config.hpp"
+#include "MenuSelection.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
 
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
@@ -37,17 +38,6 @@ void OnReplayButtonClick() {
     Menu::PresentMenu();
 }
 
-void OnDeleteButtonClick() {
-    if(!usingLocalReplays)
-        return;
-    try {
-        std::filesystem::remove(viewController->GetReplay());
-    } catch (const std::filesystem::filesystem_error& e) {
-        LOG_ERROR("Failed to delete replay: {}", e.what());
-    }
-    Manager::RefreshLevelReplays();
-}
-
 void OnWatchButtonClick() {
     Manager::Camera::rendering = false;
     Manager::ReplayStarted(viewController->GetReplay());
@@ -67,6 +57,30 @@ void OnRenderButtonClick() {
     Manager::Camera::rendering = true;
     Manager::ReplayStarted(viewController->GetReplay());
     levelView->actionButton->get_onClick()->Invoke();
+}
+
+void OnQueueButtonClick() {
+    SaveCurrentLevelInConfig();
+    viewController->UpdateUI();
+}
+
+void OnDeleteButtonClick() {
+    if(!usingLocalReplays)
+        return;
+    try {
+        std::filesystem::remove(viewController->GetReplay());
+    } catch (const std::filesystem::filesystem_error& e) {
+        LOG_ERROR("Failed to delete replay: {}", e.what());
+    }
+    Manager::RefreshLevelReplays();
+}
+
+void OnSettingsButtonClick() {
+    static SafePtrUnity<HMUI::FlowCoordinator> settings;
+    if(!settings)
+        settings = (HMUI::FlowCoordinator*) BeatSaberUI::CreateFlowCoordinator<ReplaySettings::ModSettings*>();
+    auto flow = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
+    flow->PresentFlowCoordinator(settings.ptr(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
 }
 
 void OnIncrementChanged(float value) {
@@ -233,29 +247,24 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     horizontal3->set_spacing(5);
 
     watchButton = BeatSaberUI::CreateUIButton(horizontal3, "Watch Replay", "ActionButton", Vector2(), Vector2(0, 10), OnWatchButtonClick);
-    std::string text = getConfig().AudioMode.GetValue() ? "Record Replay" : "Render Replay";
-    renderButton = BeatSaberUI::CreateUIButton(horizontal3, text, Vector2(), Vector2(0, 10), OnRenderButtonClick);
+    renderButton = BeatSaberUI::CreateUIButton(horizontal3,  "Render Replay", Vector2(), Vector2(0, 10), OnRenderButtonClick);
 
     auto horizontal4 = BeatSaberUI::CreateHorizontalLayoutGroup(mainLayout);
     horizontal4->set_spacing(5);
 
     cameraDropdown = AddConfigValueDropdownEnum(horizontal4, getConfig().CamMode, cameraModes);
     cameraDropdown->get_transform()->GetParent()->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
-    SetPreferred(cameraDropdown->get_transform()->GetParent(), std::nullopt, 10);
+    SetPreferred(cameraDropdown->get_transform()->GetParent(), 30, 8);
 
-    auto toggle = AddConfigValueToggle(horizontal4->get_transform(), getConfig().AudioMode, [this](bool audioMode) {
-        std::string text = audioMode ? "Record Replay" : "Render Replay";
-        BeatSaberUI::SetButtonText(renderButton, text);
-    });
-    Object::Destroy(toggle->GetComponent<UI::LayoutElement*>());
+    auto container = UnityEngine::GameObject::New_ctor("SmallerButtonContainer");
+    container->get_transform()->SetParent(horizontal4->get_transform(), false);
+    SetPreferred(container, 30, 8);
+    queueButton = BeatSaberUI::CreateUIButton(container, "Add To Render Queue", Vector2(-2.8, 0), Vector2(33, 8), OnQueueButtonClick);
+    queueButton->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->set_fontStyle(TMPro::FontStyles::Italic);
+    static ConstString contentName("Content");
+    UnityEngine::Object::Destroy(queueButton->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
 
-    auto settingsButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(-48, -22), Vector2(10, 10), [this]() {
-        static SafePtrUnity<HMUI::FlowCoordinator> settings;
-        if(!settings)
-            settings = (HMUI::FlowCoordinator*) BeatSaberUI::CreateFlowCoordinator<ReplaySettings::ModSettings*>();
-        auto flow = BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-        flow->PresentFlowCoordinator(settings.ptr(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
-    });
+    auto settingsButton = BeatSaberUI::CreateUIButton(get_transform(), "", Vector2(-48, -22), Vector2(10, 10), OnSettingsButtonClick);
     UnityEngine::Object::Destroy(settingsButton->get_transform()->Find("Content")->GetComponent<UI::LayoutElement*>());
     auto settigsIcon = BeatSaberUI::CreateImage(settingsButton, GetSettingsIcon());
     settigsIcon->get_transform()->set_localScale({0.8, 0.8, 0.8});
@@ -280,7 +289,6 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto removeText = BeatSaberUI::CreateText(confirmModal->get_transform(), dialogText, false, {0, 5});
     removeText->set_alignment(TMPro::TextAlignmentOptions::Center);
 
-    static ConstString contentName("Content");
     auto confirmButton = BeatSaberUI::CreateUIButton(confirmModal->get_transform(), "Delete", "ActionButton", {11.5, -6}, {20, 10}, [this] {
         confirmModal->Hide(true, nullptr);
         OnDeleteButtonClick();
@@ -290,6 +298,20 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
         confirmModal->Hide(true, nullptr);
     });
     Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UI::LayoutElement*>());
+
+    if(!addedEvent) {
+        auto event = [](std::vector<LevelSelection> value) {
+            if(queueButton)
+                queueButton->set_interactable(!value.empty());
+        };
+        event(getConfig().LevelsToSelect.GetValue());
+        getConfig().LevelsToSelect.AddChangeEvent(event);
+        addedEvent = true;
+    }
+}
+
+void Menu::ReplayViewController::dtor() {
+    queueButton = nullptr;
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replayInfos) {
@@ -349,6 +371,8 @@ void Menu::ReplayViewController::UpdateUI() {
     modifiersText->set_text(GetLayeredText("Modifiers", modifiers));
     scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
+
+    queueButton->set_interactable(!IsCurrentLevelInConfig());
 
     deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 

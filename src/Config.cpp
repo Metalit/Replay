@@ -10,6 +10,7 @@
 #include "HMUI/Touchable.hpp"
 #include "HMUI/TextSegmentedControl.hpp"
 
+#include "UnityEngine/UI/LayoutRebuilder.hpp"
 #include "UnityEngine/RectTransform_Axis.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
@@ -248,7 +249,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
 
-// #include "JNIUtils.hpp"
+#include "MenuSelection.hpp"
 
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
@@ -291,17 +292,40 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Pauses);
 
-    // AddConfigValueToggle(rendering, getConfig().Restart);
+    AddConfigValueToggle(rendering, getConfig().Restart);
 
     AddConfigValueToggle(rendering, getConfig().Ding);
 
-    AddConfigValueToggle(rendering, getConfig().AutoAudio);
+    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(rendering);
 
-    // CreateSmallButton(rendering, "Restart?", []() {
-    //     JNIUtils::RestartApp();
-    // });
+    beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", []() {
+        RenderLevelInConfig();
+    });
 
+    clearQueueButton = CreateSmallButton(horizontal, "Clear Queue", []() {
+        getConfig().LevelsToSelect.SetValue({});
+    });
+
+    if(!addedEvent) {
+        auto event = [](std::vector<LevelSelection> value) {
+            if(beginQueueButton)
+                beginQueueButton->set_interactable(!value.empty());
+            if(clearQueueButton)
+                clearQueueButton->set_interactable(!value.empty());
+        };
+        event(getConfig().LevelsToSelect.GetValue());
+        getConfig().LevelsToSelect.AddChangeEvent(event);
+        addedEvent = true;
+    }
+
+    // for whatever reason, the button is misaligned for a bit, probably the content size fitter
+    UnityEngine::UI::LayoutRebuilder::ForceRebuildLayoutImmediate((UnityEngine::RectTransform*) rendering);
     rendering->get_gameObject()->SetActive(false);
+}
+
+void RenderSettings::dtor() {
+    beginQueueButton = nullptr;
+    clearQueueButton = nullptr;
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {

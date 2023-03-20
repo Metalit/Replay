@@ -57,13 +57,14 @@ DECLARE_JSON_CLASS(LevelSelection,
     VALUE(int, Difficulty)
     VALUE(std::string, Characteristic)
     VALUE(int, Category)
+    VALUE(int, ReplayIndex)
 )
 
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
-    CONFIG_VALUE(AudioMode, bool, "Audio Mode", false, "Records audio instead of rendering video")
-    CONFIG_VALUE(LevelToSelect, LevelSelection, "Select Level On Start", {})
-    CONFIG_VALUE(NextIsAudio, bool, "Temp Audio Next Render", false)
+    CONFIG_VALUE(AudioMode, bool, "Audio Mode", false)
+    CONFIG_VALUE(RenderLaunch, bool, "Render On Next Launch", false)
+    CONFIG_VALUE(LevelsToSelect, std::vector<LevelSelection>, "Select Level On Start", {})
     CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0)
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
 
@@ -87,9 +88,8 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(CameraOff, bool, "Disable Camera", false, "Disables the main camera to speed up renders")
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
-    CONFIG_VALUE(Restart, bool, "Restart Game", false, "Restart game after finishing a render")
+    CONFIG_VALUE(Restart, bool, "Restart Game", true, "Restart game after finishing a render")
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
-    CONFIG_VALUE(AutoAudio, bool, "Automatic Audio", false, "Record audio automatically after finishing a render")
 
     CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay")
     CONFIG_VALUE(TimeSkip, int, "Time Skip Amount", 5, "Number of seconds to skip per button press")

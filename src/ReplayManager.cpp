@@ -144,8 +144,6 @@ namespace Manager {
         }
 
         bool GetAudioMode() {
-            if(getConfig().NextIsAudio.GetValue())
-                return true;
             return getConfig().AudioMode.GetValue();
         }
 
@@ -401,19 +399,21 @@ namespace Manager {
         bs_utils::Submission::enable(modInfo);
         replaying = false;
         if(Camera::rendering && !quit) {
-            if(getConfig().Restart.GetValue()) {
-                SaveCurrentLevelInConfig();
-                RestartGame();
-                return;
-            }
-            bool wasTempAudio = getConfig().NextIsAudio.GetValue();
-            if(wasTempAudio)
-                getConfig().NextIsAudio.SetValue(false);
-            if(getConfig().AutoAudio.GetValue() && !wasTempAudio) {
-                getConfig().NextIsAudio.SetValue(true);
+            // render audio after all video renders
+            if(getConfig().AudioMode.GetValue()) {
+                getConfig().AudioMode.SetValue(false);
+                if(!getConfig().LevelsToSelect.GetValue().empty()) {
+                    if(getConfig().Restart.GetValue()) {
+                        getConfig().RenderLaunch.SetValue(true);
+                        RestartGame();
+                    } else
+                        RenderLevelInConfig();
+                } else if(getConfig().Ding.GetValue())
+                    PlayDing();
+            } else {
+                getConfig().AudioMode.SetValue(true);
                 RenderCurrentLevel();
-            } else if(getConfig().Ding.GetValue())
-                PlayDing();
+            }
         }
     }
 

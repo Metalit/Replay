@@ -39,6 +39,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
     DECLARE_INSTANCE_METHOD(void, UpdateUI);
 
     DECLARE_DEFAULT_CTOR();
+    DECLARE_DTOR(dtor);
 
     public:
         void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays);
@@ -61,4 +62,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         std::vector<std::pair<std::string, ReplayInfo*>> replays;
         GlobalNamespace::IDifficultyBeatmap* beatmap;
         GlobalNamespace::IReadonlyBeatmapData* beatmapData;
+
+        static inline UnityEngine::UI::Button* queueButton;
+        static inline bool addedEvent = false;
 )
