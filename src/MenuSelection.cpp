@@ -59,8 +59,7 @@ void RenderLevelInConfig() {
     RenderCurrentLevel();
 }
 
-std::optional<LevelSelection> GetCurrentLevel() {
-    std::optional<LevelSelection> ret = std::nullopt;
+SinglePlayerLevelSelectionFlowCoordinator* GetLevelSelectionFlowCoordinator() {
     auto flowCoordinator = (HMUI::FlowCoordinator*) QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     std::optional<SinglePlayerLevelSelectionFlowCoordinator*> opt = std::nullopt;
     do {
@@ -68,9 +67,14 @@ std::optional<LevelSelection> GetCurrentLevel() {
         if(opt)
             break;
     } while((flowCoordinator = flowCoordinator->get_childFlowCoordinator()));
-    if(!opt)
+    return opt ? *opt : nullptr;
+}
+
+std::optional<LevelSelection> GetCurrentLevel() {
+    std::optional<LevelSelection> ret = std::nullopt;
+    auto levelSelection = GetLevelSelectionFlowCoordinator();
+    if(!levelSelection)
         return ret;
-    auto levelSelection = *opt;
     auto map = levelSelection->get_selectedDifficultyBeatmap();
     if(!map)
         return ret;
@@ -108,11 +112,9 @@ bool IsCurrentLevelInConfig() {
 }
 
 void RenderCurrentLevel() {
-    auto flowCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-    auto opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
-    if(!opt)
+    auto levelSelection = GetLevelSelectionFlowCoordinator();
+    if(!levelSelection)
         return;
-    auto levelSelection = *opt;
     auto map = levelSelection->get_selectedDifficultyBeatmap();
     if(!map)
         return;
