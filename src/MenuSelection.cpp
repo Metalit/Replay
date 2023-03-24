@@ -130,5 +130,7 @@ void RenderCurrentLevel() {
 }
 
 void RestartGame() {
-    JNIUtils::RestartApp();
+    auto env = JNIUtils::GetJNIEnv();
+    JNIUtils::LaunchApp(env, "com.example.norestore");
+    JNIUtils::KillApp(env);
 }

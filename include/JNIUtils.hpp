@@ -357,6 +357,25 @@ namespace JNIUtils {
 		return pid;
 	}
 
+	inline void LaunchApp(JNIEnv* env = nullptr, std::string packageNameStr = "") {
+		if (env == nullptr) env = GetJNIEnv();
+		jstring packageName;
+
+		if (packageNameStr == "") packageName = GetPackageName(env);
+		else packageName = env->NewStringUTF(packageNameStr.c_str());
+
+		// Get Activity
+		jobject appContext = GetAppContext(env);
+
+		CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+
+		// Get Intent
+		CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
+
+		if(intent != nullptr)
+			CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", intent);
+	}
+
 	inline void KillApp(JNIEnv* env = nullptr) {
 		if (env == nullptr) env = GetJNIEnv();
 
