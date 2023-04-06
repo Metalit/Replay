@@ -15,12 +15,10 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController,
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController,
     DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
-    DECLARE_DEFAULT_CTOR();
-    DECLARE_DTOR(dtor);
-
-    public:
-    static inline UnityEngine::UI::Button *beginQueueButton, *clearQueueButton;
-    static inline bool addedEvent = false;
+    DECLARE_INSTANCE_METHOD(void, OnEnable);
+    private:
+    UnityEngine::UI::Button* beginQueueButton;
+    UnityEngine::UI::Button* clearQueueButton;
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController,

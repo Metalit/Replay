@@ -298,34 +298,27 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(rendering);
 
-    beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", []() {
+    beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", [this]() {
         RenderLevelInConfig();
+        OnEnable();
     });
 
-    clearQueueButton = CreateSmallButton(horizontal, "Clear Queue", []() {
+    clearQueueButton = CreateSmallButton(horizontal, "Clear Queue", [this]() {
         getConfig().LevelsToSelect.SetValue({});
+        OnEnable();
     });
-
-    if(!addedEvent) {
-        auto event = [](std::vector<LevelSelection> value) {
-            if(beginQueueButton)
-                beginQueueButton->set_interactable(!value.empty());
-            if(clearQueueButton)
-                clearQueueButton->set_interactable(!value.empty());
-        };
-        event(getConfig().LevelsToSelect.GetValue());
-        getConfig().LevelsToSelect.AddChangeEvent(event);
-        addedEvent = true;
-    }
 
     // for whatever reason, the button is misaligned for a bit, probably the content size fitter
     UnityEngine::UI::LayoutRebuilder::ForceRebuildLayoutImmediate((UnityEngine::RectTransform*) rendering);
     rendering->get_gameObject()->SetActive(false);
 }
 
-void RenderSettings::dtor() {
-    beginQueueButton = nullptr;
-    clearQueueButton = nullptr;
+void RenderSettings::OnEnable() {
+    bool empty = getConfig().LevelsToSelect.GetValue().empty();
+    if(beginQueueButton)
+        beginQueueButton->set_interactable(!empty);
+    if(clearQueueButton)
+        clearQueueButton->set_interactable(!empty);
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {

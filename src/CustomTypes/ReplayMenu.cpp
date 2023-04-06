@@ -261,6 +261,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     SetPreferred(container, 30, 8);
     queueButton = BeatSaberUI::CreateUIButton(container, "Add To Render Queue", Vector2(-2.8, 0), Vector2(33, 8), OnQueueButtonClick);
     queueButton->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->set_fontStyle(TMPro::FontStyles::Italic);
+    queueButton->set_interactable(!IsCurrentLevelInConfig());
     static ConstString contentName("Content");
     UnityEngine::Object::Destroy(queueButton->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
 
@@ -298,20 +299,11 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
         confirmModal->Hide(true, nullptr);
     });
     Object::Destroy(cancelButton->get_transform()->Find(contentName)->GetComponent<UI::LayoutElement*>());
-
-    if(!addedEvent) {
-        auto event = [](std::vector<LevelSelection> value) {
-            if(queueButton)
-                queueButton->set_interactable(!value.empty());
-        };
-        event(getConfig().LevelsToSelect.GetValue());
-        getConfig().LevelsToSelect.AddChangeEvent(event);
-        addedEvent = true;
-    }
 }
 
-void Menu::ReplayViewController::dtor() {
-    queueButton = nullptr;
+void Menu::ReplayViewController::OnEnable() {
+    if(queueButton)
+        queueButton->set_interactable(!IsCurrentLevelInConfig());
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replayInfos) {

@@ -37,9 +37,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
 
     DECLARE_INSTANCE_METHOD(void, UpdateUI);
-
-    DECLARE_DEFAULT_CTOR();
-    DECLARE_DTOR(dtor);
+    DECLARE_INSTANCE_METHOD(void, OnEnable);
 
     public:
         void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays);
@@ -54,6 +52,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         TMPro::TextMeshProUGUI* failText;
         UnityEngine::UI::Button* watchButton;
         UnityEngine::UI::Button* renderButton;
+        UnityEngine::UI::Button* queueButton;
         UnityEngine::UI::Button* deleteButton;
         HMUI::SimpleTextDropdown* cameraDropdown;
         QuestUI::IncrementSetting* increment;
@@ -62,7 +61,4 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
         std::vector<std::pair<std::string, ReplayInfo*>> replays;
         GlobalNamespace::IDifficultyBeatmap* beatmap;
         GlobalNamespace::IReadonlyBeatmapData* beatmapData;
-
-        static inline UnityEngine::UI::Button* queueButton;
-        static inline bool addedEvent = false;
 )

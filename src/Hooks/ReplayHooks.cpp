@@ -206,7 +206,7 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
         }
         roomAdjust = nullptr;
         bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
-        if(!quit) {
+        if(!quit && self->mainScreenViewControllers->get_Count() > 1) {
             auto viewController = self->mainScreenViewControllers->get_Item(self->mainScreenViewControllers->get_Count() - 1);
             self->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");

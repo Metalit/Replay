@@ -8,6 +8,7 @@
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator_State.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/PlayerData.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
@@ -22,8 +23,31 @@
 
 #include "questui/shared/BeatSaberUI.hpp"
 
+#include "custom-types/shared/coroutine.hpp"
+
 using namespace GlobalNamespace;
 using namespace HMUI;
+
+SinglePlayerLevelSelectionFlowCoordinator* GetLevelSelectionFlowCoordinator() {
+    auto flowCoordinator = (HMUI::FlowCoordinator*) QuestUI::BeatSaberUI::GetMainFlowCoordinator();
+    std::optional<SinglePlayerLevelSelectionFlowCoordinator*> opt = std::nullopt;
+    do {
+        opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
+        if(opt)
+            break;
+    } while((flowCoordinator = flowCoordinator->get_childFlowCoordinator()));
+    return opt ? *opt : nullptr;
+}
+
+custom_types::Helpers::Coroutine RenderAfterLoaded() {
+    auto levelSelection = GetLevelSelectionFlowCoordinator();
+    if(!levelSelection)
+        co_return;
+    while(!levelSelection->get_selectedBeatmapLevel())
+        co_yield nullptr;
+    RenderCurrentLevel();
+    co_return;
+}
 
 void RenderLevelInConfig() {
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
@@ -31,8 +55,6 @@ void RenderLevelInConfig() {
         return;
     LOG_INFO("Selecting level from config");
     auto levelToSelect = levelsVec[0];
-    levelsVec.erase(levelsVec.begin());
-    getConfig().LevelsToSelect.SetValue(levelsVec);
     auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
     if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator && !il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
@@ -40,6 +62,8 @@ void RenderLevelInConfig() {
         UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
         return;
     }
+    levelsVec.erase(levelsVec.begin());
+    getConfig().LevelsToSelect.SetValue(levelsVec);
     auto pack = mainCoordinator->beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
     if(!pack)
         pack = mainCoordinator->beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
@@ -56,18 +80,7 @@ void RenderLevelInConfig() {
     mainCoordinator->soloFreePlayFlowCoordinator->Setup(state);
     mainCoordinator->PresentFlowCoordinator(mainCoordinator->soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false);
     getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
-    RenderCurrentLevel();
-}
-
-SinglePlayerLevelSelectionFlowCoordinator* GetLevelSelectionFlowCoordinator() {
-    auto flowCoordinator = (HMUI::FlowCoordinator*) QuestUI::BeatSaberUI::GetMainFlowCoordinator();
-    std::optional<SinglePlayerLevelSelectionFlowCoordinator*> opt = std::nullopt;
-    do {
-        opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
-        if(opt)
-            break;
-    } while((flowCoordinator = flowCoordinator->get_childFlowCoordinator()));
-    return opt ? *opt : nullptr;
+    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(RenderAfterLoaded()));
 }
 
 std::optional<LevelSelection> GetCurrentLevel() {

@@ -108,8 +108,8 @@ extern "C" void load() {
     INSTALL_HOOK(logger, StandardLevelDetailView_RefreshContent);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
-    if(getConfig().RenderLaunch.GetValue())
-        INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);
     LOG_INFO("Installed all hooks!");
 }
