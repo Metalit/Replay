@@ -198,7 +198,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
                     return x->get_gameObject()->get_activeInHierarchy();
                 });
                 audioCapture = Hollywood::SetAudioCapture(audioListener);
-                std::string audioFile = string_format("/sdcard/%s--%s.wav", songAuthor.c_str(), songName.c_str());
+                std::string audioFile = string_format("%s/%s--%s.wav", RendersFolder, songAuthor.c_str(), songName.c_str());
                 audioCapture->OpenFile(audioFile);
             }
         }
