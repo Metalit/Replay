@@ -16,9 +16,14 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController,
 DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController,
     DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
+    DECLARE_INSTANCE_METHOD(void, OnDisable);
+    DECLARE_INSTANCE_METHOD(void, GetCover, GlobalNamespace::IPreviewBeatmapLevel* level);
+    DECLARE_INSTANCE_METHOD(void, UpdateCover, GlobalNamespace::IPreviewBeatmapLevel* level, UnityEngine::Sprite* cover);
     private:
     UnityEngine::UI::Button* beginQueueButton;
     UnityEngine::UI::Button* clearQueueButton;
+    QuestUI::CustomListTableData* queueList;
+    custom_types::Helpers::Coroutine GetCoverCoro(GlobalNamespace::IPreviewBeatmapLevel* level);
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController,

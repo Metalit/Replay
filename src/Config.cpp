@@ -6,12 +6,20 @@
 
 #include "custom-types/shared/delegate.hpp"
 #include "System/Action_2.hpp"
+#include "System/Threading/CancellationToken.hpp"
+#include "System/Threading/Tasks/Task_1.hpp"
+#include "System/Collections/IEnumerator.hpp"
+#include "UnityEngine/WaitForSeconds.hpp"
 
 #include "HMUI/Touchable.hpp"
 #include "HMUI/TextSegmentedControl.hpp"
 
 #include "UnityEngine/UI/LayoutRebuilder.hpp"
 #include "UnityEngine/RectTransform_Axis.hpp"
+
+#include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "System/Collections/Generic/Dictionary_2.hpp"
+#include "songloader/shared/API.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
@@ -308,17 +316,69 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
+    queueList = BeatSaberUI::CreateScrollableList(rendering, {80, 33});
+    queueList->set_listStyle(CustomListTableData::List);
+    queueList->expandCell = true;
+    queueList->tableView->set_selectionType(HMUI::TableViewSelectionType::None);
+    OnEnable();
+
     // for whatever reason, the button is misaligned for a bit, probably the content size fitter
     UnityEngine::UI::LayoutRebuilder::ForceRebuildLayoutImmediate((UnityEngine::RectTransform*) rendering);
     rendering->get_gameObject()->SetActive(false);
 }
 
+custom_types::Helpers::Coroutine RenderSettings::GetCoverCoro(IPreviewBeatmapLevel* level) {
+    auto result = level->GetCoverImageAsync(System::Threading::CancellationToken::get_None());
+
+    while(!result->get_IsCompleted())
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
+
+    UpdateCover(level, result->get_ResultOnSuccess());
+    co_return;
+}
+
+void RenderSettings::GetCover(IPreviewBeatmapLevel* level) {
+    StartCoroutine(custom_types::Helpers::CoroutineHelper::New(GetCoverCoro(level)));
+}
+
+void RenderSettings::UpdateCover(IPreviewBeatmapLevel* level, UnityEngine::Sprite* cover) {
+    if(!queueList || !get_enabled())
+        return;
+    auto sprite = *il2cpp_utils::GetFieldValue<UnityEngine::Sprite*>(level, "_coverImage");
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    for(int i = 0; i < levels.size(); i++) {
+        if(levels[i].ID == level->get_levelID())
+            queueList->data[i].icon = cover;
+    }
+    queueList->tableView->ReloadData();
+}
+
 void RenderSettings::OnEnable() {
-    bool empty = getConfig().LevelsToSelect.GetValue().empty();
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    bool empty = levels.empty();
     if(beginQueueButton)
         beginQueueButton->set_interactable(!empty);
     if(clearQueueButton)
         clearQueueButton->set_interactable(!empty);
+    if(queueList) {
+        queueList->data.clear();
+        for(auto& level : levels) {
+            auto levelPreview = BeatSaberUI::GetMainFlowCoordinator()->beatmapLevelsModel->loadedPreviewBeatmapLevels->get_Item(level.ID);
+            std::string name = levelPreview->get_songName();
+            std::string author = levelPreview->get_songAuthorName();
+            std::string mapper = levelPreview->get_levelAuthorName();
+            std::string subtext = author + " [" + mapper + "] - Replay Index " + std::to_string(level.ReplayIndex + 1);
+            auto sprite = *il2cpp_utils::GetFieldValue<UnityEngine::Sprite*>(levelPreview, "_coverImage");
+            if(!sprite)
+                GetCover(levelPreview);
+            queueList->data.emplace_back(name, subtext, sprite);
+        }
+        queueList->tableView->ReloadData();
+    }
+}
+
+void RenderSettings::OnDisable() {
+    StopAllCoroutines();
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {

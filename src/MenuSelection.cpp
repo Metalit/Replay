@@ -118,7 +118,11 @@ bool IsCurrentLevelInConfig() {
         return false;
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
     for(auto level : levelsVec) {
-        if(level == *currentLevel)
+        if(level.ID == currentLevel->ID
+            && level.Characteristic == currentLevel->Characteristic
+            && level.Difficulty == currentLevel->Difficulty
+            && level.ReplayIndex == currentLevel->ReplayIndex
+        )
             return true;
     }
     return false;
