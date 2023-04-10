@@ -10,8 +10,6 @@
 
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
-#include "UnityEngine/AudioSource.hpp"
 
 #include "UnityEngine/Camera.hpp"
 
@@ -83,7 +81,6 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
-#include "GlobalNamespace/CoreGameHUDController.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
@@ -93,19 +90,95 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/AudioListener.hpp"
 
-#include "questui/shared/BeatSaberUI.hpp"
+void SetupRecording() {
+    auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
+    std::string songName = levelData->get_songName();
+    std::string songAuthor = levelData->get_songAuthorName();
 
-#include "GlobalNamespace/SharedCoroutineStarter.hpp"
+    if(!Manager::Camera::GetAudioMode()) {
+        LOG_INFO("Beginning video capture");
+        customCamera = UnityEngine::Object::Instantiate(mainCamera);
+        customCamera->set_enabled(true);
 
-#include "custom-types/shared/coroutine.hpp"
+        while (customCamera->get_transform()->get_childCount() > 0)
+            UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
+        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
+        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
+        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
 
-custom_types::Helpers::Coroutine SetCullingCoro(UnityEngine::Camera* camera, UnityEngine::Camera* mainCam) {
-    co_yield nullptr;
-    camera->set_cullingMask(mainCam->get_cullingMask());
-    co_return;
+        customCamera->set_clearFlags(mainCamera->get_clearFlags());
+        customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
+        customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
+        customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
+        customCamera->set_hideFlags(mainCamera->get_hideFlags());
+        customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
+        customCamera->set_cullingMask(mainCamera->get_cullingMask());
+        // Makes the camera render before the main
+        customCamera->set_depth(mainCamera->get_depth() - 1);
+
+        static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
+            ("UnityEngine.Camera::set_cullingMatrix_Injected");
+        set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
+            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
+
+        std::string videoFile = string_format("%s/%s--%s.h264", RendersFolder, songAuthor.c_str(), songName.c_str());
+        Hollywood::CameraRecordingSettings settings{
+            .width = resolutions[getConfig().Resolution.GetValue()].first,
+            .height = resolutions[getConfig().Resolution.GetValue()].second,
+            .fps = getConfig().FPS.GetValue(),
+            .bitrate = getConfig().Bitrate.GetValue(),
+            .movieModeRendering = true,
+            .fov = getConfig().FOV.GetValue(),
+            .filePath = videoFile
+        };
+        Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
+
+        UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+
+        if(getConfig().CameraOff.GetValue())
+            mainCamera->set_enabled(false);
+
+        static auto get_volume = il2cpp_utils::resolve_icall<float>("UnityEngine.AudioListener::get_volume");
+        static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
+
+        lastVolume = get_volume();
+        set_volume(0);
+        LOG_INFO("volume was {}", lastVolume);
+    } else {
+        LOG_INFO("Beginning audio capture");
+        auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
+            return x->get_gameObject()->get_activeInHierarchy();
+        });
+        audioCapture = Hollywood::SetAudioCapture(audioListener);
+        std::string audioFile = string_format("%s/%s--%s.wav", RendersFolder, songAuthor.c_str(), songName.c_str());
+        audioCapture->OpenFile(audioFile);
+    }
 }
 
-// start recording when the level actually loads
+#include "GlobalNamespace/GameScenesManager.hpp"
+#include "System/Action_1.hpp"
+#include "Zenject/DiContainer.hpp"
+
+#include "custom-types/shared/delegate.hpp"
+
+MAKE_HOOK_MATCH(GameScenesManager_PushScenes, &GameScenesManager::PushScenes,
+        void, GameScenesManager* self, ScenesTransitionSetupDataSO* scenesTransitionSetupData, float minDuration, System::Action* afterMinDurationCallback, System::Action_1<Zenject::DiContainer*>* finishCallback) {
+
+    if(Manager::replaying && Manager::Camera::rendering) {
+        finishCallback = (System::Action_1<Zenject::DiContainer*>*) System::Delegate::Combine(finishCallback, custom_types::MakeDelegate<System::Action_1<Zenject::DiContainer*>*>(
+            (std::function<void(Zenject::DiContainer*)>) [](Zenject::DiContainer* _) {
+                SetupRecording();
+            }
+        ));
+    }
+    GameScenesManager_PushScenes(self, scenesTransitionSetupData, minDuration, afterMinDurationCallback, finishCallback);
+}
+
+#include "GlobalNamespace/CoreGameHUDController.hpp"
+
+#include "questui/shared/BeatSaberUI.hpp"
+
+// setup some general camera stuff
 MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void, CoreGameHUDController* self) {
 
     CoreGameHUDController_Start(self);
@@ -142,66 +215,6 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
         cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
-
-        if(Manager::Camera::rendering) {
-            if(!Manager::Camera::GetAudioMode()) {
-                LOG_INFO("Beginning video capture");
-                customCamera = UnityEngine::Object::Instantiate(mainCamera);
-                customCamera->set_enabled(true);
-
-                while (customCamera->get_transform()->get_childCount() > 0)
-                    UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
-                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
-                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
-                UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
-
-                customCamera->set_clearFlags(mainCamera->get_clearFlags());
-                customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
-                customCamera->set_farClipPlane(mainCamera->get_farClipPlane());
-                customCamera->set_backgroundColor(mainCamera->get_backgroundColor());
-                customCamera->set_hideFlags(mainCamera->get_hideFlags());
-                customCamera->set_depthTextureMode(mainCamera->get_depthTextureMode());
-                // debris culling mask is set later in the frame, in a different Start() method
-                SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(SetCullingCoro(customCamera, mainCamera)));
-                // Makes the camera render before the main
-                customCamera->set_depth(mainCamera->get_depth() - 1);
-
-                set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-                    MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
-
-                std::string videoFile = string_format("%s/%s--%s.h264", RendersFolder, songAuthor.c_str(), songName.c_str());
-                Hollywood::CameraRecordingSettings settings{
-                    .width = resolutions[getConfig().Resolution.GetValue()].first,
-                    .height = resolutions[getConfig().Resolution.GetValue()].second,
-                    .fps = getConfig().FPS.GetValue(),
-                    .bitrate = getConfig().Bitrate.GetValue(),
-                    .movieModeRendering = true,
-                    .fov = getConfig().FOV.GetValue(),
-                    .filePath = videoFile
-                };
-                Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
-
-                UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
-
-                if(getConfig().CameraOff.GetValue())
-                    mainCamera->set_enabled(false);
-
-                static auto get_volume = il2cpp_utils::resolve_icall<float>("UnityEngine.AudioListener::get_volume");
-                static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
-
-                lastVolume = get_volume();
-                set_volume(0);
-                LOG_INFO("volume was {}", lastVolume);
-            } else {
-                LOG_INFO("Beginning audio capture");
-                auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
-                    return x->get_gameObject()->get_activeInHierarchy();
-                });
-                audioCapture = Hollywood::SetAudioCapture(audioListener);
-                std::string audioFile = string_format("%s/%s--%s.wav", RendersFolder, songAuthor.c_str(), songName.c_str());
-                audioCapture->OpenFile(audioFile);
-            }
-        }
     }
 }
 
@@ -296,6 +309,7 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 
 HOOK_FUNC(
     INSTALL_HOOK(logger, PlayerTransforms_Update_Camera);
+    INSTALL_HOOK(logger, GameScenesManager_PushScenes);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, StandardLevelScenesTransitionSetupDataSO_Finish);
     INSTALL_HOOK(logger, AudioTimeSyncController_Update_Camera);
