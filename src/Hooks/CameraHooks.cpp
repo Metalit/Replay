@@ -205,11 +205,10 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     }
 }
 
-#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
+#include "GlobalNamespace/StandardLevelScenesTransitionSetupDataSO.hpp"
 
 // undo rendering changes when exiting a level
-MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &PrepareLevelCompletionResults::FillLevelCompletionResults,
-        LevelCompletionResults*, PrepareLevelCompletionResults* self, LevelCompletionResults::LevelEndStateType levelEndStateType, LevelCompletionResults::LevelEndAction levelEndAction) {
+MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelScenesTransitionSetupDataSO::Finish, void, StandardLevelScenesTransitionSetupDataSO* self, LevelCompletionResults* levelCompletionResults) {
 
     if(audioCapture)
         UnityEngine::Object::Destroy(audioCapture);
@@ -229,7 +228,35 @@ MAKE_HOOK_MATCH(PrepareLevelCompletionResults_FillLevelCompletionResults, &Prepa
     if(lastVolume >= 0)
         set_volume(lastVolume);
 
-    return PrepareLevelCompletionResults_FillLevelCompletionResults(self, levelEndStateType, levelEndAction);
+    return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
+}
+
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
+
+// delay ending of renders
+MAKE_HOOK_MATCH(AudioTimeSyncController_Update_Camera, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
+
+    int state = self->state;
+    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode())
+        self->state = AudioTimeSyncController::State::Stopped;
+
+    AudioTimeSyncController_Update_Camera(self);
+
+    // remove min check
+    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode()) {
+		self->lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
+        self->songTime += self->lastFrameDeltaSongTime;
+        self->isReady = true;
+    }
+    self->state = state;
+}
+MAKE_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
+
+    float ret = AudioTimeSyncController_get_songEndTime(self);
+
+    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode())
+        return ret + 1;
+    return ret;
 }
 
 #include "GlobalNamespace/PauseController.hpp"
@@ -270,7 +297,9 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 HOOK_FUNC(
     INSTALL_HOOK(logger, PlayerTransforms_Update_Camera);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
-    INSTALL_HOOK(logger, PrepareLevelCompletionResults_FillLevelCompletionResults);
+    INSTALL_HOOK(logger, StandardLevelScenesTransitionSetupDataSO_Finish);
+    INSTALL_HOOK(logger, AudioTimeSyncController_Update_Camera);
+    INSTALL_HOOK(logger, AudioTimeSyncController_get_songEndTime);
     INSTALL_HOOK(logger, PauseController_get_canPause);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Camera);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera);

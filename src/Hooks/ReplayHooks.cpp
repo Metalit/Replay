@@ -68,13 +68,13 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 
 // keep song time and current frame up to date, plus controller inputs
-MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
+MAKE_HOOK_MATCH(AudioTimeSyncController_Update_Replay, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
 
     if(Manager::replaying && !Manager::paused) {
         Manager::UpdateTime(self->songTime);
         Manager::CheckInputs();
     }
-    AudioTimeSyncController_Update(self);
+    AudioTimeSyncController_Update_Replay(self);
 }
 
 #include "GlobalNamespace/PauseMenuManager.hpp"
@@ -218,7 +218,7 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
 
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
-    INSTALL_HOOK(logger, AudioTimeSyncController_Update);
+    INSTALL_HOOK(logger, AudioTimeSyncController_Update_Replay);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Replay);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay);
     INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
