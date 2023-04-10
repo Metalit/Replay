@@ -19,7 +19,6 @@
 
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "System/Collections/Generic/Dictionary_2.hpp"
-#include "songloader/shared/API.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
