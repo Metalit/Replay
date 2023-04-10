@@ -300,8 +300,6 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Pauses);
 
-    AddConfigValueToggle(rendering, getConfig().Restart);
-
     AddConfigValueToggle(rendering, getConfig().Ding);
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(rendering);

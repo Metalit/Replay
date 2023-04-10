@@ -88,7 +88,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(CameraOff, bool, "Disable Camera", false, "Disables the main camera to speed up renders")
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
-    CONFIG_VALUE(Restart, bool, "Restart Game", true, "Restart game after finishing a render")
+    CONFIG_VALUE(Restart, bool, "Restart Game", false, "Restart game after finishing a render")
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
 
     CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay")
