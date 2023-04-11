@@ -57,10 +57,13 @@ void RenderLevelInConfig() {
     auto levelToSelect = levelsVec[0];
     auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
-    if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator && !il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
-        SelectLevelOnNextSongRefresh();
-        UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
-        return;
+    if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator) {
+        if(!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
+            SelectLevelOnNextSongRefresh();
+            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
+            return;
+        } else
+            mainCoordinator->DismissFlowCoordinator(flowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
     }
     levelsVec.erase(levelsVec.begin());
     getConfig().LevelsToSelect.SetValue(levelsVec);

@@ -190,12 +190,17 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
 #include "GlobalNamespace/MenuLightsPresetSO.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
 
+static bool cancelPresent = false;
 // watch for level ending
 MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish, &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
         void, SinglePlayerLevelSelectionFlowCoordinator* self, StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData, LevelCompletionResults* levelCompletionResults) {
 
+    if(Manager::replaying)
+        cancelPresent = true;
+
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
 
+    cancelPresent = false;
     if(Manager::replaying) {
         if(playerSpecificSettings)
             playerSpecificSettings->leftHanded = wasLeftHanded;
@@ -206,14 +211,18 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
         }
         roomAdjust = nullptr;
         bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
-        if(!quit && self->mainScreenViewControllers->get_Count() > 1) {
-            auto viewController = self->mainScreenViewControllers->get_Item(self->mainScreenViewControllers->get_Count() - 1);
-            self->DismissViewController(viewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+        if(!quit) {
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
             lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
         }
         Manager::ReplayEnded(quit);
     }
+}
+MAKE_HOOK_MATCH(FlowCoordinator_PresentViewController, &HMUI::FlowCoordinator::PresentViewController,
+        void, HMUI::FlowCoordinator* self, HMUI::ViewController* viewController, System::Action* finishedCallback, HMUI::ViewController::AnimationDirection animationDirection, bool immediately) {
+
+    if(!cancelPresent)
+        FlowCoordinator_PresentViewController(self, viewController, finishedCallback, animationDirection, immediately);
 }
 
 HOOK_FUNC(
@@ -226,4 +235,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
+    INSTALL_HOOK(logger, FlowCoordinator_PresentViewController);
 )
