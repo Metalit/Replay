@@ -95,6 +95,9 @@ void SetupRecording() {
     std::string songName = levelData->get_songName();
     std::string songAuthor = levelData->get_songAuthorName();
 
+    if(getConfig().CameraOff.GetValue())
+        mainCamera->set_enabled(false);
+
     if(!Manager::Camera::GetAudioMode()) {
         LOG_INFO("Beginning video capture");
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
@@ -135,15 +138,11 @@ void SetupRecording() {
 
         UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
 
-        if(getConfig().CameraOff.GetValue())
-            mainCamera->set_enabled(false);
-
         static auto get_volume = il2cpp_utils::resolve_icall<float>("UnityEngine.AudioListener::get_volume");
         static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
 
         lastVolume = get_volume();
         set_volume(0);
-        LOG_INFO("volume was {}", lastVolume);
     } else {
         LOG_INFO("Beginning audio capture");
         auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
@@ -284,12 +283,12 @@ MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bo
     return PauseController_get_canPause(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Camera, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode() && getConfig().CameraOff.GetValue() && mainCamera) // wow
+    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera) // wow
         mainCamera->set_enabled(true);
     PauseMenuManager_ShowMenu_Camera(self);
 }
 MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode() && getConfig().CameraOff.GetValue() && mainCamera)
+    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera)
         mainCamera->set_enabled(false);
     PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera(self);
 }
