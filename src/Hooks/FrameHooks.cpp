@@ -14,20 +14,19 @@ using namespace GlobalNamespace;
 // override score
 MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Frame, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
         auto frame = Manager::Frames::GetScoreFrame();
         // modified scores are calculated based on these after this function is called
         self->multipliedScore = frame->score;
         self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
     }
-
     ScoreController_DespawnScoringElement_Frame(self, scoringElement);
 }
 MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, ScoreController* self) {
 
     ScoreController_LateUpdate(self);
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
         auto frame = Manager::Frames::GetScoreFrame();
         if(self->multipliedScore != frame->score) {
             self->multipliedScore = frame->score;
@@ -50,7 +49,7 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
 // override combo
 MAKE_HOOK_MATCH(ComboController_HandlePlayerHeadDidEnterObstacles, &ComboController::HandlePlayerHeadDidEnterObstacles, void, ComboController* self) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop())
         return;
 
     ComboController_HandlePlayerHeadDidEnterObstacles(self);
@@ -62,7 +61,7 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
     bool saberTypeOK = noteCutInfo->saberTypeOK;
     bool wasCutTooSoon = noteCutInfo->wasCutTooSoon;
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
         if(!Manager::Frames::AllowComboDrop()) {
             self->combo = Manager::Frames::GetScoreFrame()->combo - 1;
             noteCutInfo->speedOK = true;
@@ -85,7 +84,7 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
 }
 MAKE_HOOK_MATCH(ComboController_HandleNoteWasMissed, &ComboController::HandleNoteWasMissed, void, ComboController* self, NoteController* noteController) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop()) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop()) {
         self->combo = Manager::Frames::GetScoreFrame()->combo;
         if(!self->comboDidChangeEvent->Equals(nullptr))
             self->comboDidChangeEvent->Invoke(self->combo);
@@ -99,7 +98,7 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasMissed, &ComboController::HandleNot
 // override energy
 MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::ProcessEnergyChange, void, GameEnergyCounter* self, float energyChange) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
         float energy = Manager::Frames::GetScoreFrame()->energy;
         if(self->energyType != GameplayModifiers::EnergyType::Bar) {
             self->energy = energy;
@@ -110,7 +109,6 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
         } else
             energyChange = energy - self->energy;
     }
-
     GameEnergyCounter_ProcessEnergyChange(self, energyChange);
 }
 
@@ -120,7 +118,7 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
 MAKE_HOOK_MATCH(GameNoteController_HandleCut_Frame, &GameNoteController::HandleCut,
         void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop())
         allowBadCut = false;
 
     GameNoteController_HandleCut_Frame(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
@@ -128,7 +126,7 @@ MAKE_HOOK_MATCH(GameNoteController_HandleCut_Frame, &GameNoteController::HandleC
 // misses too
 MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Frame, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame && !Manager::Frames::AllowComboDrop())
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop())
         return;
 
     NoteController_HandleNoteDidPassMissedMarkerEvent_Frame(self);

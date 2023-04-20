@@ -359,7 +359,7 @@ namespace Pause {
         float controllerTime = (time - scoreController->audioTimeSyncController->startSongTime) / scoreController->audioTimeSyncController->timeScale;
         scoreController->audioTimeSyncController->SeekTo(controllerTime);
         auto& replay = Manager::currentReplay;
-        if(replay.type == ReplayType::Frame) {
+        if(replay.type & ReplayType::Frame) {
             // let hooks update values
             gameEnergyCounter->ProcessEnergyChange(0);
             auto frame = Manager::Frames::GetScoreFrame();
@@ -377,7 +377,7 @@ namespace Pause {
         } else {
             // reset energy as we will override it
             Manager::Events::wallEnergyLoss = 0;
-            auto eventReplay = (EventReplay*) replay.replay.get();
+            auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
             float lastCalculatedWall = 0, wallEnd = 0;
             // simulate all events
             for(auto& event: eventReplay->events) {

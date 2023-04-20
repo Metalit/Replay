@@ -227,18 +227,56 @@ namespace Manager {
     }
 
     namespace Frames {
+        decltype(FrameReplay::scoreFrames)::iterator scoreFrame;
+        ScoreFrame currentValues;
+        FrameReplay* replay;
+
+        void Increment() {
+            if(scoreFrame->score >= 0)
+                currentValues.score = scoreFrame->score;
+            if(scoreFrame->percent >= 0)
+                currentValues.percent = scoreFrame->percent;
+            if(scoreFrame->combo >= 0)
+                currentValues.combo = scoreFrame->combo;
+            if(scoreFrame->energy >= 0)
+                currentValues.energy = scoreFrame->energy;
+            if(scoreFrame->offset >= 0)
+                currentValues.offset = scoreFrame->offset;
+            scoreFrame++;
+        }
+
+        void ReplayStarted() {
+            replay = dynamic_cast<FrameReplay*>(currentReplay.replay.get());
+            scoreFrame = replay->scoreFrames.begin();
+            do {
+                Increment();
+            } while(currentValues.score < 0 || currentValues.combo < 0 || currentValues.energy < 0 || currentValues.offset < 0);
+        }
+
+        void UpdateTime() {
+            while(scoreFrame != replay->scoreFrames.end() && scoreFrame->time < songTime)
+                Increment();
+        }
+
         ScoreFrame* GetScoreFrame() {
-            return &((FrameReplay*) currentReplay.replay.get())->scoreFrames[currentFrame];
+            return &currentValues;
         }
 
         bool AllowComboDrop() {
-            static int searchRange = 3;
+            static int frameSearchRadius = 2;
             int combo = 1;
-            auto& frames = ((FrameReplay*) currentReplay.replay.get())->scoreFrames;
-            for(int i = std::max(0, currentFrame - searchRange); i < std::min(frameCount, currentFrame + searchRange); i++) {
-                if(frames[i].combo < combo)
+            auto iter = scoreFrame;
+            iter -= frameSearchRadius;
+            for(int i = 0; i < frameSearchRadius * 2; i++) {
+                if(iter->combo < 0) {
+                    i--;
+                    continue;
+                } if(iter->combo < combo)
                     return true;
-                combo = frames[i].combo;
+                combo = iter->combo;
+                iter++;
+                if(iter == replay->scoreFrames.end())
+                    break;
             }
             return false;
         }
@@ -253,7 +291,7 @@ namespace Manager {
 
         void ReplayStarted() {
             notes.clear();
-            replay = (EventReplay*) currentReplay.replay.get();
+            replay = dynamic_cast<EventReplay*>(currentReplay.replay.get());
             event = replay->events.begin();
             wallEndTime = 0;
             wallEnergyLoss = 0;
@@ -281,9 +319,16 @@ namespace Manager {
                         && noteData->colorType == info.colorType
                         && noteData->cutDirection == info.cutDirection) {
                     found = true;
-                    Saber* saber = event.noteCutInfo.saberType == SaberType::SaberA ? Objects::leftSaber : Objects::rightSaber;
+                    bool isLeftSaber = event.noteCutInfo.saberType == SaberType::SaberA;
+                    Saber* saber = isLeftSaber ? Objects::leftSaber : Objects::rightSaber;
                     if(info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
                         auto cutInfo = GetNoteCutInfo(controller, saber, event.noteCutInfo);
+                        if(replay->cutInfoMissingOKs) {
+                            cutInfo.speedOK = cutInfo.saberSpeed > 2;
+                            bool isLeftColor = noteData->colorType == ColorType::ColorA;
+                            cutInfo.saberTypeOK = isLeftColor == isLeftSaber;
+                            cutInfo.timeDeviation = noteData->time - event.time;
+                        }
                         il2cpp_utils::RunMethodUnsafe(controller, "SendNoteWasCutEvent", byref(cutInfo));
                     } else if(info.eventType == NoteEventInfo::Type::MISS) {
                         controller->SendNoteWasMissedEvent();
@@ -310,7 +355,7 @@ namespace Manager {
         }
 
         void UpdateTime() {
-            while(event != ((EventReplay*) currentReplay.replay.get())->events.end() && event->time < songTime) {
+            while(event != replay->events.end() && event->time < songTime) {
                 switch(event->eventType) {
                 case EventRef::Note:
                     if(!notes.empty())
@@ -373,8 +418,10 @@ namespace Manager {
         paused = false;
         currentFrame = 0;
         songTime = -1;
-        if(currentReplay.type == ReplayType::Event)
+        if(currentReplay.type & ReplayType::Event)
             Events::ReplayStarted();
+        if(currentReplay.type & ReplayType::Frame)
+            Frames::ReplayStarted();
         Camera::ReplayStarted();
     }
 
@@ -390,8 +437,10 @@ namespace Manager {
             paused = false;
         currentFrame = 0;
         songTime = full ? -1 : 0;
-        if(currentReplay.type == ReplayType::Event)
+        if(currentReplay.type & ReplayType::Event)
             Events::ReplayStarted();
+        if(currentReplay.type & ReplayType::Frame)
+            Frames::ReplayStarted();
     }
 
     void ReplayEnded(bool quit) {
@@ -451,8 +500,10 @@ namespace Manager {
             float frameDur = frames[currentFrame + 1].time - frames[currentFrame].time;
             lerpAmount = timeDiff / frameDur;
         }
-        if(currentReplay.type == ReplayType::Event)
+        if(currentReplay.type & ReplayType::Event)
             Events::UpdateTime();
+        if(currentReplay.type & ReplayType::Frame)
+            Frames::UpdateTime();
         Camera::UpdateTime();
     }
 

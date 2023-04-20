@@ -3,13 +3,13 @@
 #include "Config.hpp"
 #include "Assets.hpp"
 
-#include "Formats/FrameReplay.hpp"
-#include "Formats/EventReplay.hpp"
+#include "Formats/EventFrame.hpp"
 
 #include "CustomTypes/MovementData.hpp"
 
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
+#include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/NoteData.hpp"
@@ -41,6 +41,11 @@ std::string GetBSORsPath() {
     return path;
 }
 
+std::string GetSSReplaysPath() {
+    static auto path = getDataDir("ScoreSaber") + "replays/";
+    return path;
+}
+
 std::string GetHash(IPreviewBeatmapLevel* level) {
     std::string id = level->get_levelID();
     // should be in all songloader levels
@@ -54,10 +59,9 @@ std::string GetHash(IPreviewBeatmapLevel* level) {
 const std::string reqlaySuffix1 = ".reqlay";
 const std::string reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
 const std::string bsorSuffix = ".bsor";
+const std::string ssSuffix = ".dat";
 
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap* beatmap) {
-    std::vector<std::pair<std::string, ReplayWrapper>> replays;
-
+void GetReqlays(IDifficultyBeatmap* beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
     std::vector<std::string> tests;
 
     std::string hash = GetHash((IPreviewBeatmapLevel*) beatmap->get_level());
@@ -75,36 +79,17 @@ std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap
             }
         }
     }
+}
 
-    if(!std::filesystem::exists(GetBSORsPath()))
-        return replays;
-
-    std::string bsorDiffName;
-    switch ((int) beatmap->get_difficulty()) {
-    case 0:
-        bsorDiffName = "Easy";
-        break;
-    case 1:
-        bsorDiffName = "Normal";
-        break;
-    case 2:
-        bsorDiffName = "Hard";
-        break;
-    case 3:
-        bsorDiffName = "Expert";
-        break;
-    case 4:
-        bsorDiffName = "ExpertPlus";
-        break;
-    default:
-        bsorDiffName = "Error";
-        break;
-    }
+void GetBSORs(IDifficultyBeatmap* beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
+    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap->get_difficulty());
+    if(diffName == "Unknown")
+        diffName = "Error";
     std::string characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
 
-    std::string bsorHash = regex_replace((std::string)((IPreviewBeatmapLevel*)beatmap->get_level())->get_levelID(), std::basic_regex("custom_level_"), "");
+    std::string bsorHash = regex_replace((std::string)((IPreviewBeatmapLevel*) beatmap->get_level())->get_levelID(), std::basic_regex("custom_level_"), "");
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
-    std::string search = fmt::format("{}-{}-{}", bsorDiffName, characteristic, bsorHash);
+    std::string search = fmt::format("{}-{}-{}", diffName, characteristic, bsorHash);
     for(const auto& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if(!entry.is_directory()) {
             auto path = entry.path();
@@ -117,6 +102,48 @@ std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap
             }
         }
     }
+}
+
+void GetSSReplays(IDifficultyBeatmap* beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
+    auto previewBeatmap = (IPreviewBeatmapLevel*) beatmap->get_level();
+
+    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap->get_difficulty());
+    std::string characteristic = beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
+    std::string songName = previewBeatmap->get_songName();
+    std::string levelHash = previewBeatmap->get_levelID();
+
+    if(levelHash.find("custom_level_") == std::string::npos)
+        levelHash = "ost_" + levelHash;
+    else
+        levelHash = levelHash.substr(13);
+
+    std::string ending = fmt::format("-{}-{}-{}-{}", songName, diffName, characteristic, levelHash);
+
+    for(const auto& entry : std::filesystem::directory_iterator(GetSSReplaysPath())) {
+        if(!entry.is_directory()) {
+            auto path = entry.path();
+            if(path.extension() == ssSuffix && path.stem().string().ends_with(ending)) {
+                auto replay = ReadScoresaber(path.string());
+                if(replay.IsValid()) {
+                    replays.emplace_back(path.string(), replay);
+                    LOG_INFO("Read scoresaber replay from {}", path.string());
+                }
+            }
+        }
+    }
+}
+
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap* beatmap) {
+    std::vector<std::pair<std::string, ReplayWrapper>> replays;
+
+    if(std::filesystem::exists(GetReqlaysPath()))
+        GetReqlays(beatmap, replays);
+
+    if(std::filesystem::exists(GetBSORsPath()))
+        GetBSORs(beatmap, replays);
+
+    if(std::filesystem::exists(GetSSReplaysPath()))
+        GetSSReplays(beatmap, replays);
 
     return replays;
 }
@@ -370,11 +397,11 @@ void AddEnergy(float& energy, float addition, const ReplayModifiers& modifiers) 
 }
 
 MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
-    if(replay.type == ReplayType::Frame) {
-        auto frames = ((FrameReplay*) replay.replay.get())->scoreFrames;
+    if(replay.type & ReplayType::Frame) {
+        auto frames = dynamic_cast<FrameReplay*>(replay.replay.get())->scoreFrames;
         auto* lastFrame = &frames.front();
         for(auto& frame : frames) {
-            if(frame.time > time)
+            if(frame.time > time && frame.score >= 0)
                 break;
             lastFrame = &frame;
         }
@@ -388,7 +415,7 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
             .maxScore = maxScore
         };
     } else {
-        auto eventReplay = (EventReplay*) replay.replay.get();
+        auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
         auto& modifiers = eventReplay->info.modifiers;
         int multiplier = 1, multiProg = 0;
         int maxMultiplier = 1, maxMultiProg = 0;

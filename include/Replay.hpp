@@ -24,9 +24,15 @@ struct ReplayModifiers {
 };
 
 enum struct ReplayType {
-    Frame,
-    Event
+    Frame = 1,
+    Event = 2
 };
+inline ReplayType operator|(ReplayType a, ReplayType b) {
+    return (ReplayType) (static_cast<int>(a) | static_cast<int>(b));
+}
+inline bool operator&(ReplayType a, ReplayType b) {
+    return (bool) (static_cast<int>(a) & static_cast<int>(b));
+}
 
 struct ReplayInfo {
     ReplayModifiers modifiers;
@@ -67,6 +73,8 @@ struct Frame {
     constexpr Frame() = default;
     constexpr Frame(const Transform& head, const Transform& leftHand, const Transform& rightHand) :
         head(head), leftHand(leftHand), rightHand(rightHand) {}
+    constexpr Frame(float time, int fps, const Transform& head, const Transform& leftHand, const Transform& rightHand) :
+        time(time), fps(fps), head(head), leftHand(leftHand), rightHand(rightHand) {}
 };
 
 struct Replay {

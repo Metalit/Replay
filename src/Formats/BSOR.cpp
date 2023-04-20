@@ -189,7 +189,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     replay->info.modifiers.leftHanded = info.leftHanded;
     replay->info.timestamp = std::stol(info.timestamp);
     replay->info.score = info.score;
-    replay->info.source = "Beatleader";
+    replay->info.source = "BeatLeader";
     replay->info.positionsAreLocal = true;
     replay->info.playerName.emplace(info.playerName);
     // infer reached 0 energy because no fail is only listed if it did
@@ -404,7 +404,7 @@ using namespace GlobalNamespace;
 void RecalculateNotes(ReplayWrapper& replay, IReadonlyBeatmapData* beatmapData) {
     if(replay.type != ReplayType::Event)
         return;
-    auto eventReplay = (EventReplay*) replay.replay.get();
+    auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
     if(!eventReplay->needsRecalculation)
         return;
     

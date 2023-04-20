@@ -14,7 +14,7 @@ using namespace GlobalNamespace;
 MAKE_HOOK_MATCH(GameNoteController_HandleCut_Event, &GameNoteController::HandleCut,
         void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         return;
 
     GameNoteController_HandleCut_Event(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
@@ -22,7 +22,7 @@ MAKE_HOOK_MATCH(GameNoteController_HandleCut_Event, &GameNoteController::HandleC
 MAKE_HOOK_MATCH(BombNoteController_HandleWasCutBySaber, &BombNoteController::HandleWasCutBySaber,
         void, BombNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         return;
 
     BombNoteController_HandleWasCutBySaber(self, saber, cutPoint, orientation, cutDirVec);
@@ -30,7 +30,7 @@ MAKE_HOOK_MATCH(BombNoteController_HandleWasCutBySaber, &BombNoteController::Han
 MAKE_HOOK_MATCH(BurstSliderGameNoteController_HandleCut, &BurstSliderGameNoteController::HandleCut,
         void, BurstSliderGameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         return;
 
     BurstSliderGameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
@@ -44,7 +44,7 @@ MAKE_HOOK_MATCH(BurstSliderGameNoteController_HandleCut, &BurstSliderGameNoteCon
 MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &PlayerHeadAndObstacleInteraction::RefreshIntersectingObstacles,
         void, PlayerHeadAndObstacleInteraction* self, UnityEngine::Vector3 worldPos) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         return;
 
     PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles(self, worldPos);
@@ -52,7 +52,7 @@ MAKE_HOOK_MATCH(PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles, &
 // ensure energy changes for obstacles are accurate
 MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, void, GameEnergyCounter* self) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event) {
         float& actualEnergyLoss = Manager::Events::wallEnergyLoss;
         if(actualEnergyLoss > 0) {
             float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
@@ -73,7 +73,7 @@ MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, vo
 // disable misses
 MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Event, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         return;
 
     NoteController_HandleNoteDidPassMissedMarkerEvent_Event(self);
@@ -87,7 +87,7 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_AddSpawnedNoteController, &BeatmapObjectMan
 
     BeatmapObjectManager_AddSpawnedNoteController(self, noteController, noteSpawnData, rotation);
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         Manager::Events::AddNoteController(noteController);
 }
 MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(BeatmapObjectManager::*)(NoteController*)>(&BeatmapObjectManager::Despawn),
@@ -95,7 +95,7 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(Bea
 
     BeatmapObjectManager_DespawnNoteController(self, noteController);
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         Manager::Events::RemoveNoteController(noteController);
 }
 
@@ -119,7 +119,7 @@ MAKE_HOOK_MATCH(GameplayCoreInstaller_InstallBindings, &GameplayCoreInstaller::I
 
     GameplayCoreInstaller_InstallBindings(self);
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Event)
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         RecalculateNotes(Manager::currentReplay, self->sceneSetupData->transformedBeatmapData);
 }
 

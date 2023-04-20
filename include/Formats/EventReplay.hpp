@@ -81,13 +81,14 @@ struct EventCompare {
     }
 };
 
-struct EventReplay : public Replay {
+struct EventReplay : public virtual Replay {
     std::vector<NoteEvent> notes;
     std::vector<WallEvent> walls;
     std::vector<HeightEvent> heights;
     std::vector<PauseEvent> pauses;
     std::set<EventRef, EventCompare> events;
     bool needsRecalculation;
+    bool cutInfoMissingOKs;
 };
 
 ReplayWrapper ReadBSOR(const std::string& path);

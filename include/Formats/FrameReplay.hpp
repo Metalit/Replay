@@ -15,7 +15,7 @@ struct ScoreFrame {
         time(time), score(score), percent(percent), combo(combo), energy(energy), offset(offset) {}
 };
 
-struct FrameReplay : public Replay {
+struct FrameReplay : public virtual Replay {
     std::vector<ScoreFrame> scoreFrames;
 };
 
