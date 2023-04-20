@@ -66,6 +66,7 @@ namespace Manager {
     namespace Frames {
         ScoreFrame* GetScoreFrame();
         bool AllowComboDrop();
+        bool AllowScoreOverride();
     }
 
     namespace Events {
@@ -95,6 +96,7 @@ namespace Manager {
     const ReplayInfo& GetCurrentInfo();
 
     void UpdateTime(float songTime);
+    void SetLastCutTime(float lastCutTime);
     void CheckInputs();
     float GetSongTime();
     const Frame& GetFrame();

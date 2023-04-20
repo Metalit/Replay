@@ -55,6 +55,7 @@ namespace Manager {
     int frameCount = 0;
     float songTime = -1;
     float lerpAmount = 0;
+    float lastCutTime = -1;
 
     namespace Objects {
         Saber *leftSaber, *rightSaber;
@@ -248,9 +249,9 @@ namespace Manager {
         void ReplayStarted() {
             replay = dynamic_cast<FrameReplay*>(currentReplay.replay.get());
             scoreFrame = replay->scoreFrames.begin();
-            do {
+            currentValues = {-1, -1, -1, -1, -1, -1};
+            while(currentValues.score < 0 || currentValues.combo < 0 || currentValues.energy < 0 || currentValues.offset < 0)
                 Increment();
-            } while(currentValues.score < 0 || currentValues.combo < 0 || currentValues.energy < 0 || currentValues.offset < 0);
         }
 
         void UpdateTime() {
@@ -263,12 +264,21 @@ namespace Manager {
         }
 
         bool AllowComboDrop() {
-            static int frameSearchRadius = 2;
+            static int frameSearchRadius = 1;
             int combo = 1;
             auto iter = scoreFrame;
             iter -= frameSearchRadius + 1;
+            for(int i = 0; i < frameSearchRadius; i++) {
+                iter--;
+                if(iter->combo < 0)
+                    i--;
+                if(iter == replay->scoreFrames.begin())
+                    break;
+            }
             for(int i = 0; i < frameSearchRadius * 2; i++) {
                 iter++;
+                if(iter == replay->scoreFrames.end())
+                    break;
                 if(iter->combo < 0) {
                     i--;
                     continue;
@@ -276,10 +286,15 @@ namespace Manager {
                 if(iter->combo < combo)
                     return true;
                 combo = iter->combo;
-                if(iter == replay->scoreFrames.end())
-                    break;
             }
             return false;
+        }
+
+        bool AllowScoreOverride() {
+            if(currentValues.percent >= 0)
+                return true;
+            // fix scoresaber replays having incorrect max score before cut finishes
+            return songTime - lastCutTime > 0.4;
         }
     }
 
@@ -330,6 +345,7 @@ namespace Manager {
                             cutInfo.saberTypeOK = isLeftColor == isLeftSaber;
                             cutInfo.timeDeviation = noteData->time - event.time;
                         }
+                        SetLastCutTime(event.time);
                         il2cpp_utils::RunMethodUnsafe(controller, "SendNoteWasCutEvent", byref(cutInfo));
                     } else if(info.eventType == NoteEventInfo::Type::MISS) {
                         controller->SendNoteWasMissedEvent();
@@ -419,6 +435,8 @@ namespace Manager {
         paused = false;
         currentFrame = 0;
         songTime = -1;
+        lerpAmount = 0;
+        lastCutTime = -1;
         if(currentReplay.type & ReplayType::Event)
             Events::ReplayStarted();
         if(currentReplay.type & ReplayType::Frame)
@@ -438,6 +456,8 @@ namespace Manager {
             paused = false;
         currentFrame = 0;
         songTime = full ? -1 : 0;
+        lerpAmount = 0;
+        lastCutTime = -1;
         if(currentReplay.type & ReplayType::Event)
             Events::ReplayStarted();
         if(currentReplay.type & ReplayType::Frame)
@@ -506,6 +526,10 @@ namespace Manager {
         if(currentReplay.type & ReplayType::Frame)
             Frames::UpdateTime();
         Camera::UpdateTime();
+    }
+
+    void SetLastCutTime(float value) {
+        lastCutTime = value;
     }
 
     bool timeForwardPressed = false, timeBackPressed = false;

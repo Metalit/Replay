@@ -16,7 +16,7 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
 
     ScoreController_LateUpdate(self);
 
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && Manager::Frames::AllowScoreOverride()) {
         auto frame = Manager::Frames::GetScoreFrame();
         if(self->multipliedScore != frame->score) {
             self->multipliedScore = frame->score;
@@ -52,7 +52,7 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
     bool saberTypeOK = noteCutInfo->saberTypeOK;
     bool wasCutTooSoon = noteCutInfo->wasCutTooSoon;
 
-    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !(Manager::currentReplay.type & ReplayType::Event)) {
         if(!Manager::Frames::AllowComboDrop()) {
             self->combo = Manager::Frames::GetScoreFrame()->combo - 1;
             noteCutInfo->speedOK = true;

@@ -14,7 +14,7 @@ using namespace GlobalNamespace;
 // override max score in frame replays and prevent crashing on attempting to despawn fake scoring elements from event replays
 MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
 
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && Manager::Frames::AllowScoreOverride()) {
         auto frame = Manager::Frames::GetScoreFrame();
         // modified scores are calculated based on these after this function is called
         self->multipliedScore = frame->score;

@@ -398,6 +398,7 @@ void AddEnergy(float& energy, float addition, const ReplayModifiers& modifiers) 
 
 MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
     MapPreview ret{};
+    float recentNoteTime = -1;
     if(replay.type & ReplayType::Event) {
         auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
         auto& modifiers = eventReplay->info.modifiers;
@@ -425,6 +426,7 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
             }
             switch(event.eventType) {
             case EventRef::Note: {
+                recentNoteTime = event.time;
                 auto& note = eventReplay->notes[event.index];
                 if(note.info.eventType != NoteEventInfo::Type::BOMB) {
                     UpdateMultiplier(maxMultiplier, maxMultiProg, true);
@@ -477,7 +479,8 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
         }
         ret.energy = recentValues.energy;
         ret.combo = recentValues.combo;
-        ret.score = recentValues.score;
+        if(time - recentNoteTime > 0.4)
+            ret.score = recentValues.score;
         if(recentValues.percent > 0)
             ret.maxScore = (int) (recentValues.score / recentValues.percent);
     }
