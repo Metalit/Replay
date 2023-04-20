@@ -12,16 +12,6 @@ using namespace GlobalNamespace;
 #include "System/Action_2.hpp"
 
 // override score
-MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Frame, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
-
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
-        auto frame = Manager::Frames::GetScoreFrame();
-        // modified scores are calculated based on these after this function is called
-        self->multipliedScore = frame->score;
-        self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
-    }
-    ScoreController_DespawnScoringElement_Frame(self, scoringElement);
-}
 MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, ScoreController* self) {
 
     ScoreController_LateUpdate(self);
@@ -112,33 +102,10 @@ MAKE_HOOK_MATCH(GameEnergyCounter_ProcessEnergyChange, &GameEnergyCounter::Proce
     GameEnergyCounter_ProcessEnergyChange(self, energyChange);
 }
 
-#include "GlobalNamespace/GameNoteController.hpp"
-
-// avoid fake comnbo bad cuts
-MAKE_HOOK_MATCH(GameNoteController_HandleCut_Frame, &GameNoteController::HandleCut,
-        void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
-
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop())
-        allowBadCut = false;
-
-    GameNoteController_HandleCut_Frame(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
-}
-// misses too
-MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Frame, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
-
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame && !Manager::Frames::AllowComboDrop())
-        return;
-
-    NoteController_HandleNoteDidPassMissedMarkerEvent_Frame(self);
-}
-
 HOOK_FUNC(
-    INSTALL_HOOK(logger, ScoreController_DespawnScoringElement_Frame);
     INSTALL_HOOK(logger, ScoreController_LateUpdate);
     INSTALL_HOOK(logger, ComboController_HandlePlayerHeadDidEnterObstacles);
     INSTALL_HOOK(logger, ComboController_HandleNoteWasCut);
     INSTALL_HOOK(logger, ComboController_HandleNoteWasMissed);
     INSTALL_HOOK(logger, GameEnergyCounter_ProcessEnergyChange);
-    INSTALL_HOOK(logger, GameNoteController_HandleCut_Frame);
-    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Frame);
 )

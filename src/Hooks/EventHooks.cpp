@@ -6,19 +6,10 @@
 
 using namespace GlobalNamespace;
 
-#include "GlobalNamespace/GameNoteController.hpp"
 #include "GlobalNamespace/BombNoteController.hpp"
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
 
-// disable real cuts
-MAKE_HOOK_MATCH(GameNoteController_HandleCut_Event, &GameNoteController::HandleCut,
-        void, GameNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec, bool allowBadCut) {
-
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
-        return;
-
-    GameNoteController_HandleCut_Event(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
-}
+// disable real cuts (regular notes in shared hooks)
 MAKE_HOOK_MATCH(BombNoteController_HandleWasCutBySaber, &BombNoteController::HandleWasCutBySaber,
         void, BombNoteController* self, Saber* saber, UnityEngine::Vector3 cutPoint, UnityEngine::Quaternion orientation, UnityEngine::Vector3 cutDirVec) {
 
@@ -68,17 +59,6 @@ MAKE_HOOK_MATCH(GameEnergyCounter_LateUpdate, &GameEnergyCounter::LateUpdate, vo
     GameEnergyCounter_LateUpdate(self);
 }
 
-#include "GlobalNamespace/NoteController.hpp"
-
-// disable misses
-MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent_Event, &NoteController::HandleNoteDidPassMissedMarkerEvent, void, NoteController* self) {
-
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
-        return;
-
-    NoteController_HandleNoteDidPassMissedMarkerEvent_Event(self);
-}
-
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 
 // keep track of all notes
@@ -99,18 +79,6 @@ MAKE_HOOK_MATCH(BeatmapObjectManager_DespawnNoteController, static_cast<void(Bea
         Manager::Events::RemoveNoteController(noteController);
 }
 
-#include "GlobalNamespace/ScoreController.hpp"
-#include "CustomTypes/ScoringElement.hpp"
-
-// prevent crashing on attempting to despawn fake scoring elements
-MAKE_HOOK_MATCH(ScoreController_DespawnScoringElement_Event, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement) {
-
-    if(il2cpp_utils::try_cast<ReplayHelpers::ScoringElement>(scoringElement))
-        return;
-
-    ScoreController_DespawnScoringElement_Event(self, scoringElement);
-}
-
 #include "GlobalNamespace/GameplayCoreInstaller.hpp"
 #include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
 
@@ -124,14 +92,11 @@ MAKE_HOOK_MATCH(GameplayCoreInstaller_InstallBindings, &GameplayCoreInstaller::I
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, GameNoteController_HandleCut_Event);
     INSTALL_HOOK(logger, BombNoteController_HandleWasCutBySaber);
     INSTALL_HOOK(logger, BurstSliderGameNoteController_HandleCut);
     INSTALL_HOOK(logger, PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles);
     INSTALL_HOOK(logger, GameEnergyCounter_LateUpdate);
-    INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent_Event);
     INSTALL_HOOK(logger, BeatmapObjectManager_AddSpawnedNoteController);
     INSTALL_HOOK(logger, BeatmapObjectManager_DespawnNoteController);
-    INSTALL_HOOK(logger, ScoreController_DespawnScoringElement_Event);
     INSTALL_HOOK(logger, GameplayCoreInstaller_InstallBindings);
 )

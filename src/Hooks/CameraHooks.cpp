@@ -8,9 +8,6 @@
 
 #include "hollywood/shared/Hollywood.hpp"
 
-#include "GlobalNamespace/PlayerTransforms.hpp"
-#include "GlobalNamespace/TransformExtensions.hpp"
-
 #include "UnityEngine/Camera.hpp"
 
 using namespace GlobalNamespace;
@@ -24,38 +21,40 @@ UnityEngine::Camera* mainCamera = nullptr;
 static bool wasMoving = false;
 static float lastVolume = -1;
 
-MAKE_HOOK_MATCH(PlayerTransforms_Update_Camera, &PlayerTransforms::Update, void, PlayerTransforms* self) {
+#include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/TransformExtensions.hpp"
 
-    if(Manager::replaying) {
-        if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
-            // always update rotation but only update position when releasing
-            if(!Manager::Camera::moving)
-                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
-            auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
-            getConfig().ThirdPerRot.SetValue(rot);
-        }
-        wasMoving = Manager::Camera::moving;
-        if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-            // head tranform IS the camera
-            Vector3 targetPos;
-            Quaternion targetRot;
-            if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-                auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
-                auto rot = parent->get_rotation();
-                targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
-                targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
-            } else {
-                targetPos = Manager::Camera::GetHeadPosition();
-                targetRot = Manager::Camera::GetHeadRotation();
-            }
-            if(cameraRig)
-                cameraRig->SetPositionAndRotation(targetPos, targetRot);
-            if(customCamera)
-                customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
-        }
+// set camera positions
+void Camera_PlayerTransformsUpdate_Pre(PlayerTransforms* self) {
+    if(!Manager::replaying)
+        return;
+    if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+        auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+        // always update rotation but only update position when releasing
+        if(!Manager::Camera::moving)
+            getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
+        auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
+        getConfig().ThirdPerRot.SetValue(rot);
     }
-    PlayerTransforms_Update_Camera(self);
+    wasMoving = Manager::Camera::moving;
+    if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+        // head tranform IS the camera
+        Vector3 targetPos;
+        Quaternion targetRot;
+        if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+            auto rot = parent->get_rotation();
+            targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
+            targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
+        } else {
+            targetPos = Manager::Camera::GetHeadPosition();
+            targetRot = Manager::Camera::GetHeadRotation();
+        }
+        if(cameraRig)
+            cameraRig->SetPositionAndRotation(targetPos, targetRot);
+        if(customCamera)
+            customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
+    }
 }
 
 #include "UnityEngine/Matrix4x4.hpp"
@@ -245,23 +244,7 @@ MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelS
 
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 
-// delay ending of renders
-MAKE_HOOK_MATCH(AudioTimeSyncController_Update_Camera, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
-
-    int state = self->state;
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode())
-        self->state = AudioTimeSyncController::State::Stopped;
-
-    AudioTimeSyncController_Update_Camera(self);
-
-    // remove min check
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode()) {
-		self->lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
-        self->songTime += self->lastFrameDeltaSongTime;
-        self->isReady = true;
-    }
-    self->state = state;
-}
+// delay ending of renders (min check in shared hooks)
 MAKE_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
 
     float ret = AudioTimeSyncController_get_songEndTime(self);
@@ -272,25 +255,14 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncControlle
 }
 
 #include "GlobalNamespace/PauseController.hpp"
-#include "GlobalNamespace/PauseMenuManager.hpp"
 
-// prevent pauses during recording or enable camera if allowed
+// prevent pauses during recording
 MAKE_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
 
     if(Manager::replaying && Manager::Camera::rendering)
         return getConfig().Pauses.GetValue();
 
     return PauseController_get_canPause(self);
-}
-MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Camera, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera) // wow
-        mainCamera->set_enabled(true);
-    PauseMenuManager_ShowMenu_Camera(self);
-}
-MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
-    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera)
-        mainCamera->set_enabled(false);
-    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera(self);
 }
 
 #include "GlobalNamespace/MainSystemInit.hpp"
@@ -307,14 +279,10 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, PlayerTransforms_Update_Camera);
     INSTALL_HOOK(logger, GameScenesManager_PushScenes);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, StandardLevelScenesTransitionSetupDataSO_Finish);
-    INSTALL_HOOK(logger, AudioTimeSyncController_Update_Camera);
     INSTALL_HOOK(logger, AudioTimeSyncController_get_songEndTime);
     INSTALL_HOOK(logger, PauseController_get_canPause);
-    INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Camera);
-    INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Camera);
     INSTALL_HOOK(logger, MainSystemInit_Init);
 )

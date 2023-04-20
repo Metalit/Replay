@@ -65,34 +65,14 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void(MenuT
     MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15);
 }
 
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
-
-// keep song time and current frame up to date, plus controller inputs
-MAKE_HOOK_MATCH(AudioTimeSyncController_Update_Replay, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
-
-    if(Manager::replaying && !Manager::paused) {
-        Manager::UpdateTime(self->songTime);
-        Manager::CheckInputs();
-    }
-    AudioTimeSyncController_Update_Replay(self);
-}
-
 #include "GlobalNamespace/PauseMenuManager.hpp"
 
-// handle pause, resume, and restart
-MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu_Replay, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-    if(Manager::replaying)
-        Manager::ReplayPaused();
-    PauseMenuManager_ShowMenu_Replay(self);
-}
-MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self) {
-    if(Manager::replaying)
-        Manager::ReplayUnpaused();
-    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay(self);
-}
+// handle restarts
 MAKE_HOOK_MATCH(PauseMenuManager_RestartButtonPressed, &PauseMenuManager::RestartButtonPressed, void, PauseMenuManager* self) {
+
     if(Manager::replaying)
         Manager::ReplayRestarted();
+
     PauseMenuManager_RestartButtonPressed(self);
 }
 
@@ -138,38 +118,35 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
 #include "GlobalNamespace/TransformExtensions.hpp"
 
 // set head position
-MAKE_HOOK_MATCH(PlayerTransforms_Update_Replay, &PlayerTransforms::Update, void, PlayerTransforms* self) {
-
-    PlayerTransforms_Update_Replay(self);
-
-    if(Manager::replaying) {
-        auto& transform = Manager::GetFrame();
-        auto targetRot = transform.head.rotation;
-        auto targetPos = transform.head.position;
-        auto originParent = self->originParentTransform;
-        // both world pos and pseudo local pos are used in other places
-        if(Manager::GetCurrentInfo().positionsAreLocal) {
-            self->headPseudoLocalRot = targetRot;
-            self->headPseudoLocalPos = targetPos;
-            if(originParent) {
-                self->headWorldRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
-                self->headWorldPos = targetPos + originParent->get_position();
-            } else {
-                auto headParent = self->headTransform->GetParent();
-                self->headWorldRot = Sombrero::QuaternionMultiply(headParent->get_rotation(), targetRot);
-                self->headWorldPos = targetPos + headParent->get_position();
-            }
+void Replay_PlayerTransformsUpdate_Post(PlayerTransforms* self) {
+    if(!Manager::replaying)
+        return;
+    auto& transform = Manager::GetFrame();
+    auto targetRot = transform.head.rotation;
+    auto targetPos = transform.head.position;
+    auto originParent = self->originParentTransform;
+    // both world pos and pseudo local pos are used in other places
+    if(Manager::GetCurrentInfo().positionsAreLocal) {
+        self->headPseudoLocalRot = targetRot;
+        self->headPseudoLocalPos = targetPos;
+        if(originParent) {
+            self->headWorldRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
+            self->headWorldPos = targetPos + originParent->get_position();
         } else {
-            self->headWorldRot = targetRot;
-            self->headWorldPos = targetPos;
-            if(originParent) {
-                self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(originParent, targetRot);
-                self->headPseudoLocalPos = targetPos - originParent->get_position();
-            } else {
-                auto headParent = self->headTransform->GetParent();
-                self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(headParent, targetRot);
-                self->headPseudoLocalPos = targetPos - headParent->get_position();
-            }
+            auto headParent = self->headTransform->GetParent();
+            self->headWorldRot = Sombrero::QuaternionMultiply(headParent->get_rotation(), targetRot);
+            self->headWorldPos = targetPos + headParent->get_position();
+        }
+    } else {
+        self->headWorldRot = targetRot;
+        self->headWorldPos = targetPos;
+        if(originParent) {
+            self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(originParent, targetRot);
+            self->headPseudoLocalPos = targetPos - originParent->get_position();
+        } else {
+            auto headParent = self->headTransform->GetParent();
+            self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(headParent, targetRot);
+            self->headPseudoLocalPos = targetPos - headParent->get_position();
         }
     }
 }
@@ -227,12 +204,8 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentViewController, &HMUI::FlowCoordinator::P
 
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
-    INSTALL_HOOK(logger, AudioTimeSyncController_Update_Replay);
-    INSTALL_HOOK(logger, PauseMenuManager_ShowMenu_Replay);
-    INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish_Replay);
     INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
     INSTALL_HOOK(logger, Saber_ManualUpdate);
-    INSTALL_HOOK(logger, PlayerTransforms_Update_Replay);
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, FlowCoordinator_PresentViewController);

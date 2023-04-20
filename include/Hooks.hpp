@@ -18,3 +18,10 @@ class Hooks {
 };
 
 #define HOOK_FUNC(...) static Hooks hook(*[](Logger& logger) { __VA_ARGS__ });
+
+namespace GlobalNamespace { class PlayerTransforms; }
+void Camera_PlayerTransformsUpdate_Pre(GlobalNamespace::PlayerTransforms* self);
+void Replay_PlayerTransformsUpdate_Post(GlobalNamespace::PlayerTransforms* self);
+
+namespace UnityEngine { class Camera; }
+extern UnityEngine::Camera* mainCamera;
