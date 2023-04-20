@@ -90,7 +90,7 @@ void OnIncrementChanged(float value) {
 custom_types::Helpers::Coroutine MatchRequirementsCoroutine(UnityEngine::UI::Button* replayButton) {
     co_yield nullptr;
 
-    bool interactable = levelView->actionButton->get_interactable();
+    bool interactable = levelView->actionButton->get_interactable() && replayButton->get_interactable();
     replayButton->set_interactable(interactable);
     co_return;
 }
@@ -134,12 +134,24 @@ namespace Menu {
 
         auto replayButton = canvasTransform->GetComponentInChildren<UnityEngine::UI::Button*>();
         SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(MatchRequirementsCoroutine(replayButton)));
+        if(auto hint = replayButton->GetComponent<HMUI::HoverHint*>())
+            hint->set_text("");
     }
 
     void SetButtonEnabled(bool enabled) {
         canvas->SetActive(enabled);
+        canvas->GetComponentInChildren<UnityEngine::UI::Button*>()->set_interactable(true);
         float xpos = enabled ? 4.2 : -1.8;
         ((UnityEngine::RectTransform*) canvas->get_transform()->GetParent())->set_anchoredPosition({xpos, -55});
+    }
+
+    void SetButtonUninteractable(std::string_view reason) {
+        auto replayButton = canvas->GetComponentInChildren<UnityEngine::UI::Button*>();
+        replayButton->set_interactable(false);
+        if(auto hint = replayButton->GetComponent<HMUI::HoverHint*>())
+            hint->set_text(reason);
+        else
+            BeatSaberUI::AddHoverHint(replayButton, reason);
     }
 
     void CheckMultiplayer() {

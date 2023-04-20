@@ -11,6 +11,8 @@ using namespace GlobalNamespace;
 
 ModInfo modInfo;
 
+bool recorderInstalled = false;
+
 Logger& getLogger() {
     static Logger* logger = new Logger(modInfo);
     return *logger;
@@ -112,4 +114,11 @@ extern "C" void load() {
     selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);
     LOG_INFO("Installed all hooks!");
+
+    if(Modloader::requireMod("bl"))
+        recorderInstalled = true;
+    else if(Modloader::requireMod("ScoreSaber"))
+        recorderInstalled = true;
+
+    LOG_INFO("Recording mod installed: {}", recorderInstalled);
 }

@@ -4,6 +4,7 @@
 
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
+#include "CustomTypes/ReplayMenu.hpp"
 
 using namespace GlobalNamespace;
 
@@ -178,6 +179,7 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
 
     cancelPresent = false;
+    bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
     if(Manager::replaying) {
         if(playerSpecificSettings)
             playerSpecificSettings->leftHanded = wasLeftHanded;
@@ -187,13 +189,13 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
             roomAdjust->roomRotation->set_value(oldRotAdj);
         }
         roomAdjust = nullptr;
-        bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
         if(!quit) {
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
             lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
         }
         Manager::ReplayEnded(quit);
-    }
+    } else if(!quit && !recorderInstalled)
+        Menu::SetButtonUninteractable("Install BeatLeader or ScoreSaber to record replays!");
 }
 MAKE_HOOK_MATCH(FlowCoordinator_PresentViewController, &HMUI::FlowCoordinator::PresentViewController,
         void, HMUI::FlowCoordinator* self, HMUI::ViewController* viewController, System::Action* finishedCallback, HMUI::ViewController::AnimationDirection animationDirection, bool immediately) {

@@ -19,6 +19,7 @@ namespace Menu {
     void EnsureSetup(GlobalNamespace::StandardLevelDetailView* view);
 
     void SetButtonEnabled(bool enabled);
+    void SetButtonUninteractable(std::string_view reason);
 
     void CheckMultiplayer();
 
