@@ -29,7 +29,7 @@ void Camera_PlayerTransformsUpdate_Pre(PlayerTransforms* self) {
     if(!Manager::replaying)
         return;
     if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-        auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+        auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
         // always update rotation but only update position when releasing
         if(!Manager::Camera::moving)
             getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
@@ -42,7 +42,7 @@ void Camera_PlayerTransformsUpdate_Pre(PlayerTransforms* self) {
         Vector3 targetPos;
         Quaternion targetRot;
         if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            auto parent = self->originParentTransform ? self->originParentTransform : self->headTransform->get_parent();
+            auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
             auto rot = parent->get_rotation();
             targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
             targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());

@@ -61,10 +61,10 @@ void CameraRig::Update() {
 }
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
-    get_transform()->set_localPosition(pos);
+    get_transform()->set_position(pos);
     // position can travel when moving, but rotation shouldn't
     if(!Manager::Camera::moving || Manager::Camera::GetMode() != (int) CameraMode::ThirdPerson)
-        get_transform()->set_localRotation(rot);
+        get_transform()->set_rotation(rot);
 }
 
 #include "GlobalNamespace/AvatarDataModel.hpp"
