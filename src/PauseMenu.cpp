@@ -359,22 +359,8 @@ namespace Pause {
         float controllerTime = (time - scoreController->audioTimeSyncController->startSongTime) / scoreController->audioTimeSyncController->timeScale;
         scoreController->audioTimeSyncController->SeekTo(controllerTime);
         auto& replay = Manager::currentReplay;
-        if(replay.type & ReplayType::Frame) {
-            // let hooks update values
-            gameEnergyCounter->ProcessEnergyChange(0);
-            auto frame = Manager::Frames::GetScoreFrame();
-            int maxScore = 1;
-            if(frame->percent > 0)
-                maxScore = (int) (frame->score / frame->percent);
-            float multiplier = scoreController->gameplayModifiersModel->GetTotalMultiplier(scoreController->gameplayModifierParams, frame->energy);
-            int modifiedMaxScore = modifiedMaxScore * multiplier;
-            if(maxScore == 0)
-                modifiedMaxScore = 1;
-            scoreController->immediateMaxPossibleMultipliedScore = maxScore;
-            scoreController->immediateMaxPossibleModifiedScore = modifiedMaxScore;
-            scoreController->LateUpdate();
-            NoteCutInfo info{}; il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(info));
-        } else {
+        int maxScore = 1;
+        if(replay.type & ReplayType::Event) {
             // reset energy as we will override it
             Manager::Events::wallEnergyLoss = 0;
             auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
@@ -418,6 +404,22 @@ namespace Pause {
                     break;
                 }
             }
+            maxScore = scoreController->immediateMaxPossibleMultipliedScore;
+        }
+        if(replay.type & ReplayType::Frame) {
+            // let hooks update values
+            gameEnergyCounter->ProcessEnergyChange(0);
+            auto frame = Manager::Frames::GetScoreFrame();
+            if(frame->percent > 0)
+                maxScore = (int) (frame->score / frame->percent);
+            float multiplier = scoreController->gameplayModifiersModel->GetTotalMultiplier(scoreController->gameplayModifierParams, frame->energy);
+            int modifiedMaxScore = modifiedMaxScore * multiplier;
+            if(maxScore == 0)
+                modifiedMaxScore = 1;
+            scoreController->immediateMaxPossibleMultipliedScore = maxScore;
+            scoreController->immediateMaxPossibleModifiedScore = modifiedMaxScore;
+            scoreController->LateUpdate();
+            NoteCutInfo info{}; il2cpp_utils::RunMethodUnsafe(comboController, "HandleNoteWasCut", nullptr, byref(info));
         }
     }
 }

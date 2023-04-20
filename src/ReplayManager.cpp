@@ -266,15 +266,16 @@ namespace Manager {
             static int frameSearchRadius = 2;
             int combo = 1;
             auto iter = scoreFrame;
-            iter -= frameSearchRadius;
+            iter -= frameSearchRadius + 1;
             for(int i = 0; i < frameSearchRadius * 2; i++) {
+                iter++;
                 if(iter->combo < 0) {
                     i--;
                     continue;
-                } if(iter->combo < combo)
+                }
+                if(iter->combo < combo)
                     return true;
                 combo = iter->combo;
-                iter++;
                 if(iter == replay->scoreFrames.end())
                     break;
             }

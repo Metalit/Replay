@@ -20,10 +20,11 @@ MAKE_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, void, 
         auto frame = Manager::Frames::GetScoreFrame();
         if(self->multipliedScore != frame->score) {
             self->multipliedScore = frame->score;
-            self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
+            if(frame->percent > 0)
+                self->immediateMaxPossibleMultipliedScore = frame->score / frame->percent;
             float multiplier = self->gameplayModifiersModel->GetTotalMultiplier(self->gameplayModifierParams, frame->energy);
             self->modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(frame->score, multiplier);
-            self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(frame->score / frame->percent, multiplier);
+            self->immediateMaxPossibleModifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(self->immediateMaxPossibleMultipliedScore, multiplier);
             if(!self->scoreDidChangeEvent->Equals(nullptr))
                 self->scoreDidChangeEvent->Invoke(frame->score, self->modifiedScore);
         }
@@ -51,7 +52,7 @@ MAKE_HOOK_MATCH(ComboController_HandleNoteWasCut, &ComboController::HandleNoteWa
     bool saberTypeOK = noteCutInfo->saberTypeOK;
     bool wasCutTooSoon = noteCutInfo->wasCutTooSoon;
 
-    if(Manager::replaying && Manager::currentReplay.type & ReplayType::Frame) {
+    if(Manager::replaying && Manager::currentReplay.type == ReplayType::Frame) {
         if(!Manager::Frames::AllowComboDrop()) {
             self->combo = Manager::Frames::GetScoreFrame()->combo - 1;
             noteCutInfo->speedOK = true;

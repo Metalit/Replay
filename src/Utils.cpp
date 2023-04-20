@@ -397,24 +397,8 @@ void AddEnergy(float& energy, float addition, const ReplayModifiers& modifiers) 
 }
 
 MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
-    if(replay.type & ReplayType::Frame) {
-        auto frames = dynamic_cast<FrameReplay*>(replay.replay.get())->scoreFrames;
-        auto* lastFrame = &frames.front();
-        for(auto& frame : frames) {
-            if(frame.time > time && frame.score >= 0)
-                break;
-            lastFrame = &frame;
-        }
-        int maxScore = 1;
-        if(lastFrame->percent > 0)
-            maxScore = (int) (lastFrame->score / lastFrame->percent);
-        return MapPreview{
-            .energy = lastFrame->energy,
-            .combo = lastFrame->combo,
-            .score = lastFrame->score,
-            .maxScore = maxScore
-        };
-    } else {
+    MapPreview ret{};
+    if(replay.type & ReplayType::Event) {
         auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
         auto& modifiers = eventReplay->info.modifiers;
         int multiplier = 1, multiProg = 0;
@@ -471,13 +455,33 @@ MapPreview MapAtTime(const ReplayWrapper& replay, float time) {
                 break;
             }
         }
-        return MapPreview{
-            .energy = energy,
-            .combo = combo,
-            .score = score,
-            .maxScore = maxScore
-        };
+        ret.energy = energy;
+        ret.combo = combo;
+        ret.score = score;
+        ret.maxScore = maxScore;
     }
+    if(replay.type & ReplayType::Frame) {
+        auto frames = dynamic_cast<FrameReplay*>(replay.replay.get())->scoreFrames;
+        auto recentValues = ScoreFrame(0, 0, -1, 0, 1, 0);
+        for(auto& frame : frames) {
+            if(frame.time > time)
+                break;
+            if(frame.score >= 0)
+                recentValues.score = frame.score;
+            if(frame.percent >= 0)
+                recentValues.percent = frame.percent;
+            if(frame.combo >= 0)
+                recentValues.combo = frame.combo;
+            if(frame.energy >= 0)
+                recentValues.energy = frame.energy;
+        }
+        ret.energy = recentValues.energy;
+        ret.combo = recentValues.combo;
+        ret.score = recentValues.score;
+        if(recentValues.percent > 0)
+            ret.maxScore = (int) (recentValues.score / recentValues.percent);
+    }
+    return ret;
 }
 
 const std::vector<OVRInput::Button> buttons = {
