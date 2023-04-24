@@ -180,6 +180,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
 
     auto replay = new EventFrame();
     ReplayWrapper ret(ReplayType::Event | ReplayType::Frame, replay);
+    auto& info = replay->info;
 
     SSPointers beginnings;
     READ_TO(beginnings);
@@ -187,12 +188,13 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     input.seekg(beginnings.metadata);
     auto meta = ReadMetadata(input);
 
-    replay->info.modifiers = ParseModifiers(meta.Modifiers);
-    replay->info.modifiers.leftHanded = meta.LeftHanded;
-    replay->info.reached0Energy = replay->info.modifiers.noFail;
-    replay->info.jumpDistance = meta.NoteSpawnOffset;
-    replay->info.failed = meta.FailTime > 0.001;
-    replay->info.failTime = meta.FailTime;
+    info.modifiers = ParseModifiers(meta.Modifiers);
+    info.modifiers.leftHanded = meta.LeftHanded;
+    info.failed = meta.FailTime > 0.001;
+    info.failTime = meta.FailTime;
+    info.modifiers.noFail = info.modifiers.noFail && info.failed;
+    info.reached0Energy = info.modifiers.noFail;
+    info.jumpDistance = meta.NoteSpawnOffset;
 
     QuaternionAverage averageCalc(Quaternion::identity());
     input.seekg(beginnings.poseKeyframes);
@@ -204,11 +206,11 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         replay->frames.emplace_back(posFrame.Time, posFrame.FPS, posFrame.Head, posFrame.Left, posFrame.Right);
         averageCalc.AddRotation(posFrame.Head.rotation);
     }
-    replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
+    info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
     if(meta.Characteristic.find("Degree") != std::string::npos) {
-        auto euler = replay->info.averageOffset.get_eulerAngles();
+        auto euler = info.averageOffset.get_eulerAngles();
         euler.y = 0;
-        replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
+        info.averageOffset = UnityEngine::Quaternion::Euler(euler);
     }
 
     input.seekg(beginnings.heightKeyframes);
@@ -264,7 +266,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         else
             existing->second.score = ssScore.Score;
     }
-    replay->info.score = ssScore.Score;
+    info.score = ssScore.Score;
     input.seekg(beginnings.comboKeyframes);
     READ_TO(count);
     SSComboEvent ssCombo;
@@ -296,9 +298,9 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         replay->scoreFrames.emplace_back(std::move(frame));
 
     auto modified = std::filesystem::last_write_time(path);
-    replay->info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
-    replay->info.source = "ScoreSaber";
-    replay->info.positionsAreLocal = false;
+    info.timestamp = std::filesystem::file_time_type::clock::to_time_t(modified);
+    info.source = "ScoreSaber";
+    info.positionsAreLocal = false;
     replay->cutInfoMissingOKs = true;
     // get player name somehow, player id seems to be in file name
     return ret;
