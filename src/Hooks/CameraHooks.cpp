@@ -93,6 +93,7 @@ void SetupRecording() {
     auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
     std::string songName = levelData->get_songName();
     std::string songAuthor = levelData->get_songAuthorName();
+    std::string fileName = SanitizedPath(string_format("%s--%s", songAuthor.c_str(), songName.c_str()));
 
     if(getConfig().CameraOff.GetValue())
         mainCamera->set_enabled(false);
@@ -123,7 +124,7 @@ void SetupRecording() {
         set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
 
-        std::string videoFile = string_format("%s/%s--%s.h264", RendersFolder, songAuthor.c_str(), songName.c_str());
+        std::string videoFile = string_format("%s/%s.h264", RendersFolder, fileName.c_str());
         Hollywood::CameraRecordingSettings settings{
             .width = resolutions[getConfig().Resolution.GetValue()].first,
             .height = resolutions[getConfig().Resolution.GetValue()].second,
@@ -131,7 +132,7 @@ void SetupRecording() {
             .bitrate = getConfig().Bitrate.GetValue(),
             .movieModeRendering = true,
             .fov = getConfig().FOV.GetValue(),
-            .filePath = videoFile
+            .filePath = videoFile,
         };
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
@@ -148,7 +149,7 @@ void SetupRecording() {
             return x->get_gameObject()->get_activeInHierarchy();
         });
         audioCapture = Hollywood::SetAudioCapture(audioListener);
-        std::string audioFile = string_format("%s/%s--%s.wav", RendersFolder, songAuthor.c_str(), songName.c_str());
+        std::string audioFile = string_format("%s/%s.wav", RendersFolder, fileName.c_str());
         audioCapture->OpenFile(audioFile);
     }
 }

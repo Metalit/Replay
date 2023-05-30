@@ -31,6 +31,17 @@
 
 using namespace GlobalNamespace;
 
+std::string SanitizedPath(std::string path) {
+    static std::string forbiddenChars("\\/:?\"<>|*");
+    static auto replace = [](char c) {
+        if(forbiddenChars.find(c) != std::string::npos)
+            return '_';
+        return c;
+    };
+    std::transform(path.begin(), path.end(), path.begin(), replace);
+    return path;
+}
+
 std::string GetReqlaysPath() {
     static auto path = getDataDir("Replay") + "replays/";
     return path;

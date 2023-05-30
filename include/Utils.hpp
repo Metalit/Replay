@@ -11,6 +11,8 @@
 #include "GlobalNamespace/Saber.hpp"
 #include "UnityEngine/Sprite.hpp"
 
+std::string SanitizedPath(std::string path);
+
 std::string GetReqlaysPath();
 
 std::string GetBSORsPath();
