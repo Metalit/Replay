@@ -40,7 +40,7 @@ Watch back your best scores!
 
 __This guide assumes that you know how to use adb, Window File Explorer or SideQuest Advanced Installer (if you aren’t on Windows) to access the Quest’s files.__
 
-After rendering a video using the mod, two files will be created in the `Renders` folder in the top level directory of your quest, a `.h264` and a `.wav`, which are the video and audio outputs respectively.
+After rendering a video using the mod, two files will be created in the `Renders` folder in the top level directory of your quest, a `.h264` and a `.wav`, which are the video and audio outputs respectively. The fastest way to combine these is to copy the video codec, see below on how to do this with FFMPEG (HandBrake does not support this).
 
 ### Using HandBrake
 
@@ -65,8 +65,9 @@ You can prevent having to set these settings every time you launch HandBrake by 
 FFMPEG is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized).
 
 - Install [FFMPEG](https://ffmpeg.org/) and add it to `PATH`.
-- Run the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" "path/to/output/video.mp4"` with the paths replaced with wherever you put your files when you downloaded them.
-- It will take a while depending on the speed of your computer. You can view the conversion rate in the text it writes to the command prompt.
+- Run the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v copy "path/to/output/video.mp4"` with the paths replaced with wherever you put your files when you downloaded them.
+- Removing -c:v copy will mean reencoding and will take a while depending on the speed of your computer.
+- -c:v copy means copying the codec from the original file, and only reencoding the audio file will be necessary (fast)
 
 #### Hardware Acceleration
 
@@ -79,7 +80,7 @@ Now we just want to add an extra argument to the command to use the correct code
 | Manufacturer | Codec |
 | --- | --- |
 | Intel | `h264_qsv` |
-| NVIDIA | `nvenc_h264` |
+| NVIDIA | `h264_nvenc` |
 | AMD | `h264_amf` |
 
 Add that into the command in the form of `-c:v "codec"` before the output path. For example, if you had an Intel GPU, the command should look like `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_qsv "path/to/output/video.mp4"`.
