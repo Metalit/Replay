@@ -107,7 +107,7 @@ To compress the output video, use this command:
 
 Replace "amount" with a value between 0-51. The larger the amount the smaller the file size will be, but quality will be worse. A value of 19 is perceptually lossless, resulting in a smaller file size with about the same quality.
 
-Some hardware codecs also support compression. For Nvidia GPUs, use this command:
+Some hardware codecs also support compression, which can make compressing a lot faster. For Nvidia GPUs, use this command:
 
 `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_nvenc -preset:v p7 -tune:v hq -rc:v vbr -cq:v amount -b:v 0 -profile:v high "path/to/output/video.mp4"`
 
