@@ -62,28 +62,57 @@ You can prevent having to set these settings every time you launch HandBrake by 
 
 ### Using FFMPEG
 
-FFMPEG is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized).
+[FFMPEG](https://ffmpeg.org/) is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized). What command to run depends on your desired outcome. If you want a large file size with the best quality, click No Compression. If you want a smaller file size with worse quality, click Compression
 
-- Install [FFMPEG](https://ffmpeg.org/) and add it to `PATH`.
-- Run the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v copy "path/to/output/video.mp4"` with the paths replaced with wherever you put your files when you downloaded them.
-- Removing -c:v copy will mean reencoding and will take a while depending on the speed of your computer.
-- -c:v copy means copying the codec from the original file, and only reencoding the audio file will be necessary (fast)
+<details>
+<summary>No Compression</summary>
+<br>
 
-#### Hardware Acceleration
+Even without compression, you have some control over the file size. To get the largest file size, but the fastest encoding, use -c:v copy:
 
-If you know the manufacturer of your GPU, you can use hardware acceleration to significanty speed up FFMPEG. You can determine this on Windows with the task manager.
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v copy "path/to/output/video.mp4"`
+
+Reencoding may result in a smaller file size but will take some time. To reencode, just exclude -c:v copy:
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" "path/to/output/video.mp4"`
+
+If you have a GPU with support for hardware encoding, you can reencode using it, which may result in a smaller file size and is faster than reencoding without it. First, find the manufacturer of your gpu
+
+<details>
+<summary>Finding GPU manufacturer on windows</summary>
+<br>
+
 - Open task manager with the keybind `Ctrl + Shift + Escape` or `Ctrl + Alt + Delete` and selecting the option for it. 
 - Open the `Performance` tab. This should show statistics about your PC such as the CPU, Memory, and all attached disks. Select the first option labelled GPU.
 - Across on the top, it should say the model of your GPU. Look for either `AMD`, `NVIDIA`, or `Intel`.
+</details>
 
-Now we just want to add an extra argument to the command to use the correct codec hardware acceleration. The codecs for the common GPU options are as follows.
+Next, find the codec for your gpu manufacturer
 | Manufacturer | Codec |
 | --- | --- |
 | Intel | `h264_qsv` |
 | NVIDIA | `h264_nvenc` |
 | AMD | `h264_amf` |
 
-Add that into the command in the form of `-c:v "codec"` before the output path. For example, if you had an Intel GPU, the command should look like `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_qsv "path/to/output/video.mp4"`.
+Then, use that codec:
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v replace_with_codec "path/to/output/video.mp4"`
+</details>
+<details>
+<summary>Compression</summary>
+<br>
+
+To compress the output video, use this command:
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v libx264 -crf amount "path/to/output/video.mp4"`
+
+Replace "amount" with a value between 0-51. The larger the amount the smaller the file size will be, but quality will be worse. A value of 19 is perceptually lossless, resulting in a smaller file size with about the same quality.
+
+Some hardware codecs also support compression. For Nvidia GPUs, use this command:
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_nvenc -preset:v p7 -tune:v hq -rc:v vbr -cq:v amount -b:v 0 -profile:v high "path/to/output/video.mp4"`
+
+Replace "amount" with a value between 0-51. The larger the amount the smaller the file size will be, but quality will be worse. A value of 19 is perceptually lossless, resulting in a smaller file size with about the same quality. Optionally, adding "-bf:v 3 -rc-lookahead:v 32" anywhere between the inputs and outputs may increase the quality when using hardware acceleration. See more about it [here](https://superuser.com/questions/1236275/).
+</details>
 
 ## Important Notes
 
