@@ -40,7 +40,7 @@ Watch back your best scores!
 
 __This guide assumes that you know how to use adb, Window File Explorer or SideQuest Advanced Installer (if you aren’t on Windows) to access the Quest’s files.__
 
-After rendering a video using the mod, two files will be created in the `Renders` folder in the top level directory of your quest, a `.h264` and a `.wav`, which are the video and audio outputs respectively.
+After rendering a video using the mod, two files will be created in the `Renders` folder in the top level directory of your quest, a `.h264` and a `.wav`, which are the video and audio outputs respectively. These have to be combined, and that can be done with either a GUI program or a command line tool.
 
 ### Using HandBrake
 
@@ -62,27 +62,55 @@ You can prevent having to set these settings every time you launch HandBrake by 
 
 ### Using FFMPEG
 
-FFMPEG is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized).
+[FFMPEG](https://ffmpeg.org/) is a command line tool with a lot of power, but all we need it for here is to convert the video and mix in some audio, which only takes one command and then all the work will be done (assuming the video and audio are synchronized). There are multiple options, however, depending on the result you're going for. Combining them without compression or reencoding is significantly faster than with, but it results in a significantly larger output file (naturally) and may playable in all video players if not reencoded.
+
+This is the most simple command if you don't want to add to it. The steps stay the same regardless of what you run, but below this you can read some options to add to the command.
 
 - Install [FFMPEG](https://ffmpeg.org/) and add it to `PATH`.
 - Run the command `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" "path/to/output/video.mp4"` with the paths replaced with wherever you put your files when you downloaded them.
 - It will take a while depending on the speed of your computer. You can view the conversion rate in the text it writes to the command prompt.
 
-#### Hardware Acceleration
+#### Customizing the command
 
-If you know the manufacturer of your GPU, you can use hardware acceleration to significanty speed up FFMPEG. You can determine this on Windows with the task manager.
+<details>
+<summary>No compression</summary>
+<br>
+
+The simple command with no extra arguments only reencodes the video and doesn't compress it outside of that, but that can still make the output a good bit smaller. To skip both, add `-c:v copy`. Keep in mind however that this may cause some video players to have various difficulties playing the output, even after it's processed.
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v copy "path/to/output/video.mp4"`
+
+If you have a GPU with support for hardware encoding, you can reencode using it, which may result in a smaller file size and is much faster than reencoding without it. First, find the manufacturer of your GPU. On Windows, you can do so using the task manager.
 - Open task manager with the keybind `Ctrl + Shift + Escape` or `Ctrl + Alt + Delete` and selecting the option for it. 
 - Open the `Performance` tab. This should show statistics about your PC such as the CPU, Memory, and all attached disks. Select the first option labelled GPU.
 - Across on the top, it should say the model of your GPU. Look for either `AMD`, `NVIDIA`, or `Intel`.
 
-Now we just want to add an extra argument to the command to use the correct codec hardware acceleration. The codecs for the common GPU options are as follows.
+Next, find the codec for your GPU manufacturer. The common options are as follows.
 | Manufacturer | Codec |
 | --- | --- |
 | Intel | `h264_qsv` |
-| NVIDIA | `nvenc_h264` |
+| NVIDIA | `h264_nvenc` |
 | AMD | `h264_amf` |
 
-Add that into the command in the form of `-c:v "codec"` before the output path. For example, if you had an Intel GPU, the command should look like `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_qsv "path/to/output/video.mp4"`.
+Add that into the command in the form of `-c:v codec` before the output path. For example, if you had an Intel GPU, the command should look like `ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_qsv "path/to/output/video.mp4"`.
+</details>
+
+<details>
+<summary>Compression</summary>
+<br>
+
+To compress the output video, use this command:
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v libx264 -crf amount "path/to/output/video.mp4"`
+
+Replace `amount` with a value between 0 and 51. The larger the amount, the smaller the file size will be, but with worse quality and more compression artifacts. A value of 19 is perceptually lossless, resulting in a smaller file size with about the same quality.
+
+Some hardware codecs also support compression, which can make compressing a lot faster. For Nvidia GPUs, use this command, replacing `amount` the same way:
+
+`ffmpeg -i "path/to/video.h264" -i "path/to/audio.wav" -c:v h264_nvenc -preset:v p7 -tune:v hq -rc:v vbr -b:v 0 -profile:v high -cq:v amount "path/to/output/video.mp4"`
+
+Optionally, adding `-bf:v 3 -rc-lookahead:v 32` anywhere between the inputs and outputs may increase the quality when using hardware acceleration. See more about it [here](https://superuser.com/questions/1236275/).
+</details>
 
 ## Important Notes
 
