@@ -56,7 +56,7 @@ struct BSORWallEvent {
 bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
     if(abs(info.saberType) > 1)
         return false;
-    if(info.saberSpeed < 1 || info.saberSpeed >= 1000)
+    if(info.saberSpeed < -1 || info.saberSpeed >= 1000)
         return false;
     if(info.beforeCutRating < 0 || info.afterCutRating < 0)
         return false;
@@ -86,7 +86,7 @@ std::string ReadPotentialUTF16(std::ifstream& input) {
         input.seekg(length, input.cur);
         int nextLength;
         READ_TO(nextLength);
-        
+
         // This code will search for the next valid string length
         while (nextLength < 0 || nextLength > 100) {
             input.seekg(-3, input.cur);
@@ -126,7 +126,7 @@ BSORInfo ReadInfo(std::ifstream& input) {
     READ_STRING(info.version);
     READ_STRING(info.gameVersion);
     READ_STRING(info.timestamp);
-    
+
     READ_STRING(info.playerID);
     READ_UTF16(info.playerName);
     READ_STRING(info.platform);
@@ -183,7 +183,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
     auto replay = new EventReplay();
     ReplayWrapper ret(ReplayType::Event, replay);
-    
+
     auto info = ReadInfo(input);
     replay->info.modifiers = ParseModifierString(info.modifiers);
     replay->info.modifiers.leftHanded = info.leftHanded;
@@ -240,7 +240,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         euler.y = 0;
         replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
     }
-    
+
     READ_TO(section);
     if (section != 2) {
         LOG_ERROR("Invalid section 2 header in bsor file {}", path);
@@ -255,9 +255,8 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
         // Mapping extensions replays require map data
         // for parsing because of the lost data. Blame NSGolova
-        if (noteInfo.noteID >= 1000000 || noteInfo.noteID <= -1000) {
+        if (noteInfo.noteID >= 1000000 || noteInfo.noteID <= -1000)
             replay->needsRecalculation = true;
-        }
 
         note.info.scoringType = noteInfo.noteID / 10000;
         noteInfo.noteID -= note.info.scoringType * 10000;
@@ -277,10 +276,15 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
-        
+
         if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
             READ_TO(note.noteCutInfo);
-        
+
+            // encoding bug in the beatleader qmod made this value be messed with
+            // here we set it to -1, which will be replaced with the approximation from the replayed movements
+            if(note.noteCutInfo.saberSpeed < 0 || note.noteCutInfo.saberSpeed > 100)
+                note.noteCutInfo.saberSpeed = -1;
+
             // replays on a certain BL version failed to save the NoteCutInfo for chain links correctly
             // so we catch replays with garbage note cut info (to limit failures to maps with the problem) and missing scoring type info
             if(note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
@@ -306,7 +310,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         }
         replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
     }
-    
+
     READ_TO(section);
     if (section != 3) {
         LOG_ERROR("Invalid section 3 header in bsor file {}", path);
@@ -323,10 +327,10 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         READ_TO(wallEvent);
         wall.lineIndex = wallEvent.wallID / 100;
         wallEvent.wallID -= wall.lineIndex * 100;
-        
+
         wall.obstacleType = wallEvent.wallID / 10;
         wallEvent.wallID -= wall.obstacleType * 10;
-        
+
         wall.width = wallEvent.wallID;
 
         wall.time = wallEvent.time;
@@ -361,7 +365,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         }
         replay->events.emplace(wall.time, EventRef::Wall, replay->walls.size() - 1);
     }
-    
+
     READ_TO(section);
     if (section != 4) {
         LOG_ERROR("Invalid section 4 header in bsor file {}", path);
@@ -375,7 +379,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
     }
     replay->info.hasYOffset = true;
-    
+
     READ_TO(section);
     if (section != 5) {
         LOG_ERROR("Invalid section 5 header in bsor file {}", path);
@@ -407,7 +411,7 @@ void RecalculateNotes(ReplayWrapper& replay, IReadonlyBeatmapData* beatmapData) 
     auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
     if(!eventReplay->needsRecalculation)
         return;
-    
+
     std::list<NoteEvent*> notes{};
     for(auto& note : eventReplay->notes)
         notes.emplace_back(&note);
@@ -419,7 +423,7 @@ void RecalculateNotes(ReplayWrapper& replay, IReadonlyBeatmapData* beatmapData) 
             continue;
         auto noteData = dataOpt.value();
         int mapNoteId = BSORNoteID(noteData);
-        
+
         for(auto iter = notes.begin(); iter != notes.end(); iter++) {
             auto& info = (*iter)->info;
             int eventNoteId = BSORNoteID(info);
