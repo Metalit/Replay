@@ -5,6 +5,7 @@
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
 #include "CustomTypes/CameraRig.hpp"
+#include "JNIUtils.hpp"
 
 #include "hollywood/shared/Hollywood.hpp"
 
@@ -19,7 +20,6 @@ ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
 
 static bool wasMoving = false;
-static float lastVolume = -1;
 
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
@@ -98,6 +98,9 @@ void SetupRecording() {
     if(getConfig().CameraOff.GetValue())
         mainCamera->set_enabled(false);
 
+    LOG_INFO("Muting audio");
+    JNIUtils::SetMute(true);
+
     if(!Manager::Camera::GetAudioMode()) {
         LOG_INFO("Beginning video capture");
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
@@ -137,12 +140,6 @@ void SetupRecording() {
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
         UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
-
-        static auto get_volume = il2cpp_utils::resolve_icall<float>("UnityEngine.AudioListener::get_volume");
-        static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
-
-        lastVolume = get_volume();
-        set_volume(0);
     } else {
         LOG_INFO("Beginning audio capture");
         auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
@@ -181,8 +178,6 @@ MAKE_HOOK_MATCH(GameScenesManager_PushScenes, &GameScenesManager::PushScenes,
 MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void, CoreGameHUDController* self) {
 
     CoreGameHUDController_Start(self);
-
-    lastVolume = -1;
 
     if(Manager::replaying) {
         auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
@@ -236,9 +231,8 @@ MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelS
     mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
-    static auto set_volume = il2cpp_utils::resolve_icall<void, float>("UnityEngine.AudioListener::set_volume");
-    if(lastVolume >= 0)
-        set_volume(lastVolume);
+    LOG_INFO("Unmuting audio");
+    JNIUtils::SetMute(false);
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }

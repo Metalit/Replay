@@ -412,6 +412,22 @@ namespace JNIUtils {
 		KillApp(env);
 	}
 
+	inline void SetMute(bool muted, JNIEnv* env = nullptr) {
+		if (env == nullptr) env = GetJNIEnv();
+
+		jstring audioName = env->NewStringUTF("audio");
+
+		// Get Context
+		jobject appContext = GetAppContext(env);
+
+		// Get AudioManager
+		CALL_JOBJECT_METHOD(env, audioManager, appContext, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", audioName);
+
+		// Call adjustStreamVolume With STREAM_MUSIC, ADJUST_(UN)MUTE, FLAG_REMOVE_SOUND_AND_VIBRATE
+		int adjust = muted ? -100 : 100;
+		CALL_VOID_METHOD(env, audioManager, "adjustStreamVolume", "(III)V", 3, adjust, 8);
+	}
+
 	// -- Private Functions --
 
 	inline void __attribute__((constructor)) OnDlopen() {

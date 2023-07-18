@@ -5,6 +5,7 @@
 #include "Hooks.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
+#include "JNIUtils.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
 
 using namespace GlobalNamespace;
@@ -88,6 +89,10 @@ extern "C" void setup(ModInfo& info) {
     if(!direxists(RendersFolder))
         mkpath(RendersFolder);
 
+    // in case it crashed during a render, unmute
+    // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
+    JNIUtils::SetMute(false);
+
     getLogger().info("Completed setup!");
 }
 
@@ -111,9 +116,10 @@ extern "C" void load() {
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
     INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    LOG_INFO("Installed all hooks!");
+
     selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);
-    LOG_INFO("Installed all hooks!");
 
     if(Modloader::requireMod("bl"))
         recorderInstalled = true;
