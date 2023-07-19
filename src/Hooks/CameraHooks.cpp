@@ -267,9 +267,11 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 
     MainSystemInit_Init(self);
 
-    // Manager::Camera::bloomPresets = self->bloomPrePassGraphicsSettingsPresets;
-    // Manager::Camera::bloomContainer = self->bloomPrePassEffectContainer;
+    Manager::Camera::bloomPresets = self->mainEffectGraphicsSettingsPresets;
+    LOG_INFO("Bloom presets: {}", self->mainEffectGraphicsSettingsPresets->presets.Length());
+    Manager::Camera::bloomContainer = self->mainEffectContainer;
     Manager::Camera::mirrorPresets = self->mirrorRendererGraphicsSettingsPresets;
+    LOG_INFO("Mirror presets: {}", self->mirrorRendererGraphicsSettingsPresets->presets.Length());
     Manager::Camera::mirrorRenderer = self->mirrorRenderer;
 }
 

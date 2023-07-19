@@ -30,6 +30,7 @@
 #include "GlobalNamespace/MainSettingsModelSO.hpp"
 #include "GlobalNamespace/IntSO.hpp"
 #include "GlobalNamespace/BoolSO.hpp"
+#include "UnityEngine/QualitySettings.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
@@ -97,8 +98,8 @@ namespace Manager {
         Vector3 smoothPosition;
         Quaternion smoothRotation;
 
-        // BloomPrePassGraphicsSettingsPresetsSO* bloomPresets;
-        // BloomPrePassEffectContainerSO* bloomContainer;
+        GlobalNamespace::MainEffectGraphicsSettingsPresetsSO* bloomPresets;
+        GlobalNamespace::MainEffectContainerSO* bloomContainer;
         MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         MirrorRendererSO* mirrorRenderer;
 
@@ -175,14 +176,29 @@ namespace Manager {
             int shockwaves = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
             settings->maxShockwaveParticles->set_value(shockwaves);
             settings->screenDisplacementEffectsEnabled->set_value(getConfig().Walls.GetValue());
-            // no presets available other than the disabled one :(
-            // if(getConfig().Bloom.GetValue() != 0) {
-            //     auto preset = bloomPresets->presets[getConfig().Bloom.GetValue()];
-            //     bloomContainer->Init(preset->bloomPrePassEffect);
-            // }
+
+            int antiAlias = 0;
+            switch(getConfig().AntiAlias.GetValue()) {
+            case 0:
+                antiAlias = 0;
+                break;
+            case 1:
+                antiAlias = 2;
+                break;
+            case 2:
+                antiAlias = 4;
+                break;
+            case 3:
+                antiAlias = 8;
+                break;
+            }
+            UnityEngine::QualitySettings::set_antiAliasing(antiAlias);
+
+            if(getConfig().Bloom.GetValue())
+                bloomContainer->Init(bloomPresets->presets[1]->mainEffect);
+
             if(getConfig().Mirrors.GetValue() != 0) {
                 int length = mirrorPresets->presets.Length();
-                LOG_INFO("Mirror presets: {}", length);
                 auto preset = mirrorPresets->presets[std::min(getConfig().Mirrors.GetValue(), length - 1)];
                 mirrorRenderer->Init(preset->reflectLayers, preset->stereoTextureWidth, preset->stereoTextureHeight, preset->monoTextureWidth,
                     preset->monoTextureHeight, preset->maxAntiAliasing, preset->enableBloomPrePassFog);
@@ -194,9 +210,12 @@ namespace Manager {
             auto settings = UnityEngine::Resources::FindObjectsOfTypeAll<MainSettingsModelSO*>().First();
             settings->maxShockwaveParticles->set_value(0);
             settings->screenDisplacementEffectsEnabled->set_value(false);
-            // if(getConfig().Bloom.GetValue() != 0) {
-            //     bloomContainer->Init(bloomPresets->presets[0]->bloomPrePassEffect);
-            // }
+            // I don't think this actually affects things and could probably be left alone, but idk
+            UnityEngine::QualitySettings::set_antiAliasing(settings->antiAliasingLevel->get_value());
+
+            if(getConfig().Bloom.GetValue())
+                bloomContainer->Init(bloomPresets->presets[0]->mainEffect);
+
             if(getConfig().Mirrors.GetValue() != 0) {
                 auto preset = mirrorPresets->presets[settings->mirrorGraphicsSettings->get_value()];
                 mirrorRenderer->Init(preset->reflectLayers, preset->stereoTextureWidth, preset->stereoTextureHeight, preset->monoTextureWidth,

@@ -158,9 +158,12 @@ inline UnityEngine::Transform* MakeVertical(P parent) {
     return vertical->get_transform();
 }
 
-inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self) {
+inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self, float verticalOffset = 0) {
     self->get_gameObject()->AddComponent<HMUI::Touchable*>();
-    return MakeVertical(self->get_transform());
+    auto ret = MakeVertical(self->get_transform());
+    if(verticalOffset != 0)
+        self->GetComponent<UnityEngine::RectTransform*>()->set_sizeDelta({0, verticalOffset * 2});
+    return ret;
 }
 
 template<BeatSaberUI::HasTransform P>
@@ -228,11 +231,17 @@ const std::vector<std::string> resolutionStrings = {
     "1440 x 2560",
     "2160 x 3840"
 };
-const std::vector<std::string> fourLevelStrings = {
+const std::vector<std::string> mirrorStrings = {
     "Off",
     "Low",
     "Medium",
     "High"
+};
+const std::vector<std::string> aaStrings = {
+    "0",
+    "2",
+    "4",
+    "8"
 };
 
 void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -262,7 +271,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     if(!firstActivation)
         return;
 
-    auto transform = MakeLayout(this);
+    auto transform = MakeLayout(this, 8);
     auto graphics = MakeVertical(transform);
     auto rendering = MakeVertical(transform);
     MakeTabSelector(transform, {"Graphics", "Rendering"}, [graphics, rendering](int selected) {
@@ -272,9 +281,11 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(graphics, getConfig().Walls);
 
-    // AddConfigValueIncrementEnum(graphics, getConfig().Bloom, fourLevelStrings);
+    AddConfigValueToggle(graphics, getConfig().Bloom);
 
-    AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, fourLevelStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, mirrorStrings);
+
+    AddConfigValueIncrementEnum(graphics, getConfig().AntiAlias, aaStrings);
 
     auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20)->get_transform()->GetChild(1);
     shockwaveIncrement->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
@@ -313,7 +324,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BeatSaberUI::CreateScrollableList(rendering, {80, 33});
+    queueList = BeatSaberUI::CreateScrollableList(rendering, {80, 41.5});
     queueList->set_listStyle(CustomListTableData::List);
     queueList->expandCell = true;
     queueList->tableView->set_selectionType(HMUI::TableViewSelectionType::None);
@@ -382,7 +393,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     if(!firstActivation)
         return;
 
-    auto transform = MakeLayout(this);
+    auto transform = MakeLayout(this, 8);
     auto inputs = MakeVertical(transform);
     auto position = MakeVertical(transform);
     MakeTabSelector(transform, {"Inputs", "Position"}, [inputs, position](int selected) {

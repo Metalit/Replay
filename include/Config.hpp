@@ -77,8 +77,9 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(Avatar, bool, "Enable Avatar", true, "Shows avatar when in third person camera mode")
 
     CONFIG_VALUE(Walls, bool, "PC Walls", true, "Whether to use PC walls when rendering")
-    CONFIG_VALUE(Mirrors, int, "PC Mirrors", 3, "PC Mirrors level to use when rendering")
-    // CONFIG_VALUE(Bloom, int, "Bloom", 3, "PC bloom level to use when rendering")
+    CONFIG_VALUE(Bloom, bool, "Bloom", true, "Whether to use PC bloom when rendering")
+    CONFIG_VALUE(Mirrors, int, "PC Mirrors", 3, "PC mirrors level to use when rendering")
+    CONFIG_VALUE(AntiAlias, int, "Anti-Aliasing", 3, "Anti-Aliasing level for the rendering output")
     CONFIG_VALUE(ShockwavesOn, bool, "Shockwaves Enabled", true)
     CONFIG_VALUE(Shockwaves, int, "Shockwaves", 1, "Shockwave level to use when rendering")
     CONFIG_VALUE(Resolution, int, "Resolution", 2, "Warning: resolutions higher than 1080p may cause Beat Saber to run out of memory and crash")

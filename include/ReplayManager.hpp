@@ -5,8 +5,8 @@
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
-// #include "GlobalNamespace/BloomPrePassGraphicsSettingsPresetsSO_Preset.hpp"
-// #include "GlobalNamespace/BloomPrePassEffectContainerSO.hpp"
+#include "GlobalNamespace/MainEffectGraphicsSettingsPresetsSO_Preset.hpp"
+#include "GlobalNamespace/MainEffectContainerSO.hpp"
 #include "GlobalNamespace/MirrorRendererGraphicsSettingsPresets_Preset.hpp"
 #include "GlobalNamespace/MirrorRendererSO.hpp"
 
@@ -51,8 +51,8 @@ namespace Manager {
         extern bool rendering;
         extern bool moving;
 
-        // extern GlobalNamespace::BloomPrePassGraphicsSettingsPresetsSO* bloomPresets;
-        // extern GlobalNamespace::BloomPrePassEffectContainerSO* bloomContainer;
+        extern GlobalNamespace::MainEffectGraphicsSettingsPresetsSO* bloomPresets;
+        extern GlobalNamespace::MainEffectContainerSO* bloomContainer;
         extern GlobalNamespace::MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         extern GlobalNamespace::MirrorRendererSO* mirrorRenderer;
 
