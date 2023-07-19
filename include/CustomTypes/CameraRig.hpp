@@ -17,6 +17,8 @@ DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour,
     DECLARE_INSTANCE_METHOD(void, Update);
     DECLARE_INSTANCE_METHOD(void, SetPositionAndRotation, UnityEngine::Vector3 pos, UnityEngine::Quaternion rot);
 
+    private:
+    bool pausedLastFrame;
     public:
     static CameraRig* Create(UnityEngine::Transform* cameraTransform);
 )

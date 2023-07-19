@@ -19,9 +19,13 @@ void CameraRig::Update() {
         ("UnityEngine.XR.InputTracking::GetLocalPosition_Injected");
     static auto GetLocalRotation = il2cpp_utils::resolve_icall<void, XRNode, ByRef<Quaternion>>
         ("UnityEngine.XR.InputTracking::GetLocalRotation_Injected");
+    static auto positionalTrackingDisabled = il2cpp_utils::resolve_icall<bool>
+        ("UnityEngine.XR.InputTracking::get_disablePositionalTracking");
 
     auto trans = get_transform();
     if(Manager::replaying && !Manager::paused) {
+        pausedLastFrame = false;
+
         if(getConfig().Avatar.GetValue()) {
             bool enabled = Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson;
             avatar->get_gameObject()->SetActive(enabled);
@@ -46,12 +50,18 @@ void CameraRig::Update() {
             GetLocalRotation(XRNode::Head, byref(rot));
             rot = Quaternion::Inverse(rot);
             child->set_localRotation(rot);
-            Vector3 pos;
-            GetLocalPosition(XRNode::Head, byref(pos));
-            pos = Sombrero::QuaternionMultiply(rot, pos);
-            child->set_localPosition(pos * -1);
+            // if another mod disables positional tracking, it won't be applied to the camera
+            // but we'll still get the real values, so we need to use zero instead
+            if(!positionalTrackingDisabled()) {
+                Vector3 pos;
+                GetLocalPosition(XRNode::Head, byref(pos));
+                pos = Sombrero::QuaternionMultiply(rot, pos);
+                child->set_localPosition(pos * -1);
+            } else
+                child->set_localPosition({});
         }
-    } else {
+    } else if(!pausedLastFrame) {
+        pausedLastFrame = true;
         avatar->get_gameObject()->SetActive(false);
         trans->set_localPosition(Vector3::zero());
         trans->set_localRotation(Quaternion::identity());
@@ -101,6 +111,8 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
 
     customAvatar->get_gameObject()->SetActive(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue());
     cameraRig->avatar = customAvatar;
+
+    cameraRig->pausedLastFrame = false;
 
     return cameraRig;
 }
