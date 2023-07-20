@@ -261,7 +261,7 @@ NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, const ReplayNoteC
         info.directionOK,
         info.saberTypeOK,
         info.wasCutTooSoon,
-        info.saberSpeed != -1 ? info.saberSpeed : saber->get_bladeSpeed(),
+        info.saberSpeed != -1 || saber == nullptr ? info.saberSpeed : saber->get_bladeSpeed(),
         info.saberDir,
         info.saberType,
         info.timeDeviation,
