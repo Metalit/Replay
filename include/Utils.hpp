@@ -2,6 +2,8 @@
 
 #include "Replay.hpp"
 
+#include "GlobalNamespace/BeatmapDifficulty.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
@@ -16,6 +18,16 @@ std::string SanitizedPath(std::string path);
 std::string GetReqlaysPath();
 
 std::string GetBSORsPath();
+
+std::string GetSSReplaysPath();
+
+std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
+
+std::string GetDifficultyName(int difficulty);
+
+std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* characteristic);
+
+std::string GetCharacteristicName(std::string characteristicName);
 
 std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
 

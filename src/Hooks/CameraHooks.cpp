@@ -80,6 +80,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
+#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
@@ -90,10 +91,14 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "UnityEngine/AudioListener.hpp"
 
 void SetupRecording() {
+    LOG_INFO("Setting up recording");
     auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
     std::string songName = levelData->get_songName();
     std::string songAuthor = levelData->get_songAuthorName();
-    std::string fileName = SanitizedPath(string_format("%s--%s", songAuthor.c_str(), songName.c_str()));
+    std::string characteristic = GetCharacteristicName(Manager::beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic());
+    std::string difficulty = GetDifficultyName(Manager::beatmap->get_difficulty());
+    std::string fileName = SanitizedPath(string_format("%s - %s (%s %s)", songAuthor.c_str(), songName.c_str(), characteristic.c_str(), difficulty.c_str()));
+    LOG_INFO("Using filename: {}", fileName);
 
     if(getConfig().CameraOff.GetValue())
         mainCamera->set_enabled(false);

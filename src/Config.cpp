@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "Config.hpp"
+#include "Utils.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
 
 #include "questui/shared/BeatSaberUI.hpp"
@@ -324,7 +325,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BeatSaberUI::CreateScrollableList(rendering, {80, 41.5});
+    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 41.5});
     queueList->set_listStyle(CustomListTableData::List);
     queueList->expandCell = true;
     queueList->tableView->set_selectionType(HMUI::TableViewSelectionType::None);
@@ -373,13 +374,16 @@ void RenderSettings::OnEnable() {
         for(auto& level : levels) {
             auto levelPreview = BeatSaberUI::GetMainFlowCoordinator()->beatmapLevelsModel->loadedPreviewBeatmapLevels->get_Item(level.ID);
             std::string name = levelPreview->get_songName();
+            std::string difficulty = GetDifficultyName(level.Difficulty);
+            std::string characteristic = GetCharacteristicName(level.Characteristic);
+            std::string toptext = "<voffset=0.05em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
             std::string author = levelPreview->get_songAuthorName();
             std::string mapper = levelPreview->get_levelAuthorName();
             std::string subtext = author + " [" + mapper + "] - Replay Index " + std::to_string(level.ReplayIndex + 1);
             auto sprite = *il2cpp_utils::GetFieldValue<UnityEngine::Sprite*>(levelPreview, "_coverImage");
             if(!sprite)
                 GetCover(levelPreview);
-            queueList->data.emplace_back(name, subtext, sprite);
+            queueList->data.emplace_back(toptext, subtext, sprite);
         }
         queueList->tableView->ReloadData();
     }

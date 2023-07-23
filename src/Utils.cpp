@@ -8,13 +8,15 @@
 #include "CustomTypes/MovementData.hpp"
 
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
-#include "GlobalNamespace/BeatmapDifficulty.hpp"
+#include "GlobalNamespace/BeatmapDifficultyMethods.hpp"
 #include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
-#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "Polyglot/Localization.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
 #include "GlobalNamespace/OVRInput_Button.hpp"
+#include "UnityEngine/Resources.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/AudioClip.hpp"
 #include "UnityEngine/AudioSource.hpp"
@@ -55,6 +57,24 @@ std::string GetBSORsPath() {
 std::string GetSSReplaysPath() {
     static auto path = getDataDir("ScoreSaber") + "replays/";
     return path;
+}
+
+std::string GetDifficultyName(BeatmapDifficulty difficulty) {
+    return BeatmapDifficultyMethods::Name(difficulty);
+}
+
+std::string GetDifficultyName(int difficulty) {
+    return GetDifficultyName((BeatmapDifficulty) difficulty);
+}
+
+std::string GetCharacteristicName(BeatmapCharacteristicSO* characteristic) {
+    return Polyglot::Localization::Get(characteristic->characteristicNameLocalizationKey);
+}
+
+std::string GetCharacteristicName(std::string characteristicName) {
+    auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>().First();
+    auto characteristic = chars->GetBeatmapCharacteristicBySerializedName(characteristicName);
+    return GetCharacteristicName(characteristic);
 }
 
 std::string GetHash(IPreviewBeatmapLevel* level) {
