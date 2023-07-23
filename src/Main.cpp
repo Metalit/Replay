@@ -71,7 +71,7 @@ MAKE_HOOK_MATCH(LevelFilteringNavigationController_UpdateCustomSongs, &LevelFilt
     }
 }
 
-void SelectLevelOnNextSongRefresh() {
+void RenderLevelOnNextSongRefresh() {
     selectedAlready = false;
 }
 

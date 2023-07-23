@@ -7,6 +7,7 @@
 
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "UnityEngine/WaitForSeconds.hpp"
 #include "GlobalNamespace/LevelSelectionFlowCoordinator_State.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
@@ -44,7 +45,8 @@ custom_types::Helpers::Coroutine RenderAfterLoaded() {
     if(!levelSelection)
         co_return;
     while(!levelSelection->get_selectedBeatmapLevel())
-        co_yield nullptr;
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
+    co_yield nullptr;
     RenderCurrentLevel();
     co_return;
 }
@@ -59,11 +61,15 @@ void RenderLevelInConfig() {
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
     if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator) {
         if(!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
-            SelectLevelOnNextSongRefresh();
+            RenderLevelOnNextSongRefresh();
             UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
             return;
-        } else
+        } else {
+            auto views = flowCoordinator->mainScreenViewControllers;
+            while(views->get_Count() > 1)
+                flowCoordinator->DismissViewController(views->get_Item(views->get_Count() - 1), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
             mainCoordinator->DismissFlowCoordinator(flowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+        }
     }
     levelsVec.erase(levelsVec.begin());
     getConfig().LevelsToSelect.SetValue(levelsVec);
