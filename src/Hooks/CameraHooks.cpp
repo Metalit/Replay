@@ -81,6 +81,8 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 }
 
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
+#include "GlobalNamespace/MainCameraCullingMask.hpp"
+#include "GlobalNamespace/MainCamera.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
@@ -111,11 +113,12 @@ void SetupRecording() {
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
         customCamera->set_enabled(true);
 
-        while (customCamera->get_transform()->get_childCount() > 0)
+        while(customCamera->get_transform()->get_childCount() > 0)
             UnityEngine::Object::DestroyImmediate(customCamera->get_transform()->GetChild(0)->get_gameObject());
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("CameraRenderCallbacksManager"));
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("AudioListener"));
-        UnityEngine::Object::DestroyImmediate(customCamera->GetComponent("MeshCollider"));
+        if(auto comp = customCamera->GetComponent<MainCameraCullingMask*>())
+            UnityEngine::Object::DestroyImmediate(comp);
+        if(auto comp = customCamera->GetComponent<MainCamera*>())
+            UnityEngine::Object::DestroyImmediate(comp);
 
         customCamera->set_clearFlags(mainCamera->get_clearFlags());
         customCamera->set_nearClipPlane(mainCamera->get_nearClipPlane());
