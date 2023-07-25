@@ -95,6 +95,8 @@ namespace Manager {
         bool rendering = false;
         bool moving = false;
 
+        long lastProgressUpdate = 0;
+
         Vector3 smoothPosition;
         Quaternion smoothRotation;
 
@@ -109,6 +111,10 @@ namespace Manager {
         }
 
         void UpdateTime() {
+            if(rendering && EpochTime() - lastProgressUpdate > getConfig().LogTime.GetValue()) {
+                LOG_INFO("Current song time: {:.2f}", songTime);
+                lastProgressUpdate = EpochTime();
+            }
             if(GetMode() == (int) CameraMode::Smooth) {
                 float deltaTime = UnityEngine::Time::get_deltaTime();
                 smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
@@ -224,8 +230,10 @@ namespace Manager {
         }
 
         void ReplayStarted() {
-            if(rendering)
+            if(rendering) {
                 SetGraphicsSettings();
+                lastProgressUpdate = EpochTime();
+            }
             if(GetMode() == (int) CameraMode::Smooth) {
                 smoothRotation = GetFrame().head.rotation;
                 // undo rotation by average rotation offset
@@ -481,6 +489,7 @@ namespace Manager {
             Events::ReplayStarted();
         if(currentReplay.type & ReplayType::Frame)
             Frames::ReplayStarted();
+        Camera::ReplayStarted();
     }
 
     void ReplayEnded(bool quit) {

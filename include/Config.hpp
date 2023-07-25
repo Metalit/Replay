@@ -67,6 +67,7 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(LevelsToSelect, std::vector<LevelSelection>, "Select Level On Start", {})
     CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0)
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
+    CONFIG_VALUE(LogTime, int, "Render Log Frequency", 15);
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
     CONFIG_VALUE(Correction, bool, "Correct Camera", true, "Whether to adjust the camera rotation to remove tilt")

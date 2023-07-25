@@ -33,6 +33,11 @@
 
 using namespace GlobalNamespace;
 
+long EpochTime() {
+    // this is a certified c++ moment
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 std::string SanitizedPath(std::string path) {
     static std::string forbiddenChars("\\/:?\"<>|*");
     static auto replace = [](char c) {
@@ -183,7 +188,7 @@ std::string GetStringForTimeSinceNow(std::time_t start) {
     auto startTimePoint = std::chrono::system_clock::from_time_t(start);
     auto duration = std::chrono::system_clock::now() - startTimePoint;
 
-    int seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+    long seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
     int minutes = seconds / 60;
     int hours = minutes / 60;
     int days = hours / 24;
@@ -214,7 +219,7 @@ std::string GetStringForTimeSinceNow(std::time_t start) {
         value = minutes;
     } else {
         unit = "second";
-        value = seconds;
+        value = (int) seconds;
     }
 
     if(value != 1) {

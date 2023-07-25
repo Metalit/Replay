@@ -62,13 +62,14 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
         Manager::CheckInputs();
     }
     int state = self->state;
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode())
+    bool customTiming = Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode();
+    if(customTiming)
         self->state = AudioTimeSyncController::State::Stopped;
 
     AudioTimeSyncController_Update(self);
 
     // remove min check
-    if(Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode()) {
+    if(customTiming) {
 		self->lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
         self->songTime += self->lastFrameDeltaSongTime;
         self->isReady = true;
