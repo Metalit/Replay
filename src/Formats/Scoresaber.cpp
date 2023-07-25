@@ -196,7 +196,8 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     info.reached0Energy = info.modifiers.noFail;
     info.jumpDistance = meta.NoteSpawnOffset;
 
-    QuaternionAverage averageCalc(Quaternion::identity());
+    bool rotation = meta.Characteristic.find("Degree") != std::string::npos;
+    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     input.seekg(beginnings.poseKeyframes);
     int count;
     READ_TO(count);
@@ -207,11 +208,6 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         averageCalc.AddRotation(posFrame.Head.rotation);
     }
     info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
-    if(meta.Characteristic.find("Degree") != std::string::npos) {
-        auto euler = info.averageOffset.get_eulerAngles();
-        euler.y = 0;
-        info.averageOffset = UnityEngine::Quaternion::Euler(euler);
-    }
 
     input.seekg(beginnings.heightKeyframes);
     READ_TO(count);

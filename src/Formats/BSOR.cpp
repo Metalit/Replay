@@ -210,7 +210,8 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int framesCount;
     READ_TO(framesCount);
-    QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
+    bool rotation = info.mode.find("Degree") != std::string::npos;
+    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     // here we have yet another lecagy bug where multiplayer replays record all the avatars
     float firstTime = -1000;
     int skip = 0;
@@ -234,12 +235,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
             i += skip;
         }
     }
-    replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
-    if(info.mode.find("Degree") != std::string::npos) {
-        auto euler = replay->info.averageOffset.get_eulerAngles();
-        euler.y = 0;
-        replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
-    }
+    replay->info.averageOffset = Quaternion::Inverse(averageCalc.GetAverage());
 
     READ_TO(section);
     if (section != 2) {

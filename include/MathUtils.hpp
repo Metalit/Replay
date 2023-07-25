@@ -60,7 +60,7 @@ static inline Quaternion InverseSignQuaternion(Quaternion q) {
 // math from https://stackoverflow.com/a/20249699
 struct QuaternionAverage {
     public:
-    QuaternionAverage(Quaternion baseRot) : baseRotation(baseRot) {}
+    QuaternionAverage(Quaternion baseRot, bool ignoreY) : baseRotation(baseRot), ignoreY(ignoreY) {}
 
     void AddRotation(Quaternion& rot) {
         //Before we add the new rotation to the average (mean), we have to check whether the quaternion has to be inverted. Because
@@ -69,11 +69,22 @@ struct QuaternionAverage {
             rot = InverseSignQuaternion(rot);
         }
 
+        if(ignoreY) {
+            auto euler = rot.get_eulerAngles();
+            euler.y = 0;
+            auto modRot = Quaternion::Euler(euler);
+            cumulative.w += modRot.w;
+            cumulative.x += modRot.x;
+            cumulative.y += modRot.y;
+            cumulative.z += modRot.z;
+        } else {
+            cumulative.w += rot.w;
+            cumulative.x += rot.x;
+            cumulative.y += rot.y;
+            cumulative.z += rot.z;
+        }
+
         num++;
-        cumulative.w += rot.w;
-        cumulative.x += rot.x;
-        cumulative.y += rot.y;
-        cumulative.z += rot.z;
     }
 
     Quaternion GetAverage() {
@@ -98,4 +109,5 @@ struct QuaternionAverage {
     Quaternion cumulative = {0, 0, 0, 0};
     int num = 0;
     const Quaternion baseRotation;
+    const bool ignoreY;
 };

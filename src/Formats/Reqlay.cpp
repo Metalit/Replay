@@ -303,16 +303,12 @@ ReplayWrapper ReadReqlay(const std::string& path) {
     ret.replay->info.source = "Replay Mod (Old)";
     ret.replay->info.positionsAreLocal = false;
 
-    QuaternionAverage averageCalc(UnityEngine::Quaternion::Euler({0, 0, 0}));
-    for(auto& frame : ret.replay->frames) {
+    bool rotation = path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos;
+    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    for(auto& frame : ret.replay->frames)
         averageCalc.AddRotation(frame.head.rotation);
-    }
+
     ret.replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
-    if(path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos) {
-        auto euler = ret.replay->info.averageOffset.get_eulerAngles();
-        euler.y = 0;
-        ret.replay->info.averageOffset = UnityEngine::Quaternion::Euler(euler);
-    }
 
     return ret;
 }
