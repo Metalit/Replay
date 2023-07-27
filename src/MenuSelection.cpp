@@ -139,14 +139,20 @@ bool IsCurrentLevelInConfig() {
 
 void RenderCurrentLevel() {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
-    if(!levelSelection)
+    if(!levelSelection) {
+        LOG_ERROR("Failed to get LevelSelectionFlowCoordinator, not rendering");
         return;
+    }
     auto map = levelSelection->get_selectedDifficultyBeatmap();
-    if(!map)
+    if(!map) {
+        LOG_ERROR("Failed to get selected beatmap, not rendering");
         return;
+    }
     auto replays = GetReplays(map);
-    if(replays.empty())
+    if(replays.empty()) {
+        LOG_ERROR("Failed to get beatmap replays, not rendering");
         return;
+    }
     Manager::Camera::rendering = true;
     int idx = getConfig().LastReplayIdx.GetValue();
     if(idx >= replays.size())

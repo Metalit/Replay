@@ -68,6 +68,8 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0)
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
     CONFIG_VALUE(LogTime, int, "Render Log Frequency", 15);
+    CONFIG_VALUE(OverrideWidth, int, "Override Resolution Width", -1);
+    CONFIG_VALUE(OverrideHeight, int, "Override Resolution Height", -1);
 
     CONFIG_VALUE(Smoothing, float, "Smoothing", 1, "The amount to smooth the camera by in smooth camera mode")
     CONFIG_VALUE(Correction, bool, "Correct Camera", true, "Whether to adjust the camera rotation to remove tilt")
@@ -91,6 +93,7 @@ DECLARE_CONFIG(Config,
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
     CONFIG_VALUE(Restart, bool, "Restart Game", false, "Restart game after finishing a render")
+    CONFIG_VALUE(SFX, bool, "Record SFX", false, "Records SFX when rendering instead of only the song (adds time to the render process)")
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
 
     CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay")

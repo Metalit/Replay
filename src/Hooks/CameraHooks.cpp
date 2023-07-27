@@ -135,10 +135,17 @@ void SetupRecording() {
         set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
 
-        std::string videoFile = string_format("%s/%s.h264", RendersFolder, fileName.c_str());
+        int width = getConfig().OverrideWidth.GetValue();
+        int height = getConfig().OverrideHeight.GetValue();
+
+        if(width <= 0)
+            width = resolutions[getConfig().Resolution.GetValue()].first;
+        if(height <= 0)
+            height = resolutions[getConfig().Resolution.GetValue()].second;
+
         Hollywood::CameraRecordingSettings settings{
-            .width = resolutions[getConfig().Resolution.GetValue()].first,
-            .height = resolutions[getConfig().Resolution.GetValue()].second,
+            .width = width,
+            .height = height,
             .fps = getConfig().FPS.GetValue(),
             .bitrate = getConfig().Bitrate.GetValue(),
             .movieModeRendering = true,
