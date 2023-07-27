@@ -4,7 +4,7 @@
   "info": {
     "name": "Replay",
     "id": "replay",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "url": null,
     "additionalData": {
       "overrideSoName": "libreplay.so"
@@ -62,7 +62,7 @@
     },
     {
       "id": "hollywood",
-      "versionRange": "^0.1.3",
+      "versionRange": "^0.2.0",
       "additionalData": {}
     },
     {

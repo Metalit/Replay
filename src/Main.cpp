@@ -75,14 +75,10 @@ void RenderLevelOnNextSongRefresh() {
     selectedAlready = false;
 }
 
-#include "hollywood/shared/Hollywood.hpp"
-
 extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
     modInfo = info;
-
-    Hollywood::initialize();
 
     getConfig().Init(info);
 

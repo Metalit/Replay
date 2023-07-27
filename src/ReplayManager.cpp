@@ -93,6 +93,7 @@ namespace Manager {
 
     namespace Camera {
         bool rendering = false;
+        bool muxingFinished = true;
         bool moving = false;
 
         long lastProgressUpdate = 0;
@@ -152,6 +153,8 @@ namespace Manager {
         }
 
         bool GetAudioMode() {
+            if(!getConfig().SFX.GetValue())
+                return false;
             return getConfig().AudioMode.GetValue();
         }
 
@@ -234,6 +237,7 @@ namespace Manager {
                 SetGraphicsSettings();
                 lastProgressUpdate = EpochTime();
             }
+            muxingFinished = !rendering;
             if(GetMode() == (int) CameraMode::Smooth) {
                 smoothRotation = GetFrame().head.rotation;
                 // undo rotation by average rotation offset
@@ -497,8 +501,8 @@ namespace Manager {
         bs_utils::Submission::enable(modInfo);
         replaying = false;
         if(Camera::rendering && !quit) {
-            // render audio after all video renders
-            if(getConfig().AudioMode.GetValue()) {
+            // render audio after all video renders (unless sound effects are off, in which case audio was already recorded)
+            if(getConfig().AudioMode.GetValue() || !getConfig().SFX.GetValue()) {
                 getConfig().AudioMode.SetValue(false);
                 if(!getConfig().LevelsToSelect.GetValue().empty()) {
                     if(getConfig().Restart.GetValue()) {

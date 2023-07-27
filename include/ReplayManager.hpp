@@ -49,6 +49,7 @@ namespace Manager {
 
     namespace Camera {
         extern bool rendering;
+        extern bool muxingFinished;
         extern bool moving;
 
         extern GlobalNamespace::MainEffectGraphicsSettingsPresetsSO* bloomPresets;

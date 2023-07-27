@@ -44,7 +44,7 @@ custom_types::Helpers::Coroutine RenderAfterLoaded() {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
     if(!levelSelection)
         co_return;
-    while(!levelSelection->get_selectedBeatmapLevel())
+    while(!levelSelection->get_selectedBeatmapLevel() || !Manager::Camera::muxingFinished)
         co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
     co_yield nullptr;
     RenderCurrentLevel();

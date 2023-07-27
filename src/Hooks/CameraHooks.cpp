@@ -21,6 +21,11 @@ UnityEngine::Camera* mainCamera = nullptr;
 
 static bool wasMoving = false;
 
+static const auto TmpVidPath = "/sdcard/replay-tmp.mp4";
+static const auto TmpAudPath = "/sdcard/replay-tmp.wav";
+
+static std::string fileName = "";
+
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
 
@@ -91,6 +96,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/AudioListener.hpp"
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
 
 void SetupRecording() {
     LOG_INFO("Setting up recording");
@@ -99,7 +105,7 @@ void SetupRecording() {
     std::string songAuthor = levelData->get_songAuthorName();
     std::string characteristic = GetCharacteristicName(Manager::beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic());
     std::string difficulty = GetDifficultyName(Manager::beatmap->get_difficulty());
-    std::string fileName = SanitizedPath(string_format("%s - %s (%s %s)", songAuthor.c_str(), songName.c_str(), characteristic.c_str(), difficulty.c_str()));
+    fileName = SanitizedPath(string_format("%s - %s (%s %s)", songAuthor.c_str(), songName.c_str(), characteristic.c_str(), difficulty.c_str()));
     LOG_INFO("Using filename: {}", fileName);
 
     if(getConfig().CameraOff.GetValue())
@@ -130,11 +136,6 @@ void SetupRecording() {
         // Makes the camera render before the main
         customCamera->set_depth(mainCamera->get_depth() - 1);
 
-        static auto set_cullingMatrix = il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>
-            ("UnityEngine.Camera::set_cullingMatrix_Injected");
-        set_cullingMatrix(customCamera, UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001f, 99999) *
-            MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * customCamera->get_worldToCameraMatrix());
-
         int width = getConfig().OverrideWidth.GetValue();
         int height = getConfig().OverrideHeight.GetValue();
 
@@ -148,41 +149,36 @@ void SetupRecording() {
             .height = height,
             .fps = getConfig().FPS.GetValue(),
             .bitrate = getConfig().Bitrate.GetValue(),
-            .movieModeRendering = true,
             .fov = getConfig().FOV.GetValue(),
-            .filePath = videoFile,
+            .filePath = TmpVidPath,
         };
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
         UnityEngine::Time::set_captureDeltaTime(1.0f / settings.fps);
+
+        if(!getConfig().SFX.GetValue()) {
+            LOG_INFO("Beginning audio capture");
+            // might not be available from manager objects yet, and I don't mind a bit of lag here lol
+            auto songSource = UnityEngine::Resources::FindObjectsOfTypeAll<AudioTimeSyncController*>().First();
+            audioCapture = Hollywood::SetAudioCapture(songSource->audioSource);
+            audioCapture->OpenFile(TmpAudPath);
+        }
     } else {
         LOG_INFO("Beginning audio capture");
         auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>().First([](auto x) {
             return x->get_gameObject()->get_activeInHierarchy();
         });
         audioCapture = Hollywood::SetAudioCapture(audioListener);
-        std::string audioFile = string_format("%s/%s.wav", RendersFolder, fileName.c_str());
-        audioCapture->OpenFile(audioFile);
+        audioCapture->OpenFile(TmpAudPath);
     }
 }
 
-#include "GlobalNamespace/GameScenesManager.hpp"
-#include "System/Action_1.hpp"
-#include "Zenject/DiContainer.hpp"
+MAKE_HOOK_MATCH(AudioTimeSyncController_StartSong, &AudioTimeSyncController::StartSong, void, AudioTimeSyncController* self, float startTimeOffset) {
 
-#include "custom-types/shared/delegate.hpp"
+    AudioTimeSyncController_StartSong(self, startTimeOffset);
 
-MAKE_HOOK_MATCH(GameScenesManager_PushScenes, &GameScenesManager::PushScenes,
-        void, GameScenesManager* self, ScenesTransitionSetupDataSO* scenesTransitionSetupData, float minDuration, System::Action* afterMinDurationCallback, System::Action_1<Zenject::DiContainer*>* finishCallback) {
-
-    if(Manager::replaying && Manager::Camera::rendering) {
-        finishCallback = (System::Action_1<Zenject::DiContainer*>*) System::Delegate::Combine(finishCallback, custom_types::MakeDelegate<System::Action_1<Zenject::DiContainer*>*>(
-            (std::function<void(Zenject::DiContainer*)>) [](Zenject::DiContainer* _) {
-                SetupRecording();
-            }
-        ));
-    }
-    GameScenesManager_PushScenes(self, scenesTransitionSetupData, minDuration, afterMinDurationCallback, finishCallback);
+    if(Manager::replaying && Manager::Camera::rendering)
+        SetupRecording();
 }
 
 #include "GlobalNamespace/CoreGameHUDController.hpp"
@@ -227,7 +223,24 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
     }
 }
 
+#include "UnityEngine/WaitForSeconds.hpp"
+#include "custom-types/shared/coroutine.hpp"
+
+custom_types::Helpers::Coroutine WaitThenMuxCoroutine() {
+    co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(2);
+
+    std::string outputFile = string_format("%s/%s.mp4", RendersFolder, fileName.c_str());
+    Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, outputFile);
+    std::filesystem::remove(TmpVidPath);
+    std::filesystem::remove(TmpAudPath);
+
+    Manager::Camera::muxingFinished = true;
+
+    co_return;
+}
+
 #include "GlobalNamespace/StandardLevelScenesTransitionSetupDataSO.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 
 // undo rendering changes when exiting a level
 MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelScenesTransitionSetupDataSO::Finish, void, StandardLevelScenesTransitionSetupDataSO* self, LevelCompletionResults* levelCompletionResults) {
@@ -245,14 +258,16 @@ MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelS
         mainCamera->set_enabled(true);
     mainCamera = nullptr;
 
+    // mux audio and video when done with both
+    if(Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue())
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(WaitThenMuxCoroutine()));
+
     UnityEngine::Time::set_captureDeltaTime(0);
     LOG_INFO("Unmuting audio");
     JNIUtils::SetMute(false);
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }
-
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
 
 // delay ending of renders (min check in shared hooks)
 MAKE_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
@@ -291,7 +306,7 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 }
 
 HOOK_FUNC(
-    INSTALL_HOOK(logger, GameScenesManager_PushScenes);
+    INSTALL_HOOK(logger, AudioTimeSyncController_StartSong);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, StandardLevelScenesTransitionSetupDataSO_Finish);
     INSTALL_HOOK(logger, AudioTimeSyncController_get_songEndTime);

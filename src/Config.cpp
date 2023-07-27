@@ -311,6 +311,8 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Pauses);
 
+    AddConfigValueToggle(rendering, getConfig().SFX);
+
     AddConfigValueToggle(rendering, getConfig().Ding);
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(rendering);
@@ -325,7 +327,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 41.5});
+    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 33});
     queueList->set_listStyle(CustomListTableData::List);
     queueList->expandCell = true;
     queueList->tableView->set_selectionType(HMUI::TableViewSelectionType::None);

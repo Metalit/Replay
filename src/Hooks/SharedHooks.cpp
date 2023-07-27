@@ -53,6 +53,7 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteControll
 
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "UnityEngine/Time.hpp"
+#include "UnityEngine/AudioSettings.hpp"
 
 // keep song time and current frame up to date, plus controller inputs, and delay ending of renders
 MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
@@ -72,6 +73,7 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
     if(customTiming) {
 		self->lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
         self->songTime += self->lastFrameDeltaSongTime;
+        self->dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - self->songTime;
         self->isReady = true;
     }
     self->state = state;
