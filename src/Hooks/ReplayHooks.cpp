@@ -162,11 +162,23 @@ MAKE_HOOK_MATCH(HapticFeedbackController_PlayHapticFeedback, &HapticFeedbackCont
         HapticFeedbackController_PlayHapticFeedback(self, node, hapticPreset);
 }
 
+#include "UnityEngine/WaitForSeconds.hpp"
+#include "custom-types/shared/coroutine.hpp"
+
+custom_types::Helpers::Coroutine WaitToFinishCoroutine(bool quit) {
+    while(!Manager::Camera::muxingFinished)
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.5);
+
+    Manager::ReplayEnded(quit);
+    co_return;
+}
+
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 #include "GlobalNamespace/MenuLightsManager.hpp"
 #include "GlobalNamespace/MenuLightsPresetSO.hpp"
 #include "HMUI/ViewController_AnimationDirection.hpp"
+#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 
 static bool cancelPresent = false;
 // watch for level ending
@@ -193,7 +205,7 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDid
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
             lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
         }
-        Manager::ReplayEnded(quit);
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(WaitToFinishCoroutine(quit)));
     } else if(!quit && !recorderInstalled)
         Menu::SetButtonUninteractable("Install BeatLeader or ScoreSaber to record replays!");
 }

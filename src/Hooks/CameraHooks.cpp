@@ -23,6 +23,7 @@ static bool wasMoving = false;
 
 static const auto TmpVidPath = "/sdcard/replay-tmp.mp4";
 static const auto TmpAudPath = "/sdcard/replay-tmp.wav";
+static const auto TmpOutPath = "/sdcard/replay-tmp-mux.mp4";
 
 static std::string fileName = "";
 
@@ -227,12 +228,23 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
 #include "custom-types/shared/coroutine.hpp"
 
 custom_types::Helpers::Coroutine WaitThenMuxCoroutine() {
-    co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(2);
+    bool vidExists = fileexists(TmpVidPath);
+    bool audExists = fileexists(TmpAudPath);
 
-    std::string outputFile = string_format("%s/%s.mp4", RendersFolder, fileName.c_str());
-    Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, outputFile);
-    std::filesystem::remove(TmpVidPath);
-    std::filesystem::remove(TmpAudPath);
+    if(vidExists && audExists) {
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(1);
+
+        std::string outputFile = string_format("%s/%s.mp4", RendersFolder, fileName.c_str());
+        Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath);
+        if(fileexists(TmpOutPath))
+            std::filesystem::rename(TmpOutPath, outputFile);
+    } else
+        LOG_ERROR("Video exists: {} Audio exists: {}", vidExists, audExists);
+
+    if(vidExists)
+        std::filesystem::remove(TmpVidPath);
+    if(audExists)
+        std::filesystem::remove(TmpAudPath);
 
     Manager::Camera::muxingFinished = true;
 
@@ -259,7 +271,7 @@ MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelS
     mainCamera = nullptr;
 
     // mux audio and video when done with both
-    if(Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue())
+    if(Manager::Camera::rendering && (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()))
         SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(WaitThenMuxCoroutine()));
 
     UnityEngine::Time::set_captureDeltaTime(0);
