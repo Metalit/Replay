@@ -117,6 +117,14 @@ extern "C" void load() {
     selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);
 
+    getConfig().AudioMode.SetValue(false);
+
+    // clamp bitrate to 100 mbps
+    if(getConfig().Bitrate.GetValue() > 100000)
+        getConfig().Bitrate.SetValue(100000);
+
+    getConfig().AudioMode.SetValue(false);
+
     if(Modloader::requireMod("bl"))
         recorderInstalled = true;
     else if(Modloader::requireMod("ScoreSaber"))
