@@ -5,6 +5,6 @@ void RenderLevelInConfig();
 void SaveCurrentLevelInConfig();
 bool IsCurrentLevelInConfig();
 
-void RenderCurrentLevel();
+void RenderCurrentLevel(bool currentReplay = false);
 
 void RestartGame();

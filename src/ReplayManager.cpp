@@ -514,7 +514,7 @@ namespace Manager {
                     PlayDing();
             } else {
                 getConfig().AudioMode.SetValue(true);
-                RenderCurrentLevel();
+                RenderCurrentLevel(true);
             }
         }
     }

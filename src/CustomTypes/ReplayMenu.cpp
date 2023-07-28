@@ -273,7 +273,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     SetPreferred(container, 30, 8);
     queueButton = BeatSaberUI::CreateUIButton(container, "Add To Render Queue", Vector2(-2.8, 0), Vector2(33, 8), OnQueueButtonClick);
     queueButton->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->set_fontStyle(TMPro::FontStyles::Italic);
-    queueButton->set_interactable(!IsCurrentLevelInConfig());
+    queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
     static ConstString contentName("Content");
     UnityEngine::Object::Destroy(queueButton->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
 
@@ -290,6 +290,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto deleteIcon = BeatSaberUI::CreateImage(deleteButton, GetDeleteIcon());
     deleteIcon->get_transform()->set_localScale({0.8, 0.8, 0.8});
     deleteIcon->set_preserveAspect(true);
+    deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 
     increment = BeatSaberUI::CreateIncrementSetting(mainLayout, "", 0, 1, getConfig().LastReplayIdx.GetValue() + 1, 1, replays.size(), OnIncrementChanged);
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
@@ -315,7 +316,7 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 
 void Menu::ReplayViewController::OnEnable() {
     if(queueButton)
-        queueButton->set_interactable(!IsCurrentLevelInConfig());
+        queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replayInfos) {
@@ -376,7 +377,7 @@ void Menu::ReplayViewController::UpdateUI() {
     scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
 
-    queueButton->set_interactable(!IsCurrentLevelInConfig());
+    queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
 
     deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 

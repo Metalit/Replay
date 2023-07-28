@@ -137,7 +137,7 @@ bool IsCurrentLevelInConfig() {
     return false;
 }
 
-void RenderCurrentLevel() {
+void RenderCurrentLevel(bool currentReplay) {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
     if(!levelSelection) {
         LOG_ERROR("Failed to get LevelSelectionFlowCoordinator, not rendering");
@@ -148,16 +148,19 @@ void RenderCurrentLevel() {
         LOG_ERROR("Failed to get selected beatmap, not rendering");
         return;
     }
-    auto replays = GetReplays(map);
-    if(replays.empty()) {
-        LOG_ERROR("Failed to get beatmap replays, not rendering");
-        return;
-    }
     Manager::Camera::rendering = true;
-    int idx = getConfig().LastReplayIdx.GetValue();
-    if(idx >= replays.size())
-        idx = replays.size() - 1;
-    Manager::ReplayStarted(replays[idx].second);
+    if(!currentReplay) {
+        auto replays = GetReplays(map);
+        if(replays.empty()) {
+            LOG_ERROR("Failed to get beatmap replays, not rendering");
+            return;
+        }
+        int idx = getConfig().LastReplayIdx.GetValue();
+        if(idx >= replays.size())
+            idx = replays.size() - 1;
+        Manager::ReplayStarted(replays[idx].second);
+    } else
+        Manager::ReplayStarted(Manager::currentReplay);
     levelSelection->StartLevel(nullptr, false);
 }
 
