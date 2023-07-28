@@ -70,9 +70,8 @@ struct QuaternionAverage {
         }
 
         if(ignoreY) {
-            auto euler = rot.get_eulerAngles();
-            euler.y = 0;
-            auto modRot = Quaternion::Euler(euler);
+            Quaternion modRot = {0, rot.y, 0, rot.w};
+            modRot = Sombrero::QuaternionMultiply(rot, Quaternion::Inverse(modRot));
             cumulative.w += modRot.w;
             cumulative.x += modRot.x;
             cumulative.y += modRot.y;
