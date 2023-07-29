@@ -7,6 +7,7 @@
 #include "Formats/EventReplay.hpp"
 
 #include "CustomTypes/ScoringElement.hpp"
+#include "CustomTypes/Grabbable.hpp"
 
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
@@ -101,11 +102,58 @@ void AddIncrement(SliderSetting* slider, float increment) {
     });
 }
 
+void SetCameraModelToThirdPerson(UnityEngine::GameObject* cameraModel) {
+    auto trans = cameraModel->get_transform();
+    auto rot = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
+    // model points upwards
+    auto offset = Quaternion::AngleAxis(90, {1, 0, 0});
+    rot = Sombrero::QuaternionMultiply(rot, offset);
+    auto pos = getConfig().ThirdPerPos.GetValue();
+    trans->SetPositionAndRotation(pos, rot);
+}
+
+void SetThirdPersonToCameraModel(UnityEngine::GameObject* cameraModel) {
+    auto trans = cameraModel->get_transform();
+    auto rot = trans->get_rotation();
+    // model points upwards
+    auto offset = Quaternion::AngleAxis(-90, {1, 0, 0});
+    rot = Sombrero::QuaternionMultiply(rot, offset);
+    getConfig().ThirdPerRot.SetValue(rot.get_eulerAngles());
+    auto pos = trans->get_position();
+    getConfig().ThirdPerPos.SetValue(pos);
+}
+
+UnityEngine::GameObject* CreateCube(UnityEngine::GameObject* parent, UnityEngine::Material* mat, Vector3 pos, Vector3 euler, Vector3 scale, std::string_view name) {
+    auto cube = UnityEngine::GameObject::CreatePrimitive(UnityEngine::PrimitiveType::Cube);
+    cube->GetComponent<UnityEngine::Renderer*>()->SetMaterial(mat);
+    auto trans = cube->get_transform();
+    if(parent)
+        trans->SetParent(parent->get_transform(), false);
+    trans->set_localPosition(pos);
+    trans->set_localEulerAngles(euler);
+    trans->set_localScale(scale);
+    cube->set_name(name);
+    return cube;
+}
+
+UnityEngine::GameObject* CreateCameraModel() {
+    auto mat = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Material*>().First([](auto m) { return m->get_name() == "Custom/SimpleLit (Instance)"; });
+    auto ret = CreateCube(nullptr, mat, {}, {}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
+    ret->AddComponent<ReplayHelpers::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
+    CreateCube(ret, mat, {-1.461, 1.08, 1.08}, {45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 0");
+    CreateCube(ret, mat, {1.461, 1.08, 1.08}, {45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 1");
+    CreateCube(ret, mat, {1.461, 1.08, -1.08}, {-45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 2");
+    CreateCube(ret, mat, {-1.461, 1.08, -1.08}, {-45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 3");
+    CreateCube(ret, mat, {0, 2.08, 0}, {}, {5.845, 0.07, 4.322}, "Camera Screen");
+    return ret;
+}
+
 namespace Pause {
     UnityEngine::GameObject* parent;
     SliderSetting* timeSlider;
     SliderSetting* speedSlider;
     PauseMenuManager* lastPauseMenu = nullptr;
+    UnityEngine::GameObject* camera;
 
     bool touchedTime = false, touchedSpeed = false;
 
@@ -138,6 +186,15 @@ namespace Pause {
             dropdown->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->SetText("");
             SetTransform(dropdown, {-10, -11.5}, {10, 10});
         }
+        camera = UnityEngine::GameObject::Find("ReplayCameraModel");
+        if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            if(!camera)
+                camera = CreateCameraModel();
+            camera->set_active(true);
+            SetCameraModelToThirdPerson(camera);
+        } else if(camera)
+            camera->set_active(false);
+
         timeSlider->set_value(scoreController->audioTimeSyncController->songTime);
         speedSlider->set_value(scoreController->audioTimeSyncController->timeScale);
         touchedTime = false;
@@ -151,6 +208,8 @@ namespace Pause {
             SetTime(timeSlider->get_value());
         if(touchedSpeed)
             SetSpeed(speedSlider->get_value());
+        if(camera)
+            camera->set_active(false);
     }
 
     void UpdateInReplay() {
