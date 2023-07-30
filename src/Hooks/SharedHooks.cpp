@@ -59,7 +59,7 @@ MAKE_HOOK_MATCH(NoteController_HandleNoteDidPassMissedMarkerEvent, &NoteControll
 MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
 
     if(Manager::replaying && !Manager::paused) {
-        Manager::UpdateTime(self->songTime);
+        Manager::UpdateTime(self->songTime, self->get_songLength());
         Manager::CheckInputs();
     }
     int state = self->state;
@@ -96,8 +96,7 @@ MAKE_HOOK_MATCH(PauseMenuManager_ShowMenu, &PauseMenuManager::ShowMenu, void, Pa
 
     if(Manager::replaying)
         Manager::ReplayPaused();
-    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera)
-        mainCamera->set_enabled(true);
+    Camera_Pause();
 
     PauseMenuManager_ShowMenu(self);
 }
@@ -105,8 +104,7 @@ MAKE_HOOK_MATCH(PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &Pause
 
     if(Manager::replaying)
         Manager::ReplayUnpaused();
-    if(Manager::replaying && Manager::Camera::rendering && getConfig().CameraOff.GetValue() && mainCamera)
-        mainCamera->set_enabled(false);
+    Camera_Unpause();
 
     PauseMenuManager_HandleResumeFromPauseAnimationDidFinish(self);
 }

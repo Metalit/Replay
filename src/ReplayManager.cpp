@@ -55,6 +55,7 @@ namespace Manager {
     int currentFrame = 0;
     int frameCount = 0;
     float songTime = -1;
+    float songLength = -1;
     float lerpAmount = 0;
     float lastCutTime = -1;
 
@@ -112,9 +113,9 @@ namespace Manager {
         }
 
         void UpdateTime() {
-            if(rendering && EpochTime() - lastProgressUpdate > getConfig().LogTime.GetValue()) {
+            if(rendering && UnityEngine::Time::get_unscaledTime() - lastProgressUpdate >= 15) {
                 LOG_INFO("Current song time: {:.2f}", songTime);
-                lastProgressUpdate = EpochTime();
+                lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
             if(GetMode() == (int) CameraMode::Smooth) {
                 float deltaTime = UnityEngine::Time::get_deltaTime();
@@ -235,7 +236,7 @@ namespace Manager {
         void ReplayStarted() {
             if(rendering) {
                 SetGraphicsSettings();
-                lastProgressUpdate = EpochTime();
+                lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
             muxingFinished = !rendering;
             if(GetMode() == (int) CameraMode::Smooth) {
@@ -459,6 +460,7 @@ namespace Manager {
     }
 
     void ReplayStarted(ReplayWrapper& wrapper) {
+        LOG_INFO("Replay started");
         currentReplay = wrapper;
         frameCount = currentReplay.replay->frames.size();
         bs_utils::Submission::disable(modInfo);
@@ -483,6 +485,7 @@ namespace Manager {
     }
 
     void ReplayRestarted(bool full) {
+        LOG_INFO("Replay restarted {}", full);
         if(full)
             paused = false;
         currentFrame = 0;
@@ -497,6 +500,7 @@ namespace Manager {
     }
 
     void ReplayEnded(bool quit) {
+        LOG_INFO("Replay ended");
         Camera::ReplayEnded();
         bs_utils::Submission::enable(modInfo);
         replaying = false;
@@ -530,7 +534,9 @@ namespace Manager {
         paused = false;
     }
 
-    void UpdateTime(float time) {
+    void UpdateTime(float time, float length) {
+        if(length >= 0)
+            songLength = length;
         if(songTime < 0) {
             if(time != 0)
                 return;
@@ -594,6 +600,12 @@ namespace Manager {
 
     float GetSongTime() {
         return songTime;
+    }
+
+    float GetLength() {
+        if(GetCurrentInfo().failed)
+            return GetCurrentInfo().failTime;
+        return songLength;
     }
 
     const Frame& GetFrame() {

@@ -18,6 +18,8 @@ UnityEngine::Camera* customCamera = nullptr;
 
 ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
+int oldCullingMask = 0;
+int uiCullingMask = 1 << 5;
 
 static bool wasMoving = false;
 
@@ -63,6 +65,16 @@ void Camera_PlayerTransformsUpdate_Pre(PlayerTransforms* self) {
     }
 }
 
+void Camera_Pause() {
+    if(Manager::replaying && Manager::Camera::rendering && mainCamera && oldCullingMask != 0)
+        mainCamera->set_cullingMask(oldCullingMask);
+}
+
+void Camera_Unpause() {
+    if(Manager::replaying && Manager::Camera::rendering && mainCamera && oldCullingMask != 0)
+        mainCamera->set_cullingMask(uiCullingMask);
+}
+
 #include "UnityEngine/Matrix4x4.hpp"
 
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
@@ -89,6 +101,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
+#include "GlobalNamespace/MainEffectController.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
@@ -108,9 +121,6 @@ void SetupRecording() {
     std::string difficulty = GetDifficultyName(Manager::beatmap->get_difficulty());
     fileName = SanitizedPath(string_format("%s - %s (%s %s)", songAuthor.c_str(), songName.c_str(), characteristic.c_str(), difficulty.c_str()));
     LOG_INFO("Using filename: {}", fileName);
-
-    if(getConfig().CameraOff.GetValue())
-        mainCamera->set_enabled(false);
 
     LOG_INFO("Muting audio");
     JNIUtils::SetMute(true);
@@ -172,6 +182,13 @@ void SetupRecording() {
         audioCapture = Hollywood::SetAudioCapture(audioListener);
         audioCapture->OpenFile(TmpAudPath);
     }
+
+    // prevent bloom from applying to the main camera
+    if(auto comp = mainCamera->GetComponent<MainEffectController*>())
+        UnityEngine::Object::DestroyImmediate(comp);
+    // mask everything but ui
+    oldCullingMask = mainCamera->get_cullingMask();
+    mainCamera->set_cullingMask(uiCullingMask);
 }
 
 MAKE_HOOK_MATCH(AudioTimeSyncController_StartSong, &AudioTimeSyncController::StartSong, void, AudioTimeSyncController* self, float startTimeOffset) {
@@ -258,25 +275,26 @@ custom_types::Helpers::Coroutine WaitThenMuxCoroutine() {
 MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelScenesTransitionSetupDataSO::Finish, void, StandardLevelScenesTransitionSetupDataSO* self, LevelCompletionResults* levelCompletionResults) {
 
     if(audioCapture)
-        UnityEngine::Object::Destroy(audioCapture);
+        UnityEngine::Object::DestroyImmediate(audioCapture);
     audioCapture = nullptr;
     if(customCamera)
-        UnityEngine::Object::Destroy(customCamera);
+        UnityEngine::Object::DestroyImmediate(customCamera);
     customCamera = nullptr;
     if(cameraRig)
-        UnityEngine::Object::Destroy(cameraRig);
+        UnityEngine::Object::DestroyImmediate(cameraRig);
     cameraRig = nullptr;
     if(mainCamera)
         mainCamera->set_enabled(true);
+    oldCullingMask = 0;
     mainCamera = nullptr;
-
-    // mux audio and video when done with both
-    if(Manager::Camera::rendering && (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()))
-        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(WaitThenMuxCoroutine()));
 
     UnityEngine::Time::set_captureDeltaTime(0);
     LOG_INFO("Unmuting audio");
     JNIUtils::SetMute(false);
+
+    // mux audio and video when done with both
+    if(Manager::Camera::rendering && (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()))
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(WaitThenMuxCoroutine()));
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }

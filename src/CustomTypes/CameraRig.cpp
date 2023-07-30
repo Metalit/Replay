@@ -2,6 +2,7 @@
 #include "CustomTypes/CameraRig.hpp"
 #include "Config.hpp"
 #include "Replay.hpp"
+#include "Sprites.hpp"
 
 #include "ReplayManager.hpp"
 
@@ -60,8 +61,13 @@ void CameraRig::Update() {
             } else
                 child->set_localPosition({});
         }
+        if(Manager::Camera::rendering) {
+            progress->SetActive(true);
+            UpdateProgress();
+        }
     } else if(!pausedLastFrame) {
         pausedLastFrame = true;
+        progress->SetActive(false);
         avatar->get_gameObject()->SetActive(false);
         trans->set_localPosition(Vector3::zero());
         trans->set_localRotation(Quaternion::identity());
@@ -71,15 +77,31 @@ void CameraRig::Update() {
 }
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
-    get_transform()->set_position(pos);
     // position can travel when moving, but rotation shouldn't
-    if(!Manager::Camera::moving || Manager::Camera::GetMode() != (int) CameraMode::ThirdPerson)
+    if(!Manager::Camera::moving || Manager::Camera::GetMode() != (int) CameraMode::ThirdPerson) {
+        if(Manager::Camera::rendering) {
+            pos = {0, -1000, -1000};
+            rot = Quaternion::Euler({0, 0, -1});
+        }
         get_transform()->set_rotation(rot);
+    }
+    get_transform()->set_position(pos);
+}
+
+void CameraRig::UpdateProgress() {
+    std::string typ = "";
+    if(getConfig().SFX.GetValue())
+        typ = Manager::Camera::GetAudioMode() ? " Audio" : " Video";
+    std::string time = SecondsToString(Manager::GetSongTime());
+    std::string tot = SecondsToString(Manager::GetLength());
+    std::string label = fmt::format("Rendering{}... {} / {}", typ, time, tot);
+    progressText->set_text(label);
 }
 
 #include "GlobalNamespace/AvatarDataModel.hpp"
 #include "GlobalNamespace/AvatarData.hpp"
 #include "GlobalNamespace/AvatarVisualController.hpp"
+#include "questui/shared/BeatSaberUI.hpp"
 
 using namespace GlobalNamespace;
 
@@ -111,6 +133,26 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
 
     customAvatar->get_gameObject()->SetActive(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue());
     cameraRig->avatar = customAvatar;
+
+    auto progress = QuestUI::BeatSaberUI::CreateCanvas();
+    progress->set_name("RenderProgressScreen");
+    transform = progress->get_transform();
+    transform->SetParent(cameraTransform);
+    transform->set_localPosition({0, 0, 2});
+    transform->set_localScale({0.05, 0.05, 0.05});
+
+    auto image = QuestUI::BeatSaberUI::CreateImage(progress, GetWhiteIcon());
+    image->set_color(UnityEngine::Color::get_black());
+    image->get_rectTransform()->set_anchorMin({0, 0});
+    image->get_rectTransform()->set_anchorMax({1, 1});
+    auto text = QuestUI::BeatSaberUI::CreateText(progress, "Rendering...");
+    text->set_alignment(TMPro::TextAlignmentOptions::Center);
+    text->get_rectTransform()->set_anchorMin({0, 0});
+    text->get_rectTransform()->set_anchorMax({1, 1});
+
+    progress->SetActive(Manager::Camera::rendering);
+    cameraRig->progress = progress;
+    cameraRig->progressText = text;
 
     cameraRig->pausedLastFrame = false;
 

@@ -33,11 +33,6 @@
 
 using namespace GlobalNamespace;
 
-long EpochTime() {
-    // this is a certified c++ moment
-    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
 std::string SanitizedPath(std::string path) {
     static std::string forbiddenChars("\\/:?\"<>|*");
     static auto replace = [](char c) {

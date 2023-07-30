@@ -13,8 +13,6 @@
 #include "GlobalNamespace/Saber.hpp"
 #include "UnityEngine/Sprite.hpp"
 
-long EpochTime();
-
 std::string SanitizedPath(std::string path);
 
 std::string GetReqlaysPath();

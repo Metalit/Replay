@@ -96,10 +96,11 @@ namespace Manager {
 
     const ReplayInfo& GetCurrentInfo();
 
-    void UpdateTime(float songTime);
+    void UpdateTime(float songTime, float songLength = -1);
     void SetLastCutTime(float lastCutTime);
     void CheckInputs();
     float GetSongTime();
+    float GetLength();
     const Frame& GetFrame();
     const Frame& GetNextFrame();
     float GetFrameProgress();

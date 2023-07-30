@@ -307,8 +307,6 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueIncrementInt(graphics, getConfig().FPS, 5, 5, 120);
 
-    AddConfigValueToggle(rendering, getConfig().CameraOff);
-
     AddConfigValueToggle(rendering, getConfig().Pauses);
 
     AddConfigValueToggle(rendering, getConfig().SFX);

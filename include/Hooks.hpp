@@ -23,5 +23,8 @@ namespace GlobalNamespace { class PlayerTransforms; }
 void Camera_PlayerTransformsUpdate_Pre(GlobalNamespace::PlayerTransforms* self);
 void Replay_PlayerTransformsUpdate_Post(GlobalNamespace::PlayerTransforms* self);
 
+void Camera_Pause();
+void Camera_Unpause();
+
 namespace UnityEngine { class Camera; }
 extern UnityEngine::Camera* mainCamera;
