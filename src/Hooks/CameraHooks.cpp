@@ -249,7 +249,7 @@ custom_types::Helpers::Coroutine WaitThenMuxCoroutine() {
     bool audExists = fileexists(TmpAudPath);
 
     if(vidExists && audExists) {
-        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(1);
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(2);
 
         std::string outputFile = string_format("%s/%s.mp4", RendersFolder, fileName.c_str());
         Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath);

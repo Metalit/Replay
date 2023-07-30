@@ -238,7 +238,9 @@ namespace Manager {
                 SetGraphicsSettings();
                 lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
-            muxingFinished = !rendering;
+            // muxing only needs to be done after the current render if we are rendering
+            // and are recording audio (which is after video) or not recording sfx (so audio at the same time)
+            muxingFinished = !rendering || !(Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue());
             if(GetMode() == (int) CameraMode::Smooth) {
                 smoothRotation = GetFrame().head.rotation;
                 // undo rotation by average rotation offset

@@ -137,7 +137,9 @@ UnityEngine::GameObject* CreateCube(UnityEngine::GameObject* parent, UnityEngine
 }
 
 UnityEngine::GameObject* CreateCameraModel() {
-    auto mat = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Material*>().First([](auto m) { return m->get_name() == "Custom/SimpleLit (Instance)"; });
+    static ConstString searchName("Custom/SimpleLit");
+    auto mat = UnityEngine::Material::New_ctor(UnityEngine::Shader::Find(searchName));
+    mat->set_color(UnityEngine::Color::get_white());
     auto ret = CreateCube(nullptr, mat, {}, {}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
     ret->AddComponent<ReplayHelpers::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
     CreateCube(ret, mat, {-1.461, 1.08, 1.08}, {45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 0");
