@@ -5,10 +5,11 @@ env:
   qmodName: Replay
 
 on:
+  workflow_dispatch:
   push:
-    branches: [master]
+    branches-ignore:
+      - 'version*'
   pull_request:
-    branches: [master]
 
 jobs:
   build:
@@ -65,35 +66,24 @@ jobs:
           path: ./build/${{ steps.libname.outputs.NAME }}
           if-no-files-found: error
 
-      - name: Check for release
-        uses: actions-ecosystem/action-regex-match@v2
-        id: commit-regex
-        if: github.event_name != 'pull_request'
-        with:
-          text: ${{ github.event.head_commit.message }}
-          regex: ^release.*?((v?)((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)?)):?\W*(.*)
-          flags: i
-
       - name: Rename debug
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
         run: |
           mv ./build/debug/${{ steps.libname.outputs.NAME }} ./build/debug/debug_${{ steps.libname.outputs.NAME }}
 
       - name: Create qmod
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
         run: |
           pwsh -Command ./createqmod.ps1 ${{env.qmodName}}
 
-      - name: Upload to Release
-        id: upload_file_release
-        uses: softprops/action-gh-release@v0.1.12
-        if: github.event_name != 'pull_request' && steps.commit-regex.outputs.match != ''
+      - name: Upload debug artifact
+        uses: actions/upload-artifact@v2
         with:
-          name: ${{ steps.commit-regex.outputs.group4 }}
-          tag_name: ${{ steps.commit-regex.outputs.group1 }}
-          files: |
-            ./build/${{ steps.libname.outputs.NAME }}
-            ./build/debug/debug_${{ steps.libname.outputs.NAME }}
-            ./${{ env.qmodName }}.qmod
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: debug_${{ steps.libname.outputs.NAME }}
+          path: ./build/debug/debug_${{ steps.libname.outputs.NAME }}
+          if-no-files-found: error
+
+      - name: Upload qmod artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.qmodName }}.qmod
+          path: ./${{ env.qmodName }}.qmod
+          if-no-files-found: error
