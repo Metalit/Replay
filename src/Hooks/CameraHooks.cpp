@@ -222,7 +222,7 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", mapper, songName, player.value());
 
             auto canvas = BeatSaberUI::CreateCanvas();
-            canvas->get_transform()->set_position({0, 3.5, getConfig().TextHeight.GetValue()});
+            canvas->get_transform()->set_position({0, getConfig().TextHeight.GetValue(), 7});
 
             auto textObj = BeatSaberUI::CreateText(canvas, text);
             textObj->set_fontSize(7);

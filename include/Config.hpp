@@ -61,6 +61,7 @@ DECLARE_JSON_CLASS(LevelSelection,
 )
 
 DECLARE_CONFIG(Config,
+    CONFIG_VALUE(Version, int, "Config Version", 1)
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
     CONFIG_VALUE(AudioMode, bool, "Audio Mode", false)
     CONFIG_VALUE(RenderLaunch, bool, "Render On Next Launch", false)

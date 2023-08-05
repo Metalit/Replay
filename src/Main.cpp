@@ -119,6 +119,19 @@ extern "C" void load() {
 
     getConfig().AudioMode.SetValue(false);
 
+    if(getConfig().Version.GetValue() == 1) {
+        LOG_INFO("Migrating config from v1 to v2");
+        getConfig().TextHeight.SetValue(getConfig().TextHeight.GetValue() / 2);
+        getConfig().Bitrate.SetValue(getConfig().Bitrate.GetValue() / 2);
+        getConfig().Version.SetValue(2);
+    }
+
+    // no making the text offscreen through config editing
+    if(getConfig().TextHeight.GetValue() > 5)
+        getConfig().TextHeight.SetValue(5);
+    if(getConfig().TextHeight.GetValue() < 1)
+        getConfig().TextHeight.SetValue(1);
+
     // clamp bitrate to 100 mbps
     if(getConfig().Bitrate.GetValue() > 100000)
         getConfig().Bitrate.SetValue(100000);

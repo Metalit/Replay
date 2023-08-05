@@ -261,7 +261,7 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     AddConfigValueToggle(transform, getConfig().HideText);
 
-    AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.2, 0, 10);
+    AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.1, 1, 5);
 
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
