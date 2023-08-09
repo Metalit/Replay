@@ -29,6 +29,8 @@ std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* char
 
 std::string GetCharacteristicName(std::string characteristicName);
 
+std::string GetMapString(GlobalNamespace::IDifficultyBeatmap* beatmap);
+
 std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
 
 std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);

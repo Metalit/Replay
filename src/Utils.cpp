@@ -7,6 +7,7 @@
 
 #include "CustomTypes/MovementData.hpp"
 
+#include "GlobalNamespace/IBeatmapLevel.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/BeatmapDifficultyMethods.hpp"
 #include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
@@ -75,6 +76,15 @@ std::string GetCharacteristicName(std::string characteristicName) {
     auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>().First();
     auto characteristic = chars->GetBeatmapCharacteristicBySerializedName(characteristicName);
     return GetCharacteristicName(characteristic);
+}
+
+std::string GetMapString(GlobalNamespace::IDifficultyBeatmap* beatmap) {
+    auto level = (IPreviewBeatmapLevel*) beatmap->get_level();
+    std::string songName = level->get_songName();
+    std::string songAuthor = level->get_songAuthorName();
+    std::string characteristic = GetCharacteristicName(beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic());
+    std::string difficulty = GetDifficultyName(beatmap->get_difficulty());
+    return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
 
 std::string GetHash(IPreviewBeatmapLevel* level) {

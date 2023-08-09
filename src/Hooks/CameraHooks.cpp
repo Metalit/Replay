@@ -98,7 +98,6 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
-#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
@@ -114,12 +113,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 
 void SetupRecording() {
     LOG_INFO("Setting up recording");
-    auto levelData = (IPreviewBeatmapLevel*) Manager::beatmap->get_level();
-    std::string songName = levelData->get_songName();
-    std::string songAuthor = levelData->get_songAuthorName();
-    std::string characteristic = GetCharacteristicName(Manager::beatmap->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic());
-    std::string difficulty = GetDifficultyName(Manager::beatmap->get_difficulty());
-    fileName = SanitizedPath(string_format("%s - %s (%s %s)", songAuthor.c_str(), songName.c_str(), characteristic.c_str(), difficulty.c_str()));
+    fileName = SanitizedPath(GetMapString(Manager::beatmap));
     LOG_INFO("Using filename: {}", fileName);
 
     LOG_INFO("Muting audio");

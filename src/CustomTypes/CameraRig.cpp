@@ -94,7 +94,11 @@ void CameraRig::UpdateProgress() {
         typ = Manager::Camera::GetAudioMode() ? " Audio" : " Video";
     std::string time = SecondsToString(Manager::GetSongTime());
     std::string tot = SecondsToString(Manager::GetLength());
-    std::string label = fmt::format("Rendering{}... {} / {}", typ, time, tot);
+    std::string queue = "";
+    int len = getConfig().LevelsToSelect.GetValue().size();
+    if(len > 0)
+        queue = fmt::format("\n{} in queue", len);
+    std::string label = fmt::format("{}\nRendering{}...\nSong Time: {} / {}{}", mapString, typ, time, tot, queue);
     progressText->set_text(label);
 }
 
@@ -137,7 +141,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     auto progress = QuestUI::BeatSaberUI::CreateCanvas();
     progress->set_name("RenderProgressScreen");
     transform = progress->get_transform();
-    transform->SetParent(cameraTransform);
+    transform->SetParent(cameraTransform, false);
     transform->set_localPosition({0, 0, 2});
     transform->set_localScale({0.05, 0.05, 0.05});
 
@@ -147,14 +151,17 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     image->get_rectTransform()->set_anchorMax({1, 1});
     auto text = QuestUI::BeatSaberUI::CreateText(progress, "Rendering...");
     text->set_alignment(TMPro::TextAlignmentOptions::Center);
-    text->get_rectTransform()->set_anchorMin({0, 0});
-    text->get_rectTransform()->set_anchorMax({1, 1});
+    text->get_rectTransform()->set_anchorMin({0.5, 0.5});
+    text->get_rectTransform()->set_anchorMax({0.5, 0.5});
+    text->get_rectTransform()->set_sizeDelta({60, 100});
+    text->set_enableWordWrapping(true);
 
     progress->SetActive(Manager::Camera::rendering);
     cameraRig->progress = progress;
     cameraRig->progressText = text;
 
     cameraRig->pausedLastFrame = false;
+    cameraRig->mapString = GetMapString(Manager::beatmap);
 
     return cameraRig;
 }

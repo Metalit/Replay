@@ -25,6 +25,7 @@ DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour,
 
     private:
     bool pausedLastFrame;
+    std::string mapString;
     public:
     static CameraRig* Create(UnityEngine::Transform* cameraTransform);
 )
