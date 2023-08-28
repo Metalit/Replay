@@ -116,8 +116,11 @@ void SetupRecording() {
     fileName = SanitizedPath(GetMapString(Manager::beatmap));
     LOG_INFO("Using filename: {}", fileName);
 
+    auto env = JNIUtils::GetJNIEnv();
     LOG_INFO("Muting audio");
-    JNIUtils::SetMute(true);
+    JNIUtils::SetMute(true, env);
+    LOG_INFO("Keeping screen on");
+    JNIUtils::SetScreenOn(true, env);
 
     if(!Manager::Camera::GetAudioMode()) {
         LOG_INFO("Beginning video capture");
@@ -283,8 +286,12 @@ MAKE_HOOK_MATCH(StandardLevelScenesTransitionSetupDataSO_Finish, &StandardLevelS
     mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
+
+    auto env = JNIUtils::GetJNIEnv();
     LOG_INFO("Unmuting audio");
-    JNIUtils::SetMute(false);
+    JNIUtils::SetMute(false, env);
+    LOG_INFO("Removing screen on");
+    JNIUtils::SetScreenOn(false, env);
 
     // mux audio and video when done with both
     if(Manager::Camera::rendering && (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()))

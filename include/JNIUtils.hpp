@@ -428,6 +428,23 @@ namespace JNIUtils {
 		CALL_VOID_METHOD(env, audioManager, "adjustStreamVolume", "(III)V", 3, adjust, 8);
 	}
 
+	inline void SetScreenOn(bool on, JNIEnv* env = nullptr) {
+		if (env == nullptr) env = GetJNIEnv();
+
+		// Get UnityPlayer Class
+		GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
+
+		// Get Activity
+		GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
+
+		// Get Window
+		CALL_JOBJECT_METHOD(env, window, currentActivity, "getWindow", "()Landroid/view/Window;");
+
+		// Set or Remove Flag
+		auto method = on ? "addFlags" : "clearFlags";
+		CALL_VOID_METHOD(env, window, method, "(I)V", 128); // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+	}
+
 	// -- Private Functions --
 
 	inline void __attribute__((constructor)) OnDlopen() {
