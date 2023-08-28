@@ -79,15 +79,6 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update
     self->state = state;
 }
 
-#include "GlobalNamespace/PlayerTransforms.hpp"
-
-MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, PlayerTransforms* self) {
-
-    Camera_PlayerTransformsUpdate_Pre(self);
-    PlayerTransforms_Update(self);
-    Replay_PlayerTransformsUpdate_Post(self);
-}
-
 #include "GlobalNamespace/PauseMenuManager.hpp"
 #include "UnityEngine/Camera.hpp"
 
@@ -116,7 +107,6 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, NoteController_HandleNoteDidPassMissedMarkerEvent);
     // general and camera
     INSTALL_HOOK(logger, AudioTimeSyncController_Update);
-    INSTALL_HOOK(logger, PlayerTransforms_Update);
     INSTALL_HOOK(logger, PauseMenuManager_ShowMenu);
     INSTALL_HOOK(logger, PauseMenuManager_HandleResumeFromPauseAnimationDidFinish);
 )

@@ -33,36 +33,37 @@ static std::string fileName = "";
 #include "GlobalNamespace/TransformExtensions.hpp"
 
 // set camera positions
-void Camera_PlayerTransformsUpdate_Pre(PlayerTransforms* self) {
-    if(!Manager::replaying)
-        return;
-    if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-        auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
-        // always update rotation but only update position when releasing
-        if(!Manager::Camera::moving)
-            getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
-        auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
-        getConfig().ThirdPerRot.SetValue(rot);
-    }
-    wasMoving = Manager::Camera::moving;
-    if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-        // head tranform IS the camera
-        Vector3 targetPos;
-        Quaternion targetRot;
-        if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, PlayerTransforms* self) {
+    if(Manager::replaying) {
+        if(wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
             auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
-            auto rot = parent->get_rotation();
-            targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
-            targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
-        } else {
-            targetPos = Manager::Camera::GetHeadPosition();
-            targetRot = Manager::Camera::GetHeadRotation();
+            // always update rotation but only update position when releasing
+            if(!Manager::Camera::moving)
+                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
+            auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
+            getConfig().ThirdPerRot.SetValue(rot);
         }
-        if(cameraRig)
-            cameraRig->SetPositionAndRotation(targetPos, targetRot);
-        if(customCamera)
-            customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
+        wasMoving = Manager::Camera::moving;
+        if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
+            // head tranform IS the camera
+            Vector3 targetPos;
+            Quaternion targetRot;
+            if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+                auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
+                auto rot = parent->get_rotation();
+                targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->get_position();
+                targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
+            } else {
+                targetPos = Manager::Camera::GetHeadPosition();
+                targetRot = Manager::Camera::GetHeadRotation();
+            }
+            if(cameraRig)
+                cameraRig->SetPositionAndRotation(targetPos, targetRot);
+            if(customCamera)
+                customCamera->get_transform()->SetPositionAndRotation(targetPos, targetRot);
+        }
     }
+    PlayerTransforms_Update(self);
 }
 
 void Camera_Pause() {
@@ -337,6 +338,7 @@ MAKE_HOOK_MATCH(MainSystemInit_Init, &MainSystemInit::Init, void, MainSystemInit
 }
 
 HOOK_FUNC(
+    INSTALL_HOOK(logger, PlayerTransforms_Update);
     INSTALL_HOOK(logger, AudioTimeSyncController_StartSong);
     INSTALL_HOOK(logger, CoreGameHUDController_Start);
     INSTALL_HOOK(logger, StandardLevelScenesTransitionSetupDataSO_Finish);

@@ -12,6 +12,7 @@
 
 DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour,
 
+    DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, fakeHead);
     DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, child);
     DECLARE_INSTANCE_FIELD(GlobalNamespace::AvatarPoseController*, avatar);
     DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, progress);

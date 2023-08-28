@@ -115,43 +115,6 @@ MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
     Saber_ManualUpdate(self);
 }
 
-#include "GlobalNamespace/PlayerTransforms.hpp"
-#include "GlobalNamespace/TransformExtensions.hpp"
-
-// set head position
-void Replay_PlayerTransformsUpdate_Post(PlayerTransforms* self) {
-    if(!Manager::replaying)
-        return;
-    auto& transform = Manager::GetFrame();
-    auto targetRot = transform.head.rotation;
-    auto targetPos = transform.head.position;
-    auto originParent = self->originParentTransform;
-    // both world pos and pseudo local pos are used in other places
-    if(Manager::GetCurrentInfo().positionsAreLocal) {
-        self->headPseudoLocalRot = targetRot;
-        self->headPseudoLocalPos = targetPos;
-        if(originParent) {
-            self->headWorldRot = Sombrero::QuaternionMultiply(originParent->get_rotation(), targetRot);
-            self->headWorldPos = targetPos + originParent->get_position();
-        } else {
-            auto headParent = self->headTransform->GetParent();
-            self->headWorldRot = Sombrero::QuaternionMultiply(headParent->get_rotation(), targetRot);
-            self->headWorldPos = targetPos + headParent->get_position();
-        }
-    } else {
-        self->headWorldRot = targetRot;
-        self->headWorldPos = targetPos;
-        if(originParent) {
-            self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(originParent, targetRot);
-            self->headPseudoLocalPos = targetPos - originParent->get_position();
-        } else {
-            auto headParent = self->headTransform->GetParent();
-            self->headPseudoLocalRot = TransformExtensions::InverseTransformRotation(headParent, targetRot);
-            self->headPseudoLocalPos = targetPos - headParent->get_position();
-        }
-    }
-}
-
 #include "GlobalNamespace/HapticFeedbackController.hpp"
 
 // disable vibrations during replays
@@ -216,6 +179,13 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentViewController, &HMUI::FlowCoordinator::P
         FlowCoordinator_PresentViewController(self, viewController, finishedCallback, animationDirection, immediately);
 }
 
+#include "GlobalNamespace/OculusAnalyticsModel.hpp"
+
+// this crashed after the screen lock stuff idk why
+MAKE_HOOK_MATCH(OculusAnalyticsModel_LogEvent, &OculusAnalyticsModel::LogEvent, void, OculusAnalyticsModel* self, StringW eventType, System::Collections::Generic::Dictionary_2<StringW, StringW>* eventData) {
+    return;
+}
+
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
     INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
@@ -223,4 +193,5 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, FlowCoordinator_PresentViewController);
+    INSTALL_HOOK_ORIG(logger, OculusAnalyticsModel_LogEvent);
 )

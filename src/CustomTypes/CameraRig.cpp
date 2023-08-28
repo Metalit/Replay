@@ -27,6 +27,17 @@ void CameraRig::Update() {
     if(Manager::replaying && !Manager::paused) {
         pausedLastFrame = false;
 
+        auto& transform = Manager::GetFrame();
+        auto targetRot = transform.head.rotation;
+        auto targetPos = transform.head.position;
+
+        // set fake head position and let playertransforms use it as normal
+        if(Manager::GetCurrentInfo().positionsAreLocal) {
+            fakeHead->set_localRotation(targetRot);
+            fakeHead->set_localPosition(targetPos);
+        } else
+            fakeHead->SetPositionAndRotation(targetPos, targetRot);
+
         if(getConfig().Avatar.GetValue()) {
             bool enabled = Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson;
             avatar->get_gameObject()->SetActive(enabled);
@@ -102,6 +113,7 @@ void CameraRig::UpdateProgress() {
     progressText->set_text(label);
 }
 
+#include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/AvatarDataModel.hpp"
 #include "GlobalNamespace/AvatarData.hpp"
 #include "GlobalNamespace/AvatarVisualController.hpp"
@@ -112,7 +124,14 @@ using namespace GlobalNamespace;
 CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
     auto cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
-    cameraRig->get_transform()->SetParent(cameraTransform->GetParent(), false);
+    auto parent = cameraTransform->GetParent();
+    cameraRig->get_transform()->SetParent(parent, false);
+
+    auto playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>().First();
+    auto headReplacement = UnityEngine::GameObject::New_ctor("PlayerTransformsHeadReplacement")->get_transform();
+    headReplacement->SetParent(parent, false);
+    playerTransforms->headTransform = headReplacement;
+    cameraRig->fakeHead = headReplacement;
 
     auto child = UnityEngine::GameObject::New_ctor("ReplayCameraRigChild")->get_transform();
     cameraRig->child = child;
