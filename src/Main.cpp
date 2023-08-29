@@ -75,6 +75,34 @@ void RenderLevelOnNextSongRefresh() {
     selectedAlready = false;
 }
 
+ALooper* mainThreadLooper;
+int messagePipe[2];
+jobject activity = nullptr;
+bool looperMade = false;
+
+MAKE_HOOK_NO_CATCH(unity_initJni, 0x0, void, JNIEnv* env, jobject jobj, jobject context) {
+
+    unity_initJni(env, jobj, context);
+
+    if(looperMade)
+        return;
+
+    mainThreadLooper = ALooper_forThread();
+    ALooper_acquire(mainThreadLooper);
+    pipe(messagePipe);
+    ALooper_addFd(mainThreadLooper, messagePipe[0], 0, ALOOPER_EVENT_INPUT, LooperCallback, nullptr);
+    looperMade = true;
+    LOG_INFO("Created looper and registered pipe");
+}
+
+int LooperCallback(int fd, int events, void* data) {
+    char msg;
+    read(fd, &msg, 1);
+    bool on = msg;
+    JNIUtils::SetScreenOnImpl(on);
+    return 1;
+}
+
 extern "C" void setup(ModInfo& info) {
     info.id = MOD_ID;
     info.version = VERSION;
@@ -88,6 +116,13 @@ extern "C" void setup(ModInfo& info) {
     // in case it crashed during a render, unmute
     // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
     JNIUtils::SetMute(false);
+    // screen on should be cleared when the activity closes
+
+    LOG_INFO("Installing UI thread hook...");
+    uintptr_t libunity = baseAddr("libunity.so");
+    uintptr_t unity_initJni_addr = findPattern(libunity, "ff c3 00 d1 f5 53 01 a9 f3 7b 02 a9 ff 07 00 f9 08 00 40 f9 f4 03 01 aa e1 23 00 91 f3 03 02 aa 08 6d 43 f9");
+    INSTALL_HOOK_DIRECT(getLogger(), unity_initJni, (void*) unity_initJni_addr);
+    LOG_INFO("Installed UI thread hook!");
 
     getLogger().info("Completed setup!");
 }

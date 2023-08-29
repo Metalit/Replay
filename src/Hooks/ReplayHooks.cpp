@@ -179,13 +179,6 @@ MAKE_HOOK_MATCH(FlowCoordinator_PresentViewController, &HMUI::FlowCoordinator::P
         FlowCoordinator_PresentViewController(self, viewController, finishedCallback, animationDirection, immediately);
 }
 
-#include "GlobalNamespace/OculusAnalyticsModel.hpp"
-
-// this crashed after the screen lock stuff idk why
-MAKE_HOOK_MATCH(OculusAnalyticsModel_LogEvent, &OculusAnalyticsModel::LogEvent, void, OculusAnalyticsModel* self, StringW eventType, System::Collections::Generic::Dictionary_2<StringW, StringW>* eventData) {
-    return;
-}
-
 HOOK_FUNC(
     INSTALL_HOOK(logger, MenuTransitionsHelper_StartStandardLevel);
     INSTALL_HOOK(logger, PauseMenuManager_RestartButtonPressed);
@@ -193,5 +186,4 @@ HOOK_FUNC(
     INSTALL_HOOK(logger, HapticFeedbackController_PlayHapticFeedback);
     INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish);
     INSTALL_HOOK(logger, FlowCoordinator_PresentViewController);
-    INSTALL_HOOK_ORIG(logger, OculusAnalyticsModel_LogEvent);
 )

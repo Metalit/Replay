@@ -52,7 +52,8 @@ target_include_directories(${COMPILE_ID} PRIVATE ${EXTERN_DIR}/includes/${CODEGE
 # rapidjson includes
 target_include_directories(${COMPILE_ID} PRIVATE ${EXTERN_DIR}/includes/beatsaber-hook/shared/rapidjson/include)
 
-target_link_libraries(${COMPILE_ID} PRIVATE -llog)
+# -landroid needed for ALooper methods
+target_link_libraries(${COMPILE_ID} PRIVATE -llog -landroid)
 
 # add extern stuff like libs and other includes
 include(extern.cmake)

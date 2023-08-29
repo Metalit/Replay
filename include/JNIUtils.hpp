@@ -12,6 +12,8 @@ Tried some modifications but restarting still doesn't work :(
 
 #include <jni.h>
 #include <android/log.h>
+#include <android/looper.h>
+#include <unistd.h>
 
 // I fucking hate everything.
 
@@ -287,6 +289,10 @@ GET_FIELD_GENERIC(env, varName, object, fieldName, sig, jstring, GetObjectField)
 #define GET_STATIC_JSTRING_FIELD(env, varName, clazz, fieldName, sig) \
 GET_STATIC_FIELD_GENERIC(env, varName, clazz, fieldName, sig, jstring, GetStaticObjectField)
 
+int LooperCallback(int fd, int events, void* data);
+extern int messagePipe[2];
+extern jobject activity;
+
 namespace JNIUtils {
 	inline JavaVM* Jvm;
 
@@ -428,6 +434,27 @@ namespace JNIUtils {
 		CALL_VOID_METHOD(env, audioManager, "adjustStreamVolume", "(III)V", 3, adjust, 8);
 	}
 
+	// can only be run from UI thread
+	inline void SetScreenOnImpl(bool on) {
+		auto env = GetJNIEnv();
+
+		// // Get UnityPlayer Class
+		// GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
+
+		// // Get Activity
+		// GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
+
+		// Get Window
+		CALL_JOBJECT_METHOD(env, window, activity, "getWindow", "()Landroid/view/Window;");
+
+		// Set or Remove Flag
+		auto method = on ? "addFlags" : "clearFlags";
+		CALL_VOID_METHOD(env, window, method, "(I)V", 128); // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+
+		env->DeleteGlobalRef(activity);
+		activity = nullptr;
+	}
+
 	inline void SetScreenOn(bool on, JNIEnv* env = nullptr) {
 		if (env == nullptr) env = GetJNIEnv();
 
@@ -437,12 +464,10 @@ namespace JNIUtils {
 		// Get Activity
 		GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
 
-		// Get Window
-		CALL_JOBJECT_METHOD(env, window, currentActivity, "getWindow", "()Landroid/view/Window;");
+		activity = env->NewGlobalRef(currentActivity);
 
-		// Set or Remove Flag
-		auto method = on ? "addFlags" : "clearFlags";
-		CALL_VOID_METHOD(env, window, method, "(I)V", 128); // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+		char c = on;
+		write(messagePipe[1], &c, 1);
 	}
 
 	// -- Private Functions --
