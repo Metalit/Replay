@@ -9,8 +9,7 @@ Watch back your best scores!
   - Replays from the old 1.17.1 replay mod are available to view, but cannot be recorded. Recording them will never be added because their format is much worse for viewing and rendering.
 
 - What is the purpose of the Render Video feature?
-  - The Render Video feature allows Quest gameplay to look identical to PC recordings. You can now set FOV, mirrors, shockwaves, etc all running smoothly at the framerate you want.
-  - It will output both video and audio files which need to be mixed together afterwards. See [processing renders](#processing-renders).
+  - The Render Video feature allows Quest gameplay to look identical to (or even better than) PC recordings. You can set FOV, enable mirrors, bloom, etc all running smoothly at the resolution and framerate you want.
 
 - How can I know how close my render is to finishing?
   - During a render, information about the level and the rendering progress will be displayed on the screen of the Quest, including a timer showing how much of the level has been rendered so far, and the total length of the level.
