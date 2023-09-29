@@ -90,8 +90,8 @@ void OnIncrementChanged(float value) {
 custom_types::Helpers::Coroutine MatchRequirementsCoroutine(UnityEngine::UI::Button* replayButton) {
     co_yield nullptr;
 
-    bool interactable = levelView->actionButton->get_interactable() && replayButton->get_interactable();
-    replayButton->set_interactable(interactable);
+    bool interactable = levelView->actionButton->get_interactable() || levelView->practiceButton->get_interactable();
+    replayButton->set_interactable(interactable && replayButton->get_interactable());
     co_return;
 }
 
