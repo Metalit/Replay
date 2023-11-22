@@ -217,7 +217,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int skip = 0;
     bool checkDone = false;
     for(int i = 0; i < framesCount; i++) {
-        auto& frame = replay->frames.emplace_back(Frame());
+        auto& frame = replay->frames.emplace_back();
         READ_TO(frame);
         if(firstTime == -1000 && frame.time != 0)
             firstTime = frame.time;
@@ -231,6 +231,8 @@ ReplayWrapper ReadBSOR(const std::string& path) {
                 replay->frames.erase(replay->frames.begin() + 1, replay->frames.end() - 1);
                 checkDone = true;
             }
+            if (i + skip >= framesCount)
+                skip = framesCount - i - 1;
             input.seekg(sizeof(Frame) * skip, std::ios::cur);
             i += skip;
         }
@@ -246,7 +248,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     READ_TO(notesCount);
     BSORNoteEventInfo noteInfo;
     for(int i = 0; i < notesCount; i++) {
-        auto& note = replay->notes.emplace_back(NoteEvent());
+        auto& note = replay->notes.emplace_back();
         READ_TO(noteInfo);
 
         // Mapping extensions replays require map data
@@ -319,7 +321,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     float energy = 0.5;
     auto notesIter = replay->notes.begin();
     for(int i = 0; i < wallsCount; i++) {
-        auto& wall = replay->walls.emplace_back(WallEvent());
+        auto& wall = replay->walls.emplace_back();
         READ_TO(wallEvent);
         wall.lineIndex = wallEvent.wallID / 100;
         wallEvent.wallID -= wall.lineIndex * 100;
@@ -330,14 +332,14 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         wall.width = wallEvent.wallID;
 
         wall.time = wallEvent.time;
-        if(info.platform == "oculus" || version > 1)
+        if(info.platform == "oculus" || version > 1) {
             wall.endTime = wallEvent.energy;
             // replays on yet another BL version just forgot to record wall event end times
             if(wall.endTime < wall.time || wall.endTime > replay->notes.back().time * 100) {
                 LOG_ERROR("Replay had broken wall event {}", path);
                 return {};
             }
-        else {
+        } else {
             // process all note events up to event time
             while(notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
                 energy += EnergyForNote(notesIter->info);
@@ -370,7 +372,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int heightCount;
     READ_TO(heightCount);
     for(int i = 0; i < heightCount; i++) {
-        auto& height = replay->heights.emplace_back(HeightEvent());
+        auto& height = replay->heights.emplace_back();
         READ_TO(height);
         replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
     }
@@ -384,7 +386,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int pauseCount;
     READ_TO(pauseCount);
     for(int i = 0; i < pauseCount; i++) {
-        auto& pause = replay->pauses.emplace_back(PauseEvent());
+        auto& pause = replay->pauses.emplace_back();
         READ_TO(pause);
         replay->events.emplace(pause.time, EventRef::Height, replay->pauses.size() - 1);
     }
