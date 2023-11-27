@@ -5,7 +5,12 @@
 
 #include "UnityEngine/UI/Button.hpp"
 
+#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
+
+#include "questui/shared/CustomTypes/Components/List/CustomListTableData.hpp"
+
 #include "custom-types/shared/macros.hpp"
+#include "custom-types/shared/coroutine.hpp"
 
 #define METHOD(...) il2cpp_utils::il2cpp_type_check::MetadataGetter<&HMUI::__VA_ARGS__>::get()
 
