@@ -236,6 +236,21 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
         cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
+
+        if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            //Everything(2147483647) but FirstPerson(6)
+            const int tpmask =
+               2147483647 &
+               ~(1 << 6);
+            mainCamera->set_cullingMask(tpmask);
+        }
+        else {
+            //Everything(2147483647) but ThirdPerson(3)
+            const int fpmask =
+                       2147483647 &
+                       ~(1 << 3);
+            mainCamera->set_cullingMask(fpmask);
+        }
     }
 }
 
