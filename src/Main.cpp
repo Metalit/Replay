@@ -61,18 +61,25 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
 #include "MenuSelection.hpp"
 
 static bool selectedAlready = false;
+static bool doRender = true;
+static int nonRenderIdx = 0;
 MAKE_HOOK_MATCH(LevelFilteringNavigationController_UpdateCustomSongs, &LevelFilteringNavigationController::UpdateCustomSongs, void, LevelFilteringNavigationController* self) {
 
     LevelFilteringNavigationController_UpdateCustomSongs(self);
 
     if(!selectedAlready) {
         selectedAlready = true;
-        RenderLevelInConfig();
+        if (doRender)
+            RenderLevelInConfig();
+        else
+            SelectLevelInConfig(nonRenderIdx);
     }
 }
 
-void RenderLevelOnNextSongRefresh() {
+void SelectLevelOnNextSongRefresh(bool render, int idx) {
     selectedAlready = false;
+    doRender = render;
+    nonRenderIdx = idx;
 }
 
 ALooper* mainThreadLooper;

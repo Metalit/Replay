@@ -51,17 +51,17 @@ custom_types::Helpers::Coroutine RenderAfterLoaded() {
     co_return;
 }
 
-void RenderLevelInConfig() {
+void SelectRenderHelper(bool render, int idx, bool remove) {
+    LOG_DEBUG("Selecting level, render: {}, idx: {}", render, idx);
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
-    if(levelsVec.empty())
+    if(levelsVec.size() <= idx)
         return;
-    LOG_INFO("Selecting level from config");
-    auto levelToSelect = levelsVec[0];
+    auto levelToSelect = levelsVec[idx];
     auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
     auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
     if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator) {
         if(!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
-            RenderLevelOnNextSongRefresh();
+            SelectLevelOnNextSongRefresh(render, idx);
             UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
             return;
         } else {
@@ -71,8 +71,10 @@ void RenderLevelInConfig() {
             mainCoordinator->DismissFlowCoordinator(flowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
         }
     }
-    levelsVec.erase(levelsVec.begin());
-    getConfig().LevelsToSelect.SetValue(levelsVec);
+    if (remove) {
+        levelsVec.erase(levelsVec.begin() + idx);
+        getConfig().LevelsToSelect.SetValue(levelsVec);
+    }
     auto pack = mainCoordinator->beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
     if(!pack)
         pack = mainCoordinator->beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
@@ -89,7 +91,16 @@ void RenderLevelInConfig() {
     mainCoordinator->soloFreePlayFlowCoordinator->Setup(state);
     mainCoordinator->PresentFlowCoordinator(mainCoordinator->soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false);
     getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
-    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(RenderAfterLoaded()));
+    if (render)
+        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(RenderAfterLoaded()));
+}
+
+void SelectLevelInConfig(int idx, bool remove) {
+    SelectRenderHelper(false, idx, remove);
+}
+
+void RenderLevelInConfig() {
+    SelectRenderHelper(true, 0, true);
 }
 
 std::optional<LevelSelection> GetCurrentLevel() {
@@ -118,6 +129,24 @@ void SaveCurrentLevelInConfig() {
         return;
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
     levelsVec.emplace_back(*newLevel);
+    getConfig().LevelsToSelect.SetValue(levelsVec);
+}
+
+void RemoveCurrentLevelFromConfig() {
+    auto currentLevel = GetCurrentLevel();
+    if(!currentLevel)
+        return;
+    auto levelsVec = getConfig().LevelsToSelect.GetValue();
+    for(auto iter = levelsVec.begin(); iter != levelsVec.end(); iter++) {
+        if(iter->ID == currentLevel->ID
+            && iter->Characteristic == currentLevel->Characteristic
+            && iter->Difficulty == currentLevel->Difficulty
+            && iter->ReplayIndex == currentLevel->ReplayIndex
+        ) {
+            levelsVec.erase(iter);
+            break;
+        }
+    }
     getConfig().LevelsToSelect.SetValue(levelsVec);
 }
 

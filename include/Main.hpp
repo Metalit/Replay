@@ -13,6 +13,6 @@ extern ModInfo modInfo;
 
 inline auto RendersFolder = "/sdcard/Renders";
 
-void RenderLevelOnNextSongRefresh();
+void SelectLevelOnNextSongRefresh(bool render = true, int idx = 0);
 
 extern bool recorderInstalled;

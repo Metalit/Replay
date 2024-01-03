@@ -60,7 +60,10 @@ void OnRenderButtonClick() {
 }
 
 void OnQueueButtonClick() {
-    SaveCurrentLevelInConfig();
+    if (IsCurrentLevelInConfig())
+        RemoveCurrentLevelFromConfig();
+    else
+        SaveCurrentLevelInConfig();
     viewController->UpdateUI();
 }
 
@@ -271,9 +274,10 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
     auto container = UnityEngine::GameObject::New_ctor("SmallerButtonContainer");
     container->get_transform()->SetParent(horizontal4->get_transform(), false);
     SetPreferred(container, 30, 8);
-    queueButton = BeatSaberUI::CreateUIButton(container, "Add To Render Queue", Vector2(-2.8, 0), Vector2(33, 8), OnQueueButtonClick);
+    auto queueText = IsCurrentLevelInConfig() ? "Remove From Queue" : "Add To Render Queue";
+    queueButton = BeatSaberUI::CreateUIButton(container, queueText, Vector2(-2.8, 0), Vector2(33, 8), OnQueueButtonClick);
     queueButton->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->set_fontStyle(TMPro::FontStyles::Italic);
-    queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
+    queueButton->set_interactable(usingLocalReplays);
     static ConstString contentName("Content");
     UnityEngine::Object::Destroy(queueButton->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
 
@@ -315,8 +319,10 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 }
 
 void Menu::ReplayViewController::OnEnable() {
-    if(queueButton)
-        queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
+    if(queueButton) {
+        queueButton->set_interactable(usingLocalReplays);
+        BeatSaberUI::SetButtonText(queueButton, IsCurrentLevelInConfig() ? "Remove From Queue" : "Add To Render Queue");
+    }
 }
 
 void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replayInfos) {
@@ -377,7 +383,8 @@ void Menu::ReplayViewController::UpdateUI() {
     scoreText->set_text(GetLayeredText("Score", score));
     failText->set_text(GetLayeredText("Failed", fail));
 
-    queueButton->set_interactable(!IsCurrentLevelInConfig() && usingLocalReplays);
+    queueButton->set_interactable(usingLocalReplays);
+    BeatSaberUI::SetButtonText(queueButton, IsCurrentLevelInConfig() ? "Remove From Queue" : "Add To Render Queue");
 
     deleteButton->get_gameObject()->SetActive(usingLocalReplays);
 

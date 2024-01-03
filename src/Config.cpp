@@ -30,6 +30,8 @@ using namespace GlobalNamespace;
 using namespace QuestUI;
 using namespace ReplaySettings;
 
+ModSettings* modSettingsInstance = nullptr;
+
 const std::vector<const char*> buttonNames = {
     "None",
     "Side Trigger",
@@ -267,6 +269,8 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 }
 
 #include "MenuSelection.hpp"
+#include "HMUI/ViewController_AnimationDirection.hpp"
+#include "System/Action.hpp"
 
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if(!firstActivation)
@@ -325,10 +329,16 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 33});
+    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 33}, [this](int idx) {
+        queueList->tableView->ClearSelection();
+        if (modSettingsInstance) {
+            auto delegate = custom_types::MakeDelegate<System::Action*>((std::function<void()>) [idx]() { SelectLevelInConfig(idx); });
+            modSettingsInstance->parentFlowCoordinator->DismissFlowCoordinator(modSettingsInstance, HMUI::ViewController::AnimationDirection::Horizontal, delegate, false);
+        } else
+            SelectLevelInConfig(idx);
+    });
     queueList->set_listStyle(CustomListTableData::List);
     queueList->expandCell = true;
-    queueList->tableView->set_selectionType(HMUI::TableViewSelectionType::None);
     OnEnable();
 
     // for whatever reason, the button is misaligned for a bit, probably the content size fitter
@@ -471,9 +481,10 @@ void InputSettings::OnEnable() {
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
 
 void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
+    modSettingsInstance = this;
+
     if(!firstActivation)
         return;
 
@@ -496,4 +507,5 @@ void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool 
 
 void ModSettings::BackButtonWasPressed(HMUI::ViewController* topViewController) {
     parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
+    modSettingsInstance = nullptr;
 }
