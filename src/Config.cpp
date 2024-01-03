@@ -417,9 +417,9 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     AddConfigValueIncrementFloat(inputs, getConfig().TravelSpeed, 1, 0.1, 0.2, 5);
 
-    auto positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
+    positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
 
-    CreateSmallButton(position, "Reset Position", [positionSettings]() {
+    CreateSmallButton(position, "Reset Position", [this]() {
         auto def = getConfig().ThirdPerPos.GetDefaultValue();
         positionSettings[0]->CurrentValue = def.x;
         positionSettings[0]->UpdateValue();
@@ -429,16 +429,16 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         positionSettings[2]->UpdateValue();
     });
 
-    auto rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
+    rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
 
     auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(position);
 
-    CreateSmallButton(horizontal, "Level Rotation", [rotationSettings]() {
+    CreateSmallButton(horizontal, "Level Rotation", [this]() {
         rotationSettings[0]->CurrentValue = 0;
         rotationSettings[0]->UpdateValue();
     });
 
-    CreateSmallButton(horizontal, "Reset Rotation", [rotationSettings]() {
+    CreateSmallButton(horizontal, "Reset Rotation", [this]() {
         auto def = getConfig().ThirdPerRot.GetDefaultValue();
         rotationSettings[0]->CurrentValue = def.x;
         rotationSettings[0]->UpdateValue();
@@ -449,6 +449,25 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     });
 
     position->get_gameObject()->SetActive(false);
+}
+
+void InputSettings::OnEnable() {
+    if (!positionSettings[0] || !rotationSettings[0])
+        return;
+    auto pos = getConfig().ThirdPerPos.GetValue();
+    positionSettings[0]->CurrentValue = pos.x;
+    positionSettings[0]->UpdateValue();
+    positionSettings[1]->CurrentValue = pos.y;
+    positionSettings[1]->UpdateValue();
+    positionSettings[2]->CurrentValue = pos.z;
+    positionSettings[2]->UpdateValue();
+    auto rot = getConfig().ThirdPerRot.GetValue();
+    rotationSettings[0]->CurrentValue = rot.x;
+    rotationSettings[0]->UpdateValue();
+    rotationSettings[1]->CurrentValue = rot.y;
+    rotationSettings[1]->UpdateValue();
+    rotationSettings[2]->CurrentValue = rot.z;
+    rotationSettings[2]->UpdateValue();
 }
 
 #include "HMUI/ViewController_AnimationType.hpp"
