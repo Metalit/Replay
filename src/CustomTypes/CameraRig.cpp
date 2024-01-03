@@ -122,8 +122,22 @@ void CameraRig::UpdateProgress() {
 using namespace GlobalNamespace;
 
 CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
+    // original hierarchy:
+    // parent
+    //  - cameraTransform (playerTransforms->headTransform)
+    // new hierarchy:
+    // parent
+    //  - headReplacement (playerTransforms->headTransform)
+    //  - customAvatar
+    //  - cameraRig
+    //     - child
+    //        - cameraTransform
+    //           - progress
+
     auto cameraGO = UnityEngine::GameObject::New_ctor("ReplayCameraRig");
     auto cameraRig = cameraGO->AddComponent<ReplayHelpers::CameraRig*>();
+    cameraRig->cameraTransform = cameraTransform;
+
     auto parent = cameraTransform->GetParent();
     cameraRig->get_transform()->SetParent(parent, false);
 

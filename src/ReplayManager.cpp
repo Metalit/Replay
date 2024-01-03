@@ -107,7 +107,7 @@ namespace Manager {
         MirrorRendererGraphicsSettingsPresets* mirrorPresets;
         MirrorRendererSO* mirrorRenderer;
 
-        void SetFromConfig() {
+        void UpdateThirdPerson() {
             smoothPosition = (Vector3) getConfig().ThirdPerPos.GetValue();
             smoothRotation = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
         }
@@ -122,7 +122,7 @@ namespace Manager {
                 smoothPosition = EaseLerp(smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
                 smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
             } else if(GetMode() == (int) CameraMode::ThirdPerson)
-                SetFromConfig();
+                UpdateThirdPerson();
         }
 
         void Move(int direction) {
@@ -176,7 +176,7 @@ namespace Manager {
                 smoothPosition = GetFrame().head.position;
                 smoothRotation = GetFrame().head.rotation;
             } else if(GetMode() == (int) CameraMode::ThirdPerson)
-                SetFromConfig();
+                UpdateThirdPerson();
         }
 
         void SetGraphicsSettings() {
@@ -252,7 +252,7 @@ namespace Manager {
                     offset = Sombrero::QuaternionMultiply(smoothRotation, offset);
                 smoothPosition = GetFrame().head.position + offset;
             } else if(GetMode() == (int) CameraMode::ThirdPerson)
-                SetFromConfig();
+                UpdateThirdPerson();
         }
 
         void ReplayEnded() {

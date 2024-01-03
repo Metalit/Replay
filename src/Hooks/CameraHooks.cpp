@@ -39,13 +39,12 @@ MAKE_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, Player
             auto parent = self->originParentTransform ? self->originParentTransform : cameraRig->get_transform()->get_parent();
             // always update rotation but only update position when releasing
             if(!Manager::Camera::moving)
-                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(self->headTransform->get_position()));
-            auto rot = TransformExtensions::InverseTransformRotation(parent, self->headTransform->get_rotation()).get_eulerAngles();
+                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(cameraRig->cameraTransform->get_position()));
+            auto rot = TransformExtensions::InverseTransformRotation(parent, cameraRig->cameraTransform->get_rotation()).get_eulerAngles();
             getConfig().ThirdPerRot.SetValue(rot);
         }
         wasMoving = Manager::Camera::moving;
         if(!Manager::paused && Manager::Camera::GetMode() != (int) CameraMode::Headset) {
-            // head tranform IS the camera
             Vector3 targetPos;
             Quaternion targetRot;
             if(Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
