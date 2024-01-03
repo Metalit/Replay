@@ -100,6 +100,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 }
 
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
+#include "GlobalNamespace/MainCameraCullingMask_InitData.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
 #include "UnityEngine/GameObject.hpp"
@@ -193,6 +194,26 @@ MAKE_HOOK_MATCH(AudioTimeSyncController_StartSong, &AudioTimeSyncController::Sta
 
     AudioTimeSyncController_StartSong(self, startTimeOffset);
 
+
+    if(Manager::replaying) {
+        auto showDebris = mainCamera->GetComponent<MainCameraCullingMask*>()->initData->showDebris;
+        
+        int mask = 2147483647;
+        if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            //Existing except FirstPerson(6)
+            mask = 2147483647 & ~(1 << 6);
+        } else {
+            //Existing except ThirdPerson(3)
+            mask = 2147483647 & ~(1 << 3);
+        }
+
+        if(!showDebris) {
+            mask &= ~(1 << 9);
+        }
+
+        mainCamera->set_cullingMask(mask);
+    }
+
     if(Manager::replaying && Manager::Camera::rendering)
         SetupRecording();
 }
@@ -236,21 +257,6 @@ MAKE_HOOK_MATCH(CoreGameHUDController_Start, &CoreGameHUDController::Start, void
             MatrixTranslate(UnityEngine::Vector3::get_forward() * -99999 / 2) * mainCamera->get_worldToCameraMatrix());
 
         cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->get_transform());
-
-        if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            //Everything(2147483647) but FirstPerson(6)
-            const int tpmask =
-               2147483647 &
-               ~(1 << 6);
-            mainCamera->set_cullingMask(tpmask);
-        }
-        else {
-            //Everything(2147483647) but ThirdPerson(3)
-            const int fpmask =
-                       2147483647 &
-                       ~(1 << 3);
-            mainCamera->set_cullingMask(fpmask);
-        }
     }
 }
 
