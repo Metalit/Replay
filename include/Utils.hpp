@@ -37,7 +37,7 @@ std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::I
 
 std::string SecondsToString(int value);
 
-std::string GetStringForTimeSinceNow(std::time_t start);
+std::string GetStringForTimeSinceNow(long start);
 
 std::string GetModifierString(const ReplayModifiers& modifiers, bool includeNoFail);
 

@@ -299,7 +299,7 @@ ReplayWrapper ReadReqlay(const std::string& path) {
     ReplayWrapper ret = _ReadReqlay(path);
 
     auto modified = std::filesystem::last_write_time(path);
-    ret.replay->info.timestamp = std::chrono::file_clock::to_time_t(modified);
+    ret.replay->info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
     ret.replay->info.source = "Replay Mod (Old)";
     ret.replay->info.positionsAreLocal = false;
 

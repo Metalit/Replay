@@ -36,7 +36,7 @@ inline bool operator&(ReplayType a, ReplayType b) {
 
 struct ReplayInfo {
     ReplayModifiers modifiers;
-    std::time_t timestamp;
+    long timestamp;
     int score;
     std::string source;
     bool positionsAreLocal;

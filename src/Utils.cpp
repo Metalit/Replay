@@ -189,11 +189,9 @@ std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(IDifficultyBeatmap
     return replays;
 }
 
-std::string GetStringForTimeSinceNow(std::time_t start) {
-    auto startTimePoint = std::chrono::system_clock::from_time_t(start);
-    auto duration = std::chrono::system_clock::now() - startTimePoint;
+std::string GetStringForTimeSinceNow(long start) {
+    long seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() - start;
 
-    long seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
     int minutes = seconds / 60;
     int hours = minutes / 60;
     int days = hours / 24;
@@ -227,9 +225,8 @@ std::string GetStringForTimeSinceNow(std::time_t start) {
         value = (int) seconds;
     }
 
-    if(value != 1) {
-        unit = unit + "s";
-    }
+    if(value != 1)
+        unit += "s";
 
     return std::to_string(value) + " " + unit + " ago";
 }

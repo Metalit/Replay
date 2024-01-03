@@ -294,7 +294,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         replay->scoreFrames.emplace_back(std::move(frame));
 
     auto modified = std::filesystem::last_write_time(path);
-    info.timestamp = std::chrono::file_clock::to_time_t(modified);
+    info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
     info.source = "ScoreSaber";
     info.positionsAreLocal = false;
     replay->cutInfoMissingOKs = true;
