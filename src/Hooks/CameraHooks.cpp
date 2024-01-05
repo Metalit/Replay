@@ -99,6 +99,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 }
 
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
+#include "GlobalNamespace/MainCameraCullingMask_InitData.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
 #include "UnityEngine/GameObject.hpp"
@@ -191,6 +192,26 @@ void SetupRecording() {
 MAKE_HOOK_MATCH(AudioTimeSyncController_StartSong, &AudioTimeSyncController::StartSong, void, AudioTimeSyncController* self, float startTimeOffset) {
 
     AudioTimeSyncController_StartSong(self, startTimeOffset);
+
+
+    if(Manager::replaying) {
+        auto showDebris = mainCamera->GetComponent<MainCameraCullingMask*>()->initData->showDebris;
+        
+        int mask = 2147483647;
+        if(Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            //Existing except FirstPerson(6)
+            mask = 2147483647 & ~(1 << 6);
+        } else {
+            //Existing except ThirdPerson(3)
+            mask = 2147483647 & ~(1 << 3);
+        }
+
+        if(!showDebris) {
+            mask &= ~(1 << 9);
+        }
+
+        mainCamera->set_cullingMask(mask);
+    }
 
     if(Manager::replaying && Manager::Camera::rendering)
         SetupRecording();
