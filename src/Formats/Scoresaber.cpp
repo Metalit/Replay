@@ -99,6 +99,47 @@ struct SSMetadata {
     float FailTime;
 };
 
+struct V3SSNoteID {
+    float Time;
+    int LineLayer;
+    int LineIndex;
+    int ColorType;
+    int CutDirection;
+    int GameplayType;
+    int ScoringType;
+    float CutDirectionAngleOffset;
+};
+
+struct __attribute__ ((packed)) V3SSNoteEvent {
+    V3SSNoteID NoteID;
+    SSNoteEventType EventType;
+    Vector3 CutPoint;
+    Vector3 CutNormal;
+    Vector3 SaberDirection;
+    int SaberType;
+    bool DirectionOK;
+    float SaberSpeed;
+    float CutAngle;
+    float CutDistanceToCenter;
+    float CutDirectionDeviation;
+    float BeforeCutRating;
+    float AfterCutRating;
+    float Time;
+    float UnityTimescale;
+    float TimeSyncTimescale;
+    float TimeDeviation;
+    Quaternion WorldRotation;
+    Quaternion InverseWorldRotation;
+    Quaternion NoteRotation;
+    Vector3 NotePosition;
+};
+
+struct V3SSScoreEvent {
+    int Score;
+    float Time;
+    int MaxScore;
+};
+
 #define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
 #define READ_STRING(name) name = ReadString(input)
 
@@ -179,7 +220,9 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     input.write(decompressed.data(), decompressed.size());
 
     auto replay = new EventFrame();
-    ReplayWrapper ret(ReplayType::Event | ReplayType::Frame, replay);
+    // only scoresaber frame replays crash on "self->scoreDidChangeEvent->Invoke" in ScoreController_LateUpdate ?? why
+    // ReplayWrapper ret(ReplayType::Event | ReplayType::Frame, replay);
+    ReplayWrapper ret(ReplayType::Event, replay);
     auto& info = replay->info;
 
     SSPointers beginnings;
@@ -187,6 +230,14 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
 
     input.seekg(beginnings.metadata);
     auto meta = ReadMetadata(input);
+
+    bool v3 = false;
+    if (meta.Version == "3.0.0")
+        v3 = true;
+    else if (meta.Version != "2.0.0") {
+        LOG_ERROR("Unsupported version! Found version {} in file {}", meta.Version, path);
+        return {};
+    }
 
     info.modifiers = ParseModifiers(meta.Modifiers);
     info.modifiers.leftHanded = meta.LeftHanded;
@@ -219,50 +270,97 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
 
     input.seekg(beginnings.noteKeyframes);
     READ_TO(count);
-    SSNoteEvent ssNote;
-    for(int i = 0; i < count; i++) {
-        auto& note = replay->notes.emplace_back(NoteEvent());
-        READ_TO(ssNote);
+    if (v3) {
+        V3SSNoteEvent ssNote;
+        for(int i = 0; i < count; i++) {
+            auto& note = replay->notes.emplace_back(NoteEvent());
+            READ_TO(ssNote);
 
-        note.time = ssNote.Time;
-        note.info.scoringType = -2; // not present but v3 replays don't exist anyway
-        note.info.lineIndex = ssNote.NoteID.LineIndex;
-        note.info.lineLayer = ssNote.NoteID.LineLayer;
-        note.info.colorType = ssNote.NoteID.ColorType;
-        note.info.cutDirection = ssNote.NoteID.CutDirection;
-        note.info.eventType = (NoteEventInfo::Type) (((int) ssNote.EventType) - 1);
+            note.time = ssNote.Time;
+            note.info.scoringType = ssNote.NoteID.ScoringType;
+            note.info.lineIndex = ssNote.NoteID.LineIndex;
+            note.info.lineLayer = ssNote.NoteID.LineLayer;
+            note.info.colorType = ssNote.NoteID.ColorType;
+            note.info.cutDirection = ssNote.NoteID.CutDirection;
+            note.info.eventType = (NoteEventInfo::Type) (((int) ssNote.EventType) - 1);
 
-        if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
-            note.noteCutInfo.directionOK = ssNote.DirectionOK;
-            note.noteCutInfo.wasCutTooSoon = false; // they do this in their replayer
-            note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
-            note.noteCutInfo.saberDir = ssNote.SaberDirection;
-            note.noteCutInfo.saberType = ssNote.SaberType;
-            note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
-            note.noteCutInfo.cutPoint = ssNote.CutPoint;
-            note.noteCutInfo.cutNormal = ssNote.CutNormal;
-            note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
-            note.noteCutInfo.cutAngle = ssNote.CutAngle;
-            note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
-            note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
+            if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+                note.noteCutInfo.directionOK = ssNote.DirectionOK;
+                note.noteCutInfo.wasCutTooSoon = false; // they do this in their replayer
+                note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
+                note.noteCutInfo.saberDir = ssNote.SaberDirection;
+                note.noteCutInfo.saberType = ssNote.SaberType;
+                note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
+                note.noteCutInfo.cutPoint = ssNote.CutPoint;
+                note.noteCutInfo.cutNormal = ssNote.CutNormal;
+                note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
+                note.noteCutInfo.cutAngle = ssNote.CutAngle;
+                note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
+                note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
+            }
+            replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
         }
-        replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
+    } else {
+        SSNoteEvent ssNote;
+        for(int i = 0; i < count; i++) {
+            auto& note = replay->notes.emplace_back(NoteEvent());
+            READ_TO(ssNote);
+
+            note.time = ssNote.Time;
+            note.info.scoringType = -2; // not present but v3 replays don't exist anyway
+            note.info.lineIndex = ssNote.NoteID.LineIndex;
+            note.info.lineLayer = ssNote.NoteID.LineLayer;
+            note.info.colorType = ssNote.NoteID.ColorType;
+            note.info.cutDirection = ssNote.NoteID.CutDirection;
+            note.info.eventType = (NoteEventInfo::Type) (((int) ssNote.EventType) - 1);
+
+            if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+                note.noteCutInfo.directionOK = ssNote.DirectionOK;
+                note.noteCutInfo.wasCutTooSoon = false; // they do this in their replayer
+                note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
+                note.noteCutInfo.saberDir = ssNote.SaberDirection;
+                note.noteCutInfo.saberType = ssNote.SaberType;
+                note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
+                note.noteCutInfo.cutPoint = ssNote.CutPoint;
+                note.noteCutInfo.cutNormal = ssNote.CutNormal;
+                note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
+                note.noteCutInfo.cutAngle = ssNote.CutAngle;
+                note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
+                note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
+            }
+            replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
+        }
     }
 
     std::map<float, ScoreFrame> framesMap = {};
 
     input.seekg(beginnings.scoreKeyframes);
     READ_TO(count);
-    SSScoreEvent ssScore;
-    for(int i = 0; i < count; i++) {
-        READ_TO(ssScore);
-        auto existing = framesMap.find(ssScore.Time);
-        if(existing == framesMap.end())
-            framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, -1, -1, -1, 0});
-        else
-            existing->second.score = ssScore.Score;
+    if (v3) {
+        V3SSScoreEvent ssScore;
+        for(int i = 0; i < count; i++) {
+            READ_TO(ssScore);
+            auto existing = framesMap.find(ssScore.Time);
+            if(existing == framesMap.end())
+                framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, ssScore.Score / (float) ssScore.MaxScore, -1, -1, 0});
+            else {
+                existing->second.score = ssScore.Score;
+                existing->second.percent = ssScore.Score / (float) ssScore.MaxScore;
+            }
+        }
+        info.score = ssScore.Score;
+    } else {
+        SSScoreEvent ssScore;
+        for(int i = 0; i < count; i++) {
+            READ_TO(ssScore);
+            auto existing = framesMap.find(ssScore.Time);
+            if(existing == framesMap.end())
+                framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, -1, -1, -1, 0});
+            else
+                existing->second.score = ssScore.Score;
+        }
+        info.score = ssScore.Score;
     }
-    info.score = ssScore.Score;
     input.seekg(beginnings.comboKeyframes);
     READ_TO(count);
     SSComboEvent ssCombo;

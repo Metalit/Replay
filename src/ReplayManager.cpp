@@ -267,6 +267,7 @@ namespace Manager {
         FrameReplay* replay;
 
         void Increment() {
+            currentValues.time = scoreFrame->time;
             if(scoreFrame->score >= 0)
                 currentValues.score = scoreFrame->score;
             if(scoreFrame->percent >= 0)
