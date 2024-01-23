@@ -5,11 +5,14 @@
   "id": "${mod_id}",
   "author": "Metalit",
   "version": "${version}",
+  "modloader": "QuestLoader",
   "packageId": "com.beatgames.beatsaber",
   "packageVersion": "1.28.0_4124311467",
   "description": "Watch back your best scores!",
   "dependencies": [],
-  "modFiles": [],
+  "modFiles": [
+    "${binary}"
+  ],
   "libraryFiles": [],
   "fileCopies": []
 }
