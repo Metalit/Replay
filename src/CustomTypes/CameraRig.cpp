@@ -106,7 +106,7 @@ void CameraRig::UpdateProgress() {
     std::string typ = "";
     if (getConfig().SFX.GetValue())
         typ = Manager::Camera::GetAudioMode() ? " Audio" : " Video";
-    std::string time = SecondsToString(Manager::GetSongTime());
+    std::string time = SecondsToString(fmin(Manager::GetSongTime(), Manager::GetAudioTime()));
     std::string tot = SecondsToString(Manager::GetLength());
     std::string queue = "";
     int len = getConfig().LevelsToSelect.GetValue().size();

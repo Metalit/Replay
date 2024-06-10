@@ -186,7 +186,6 @@ MAKE_AUTO_HOOK_MATCH(
     StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData,
     LevelCompletionResults* levelCompletionResults
 ) {
-    logger.debug("level finished {}", Manager::replaying);
     if (Manager::replaying)
         cancelPresent = true;
 

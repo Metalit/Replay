@@ -91,6 +91,7 @@ namespace Manager {
     void SetLastCutTime(float lastCutTime);
     void CheckInputs();
     float GetSongTime();
+    float GetAudioTime();
     float GetLength();
     Frame const& GetFrame();
     Frame const& GetNextFrame();

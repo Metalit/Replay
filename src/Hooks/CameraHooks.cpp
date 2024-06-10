@@ -15,6 +15,7 @@
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
 #include "UnityEngine/AudioListener.hpp"
+#include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Camera.hpp"
 #include "UnityEngine/CameraClearFlags.hpp"
 #include "UnityEngine/DepthTextureMode.hpp"
@@ -90,6 +91,12 @@ void Camera_Unpause() {
         mainCamera->cullingMask = uiCullingMask;
 }
 
+void Camera_EndVideo() {
+    if (customCamera)
+        UnityEngine::Object::DestroyImmediate(customCamera);
+    customCamera = nullptr;
+}
+
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
     result.m00 = 1;
@@ -112,7 +119,6 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 }
 
 void SetupRecording() {
-    // return;
     LOG_INFO("Setting up recording");
     fileName = SanitizedPath(GetMapString(Manager::beatmap));
     LOG_INFO("Using filename: {}", fileName);
@@ -362,13 +368,17 @@ MAKE_AUTO_HOOK_MATCH(
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }
 
-// delay ending of renders (min check in shared hooks)
+// delay ending of renders (_songTime clamp is removed in shared hooks)
 MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
 
     float ret = AudioTimeSyncController_get_songEndTime(self);
 
-    if (Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode())
+    if (Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode()) {
+        // don't end while song is playing (and we are recording it)
+        if (!getConfig().SFX.GetValue() && self->_audioSource->isPlaying)
+            ret = fmax(ret, self->_songTime);
         return ret + 1;
+    }
     return ret;
 }
 

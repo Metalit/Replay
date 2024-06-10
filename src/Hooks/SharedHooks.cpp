@@ -79,13 +79,17 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
 
     AudioTimeSyncController_Update(self);
 
-    // remove min check
+    // remove _songTime clamp
     if (customTiming && state == AudioTimeSyncController::State::Playing) {
         self->_lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
         self->_songTime += self->_lastFrameDeltaSongTime;
         self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - self->_songTime;
         self->_isReady = true;
     }
+    // end video when map ends if the song is slower and we are recording it
+    if (customTiming && !getConfig().SFX.GetValue() && self->_songTime > Manager::GetLength() + 1)
+        Camera_EndVideo();
+
     self->_state = state;
 }
 

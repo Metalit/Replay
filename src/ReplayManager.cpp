@@ -34,6 +34,7 @@
 #include "System/Action.hpp"
 #include "System/Action_1.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
+#include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/QualitySettings.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
@@ -215,14 +216,14 @@ namespace Manager {
             settings->_mirrorGraphics = getConfig().Mirrors.GetValue();
 
             applicator->ApplyPerformancePreset(settings, GlobalNamespace::SceneType::Game);
-            logger.info("applied custom graphics settings");
+            LOG_INFO("applied custom graphics settings");
         }
         void UnsetGraphicsSettings() {
             if (GetAudioMode())
                 return;
             auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<VRRenderingParamsSetup*>()->First();
             renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
-            logger.info("reset graphics settings");
+            LOG_INFO("reset graphics settings");
         }
 
         void ReplayStarted() {
@@ -598,6 +599,14 @@ namespace Manager {
 
     float GetSongTime() {
         return songTime;
+    }
+
+    float GetAudioTime() {
+        if (!Camera::rendering || Camera::GetAudioMode())
+            return songTime;
+        if (!Objects::scoreController || !Objects::scoreController->_audioTimeSyncController)
+            return songTime;
+        return Objects::scoreController->_audioTimeSyncController->_audioSource->time;
     }
 
     float GetLength() {
