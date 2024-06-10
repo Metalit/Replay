@@ -1,8 +1,8 @@
-#include "Main.hpp"
-#include "Formats/FrameReplay.hpp"
-#include "MathUtils.hpp"
-
 #include <fstream>
+
+#include "Formats/FrameReplay.hpp"
+#include "Main.hpp"
+#include "MathUtils.hpp"
 
 // loading code for henwill's old replay versions
 
@@ -80,8 +80,8 @@ struct V5KeyFrame {
     float energy = -1;
 };
 
-template<class T>
-ReplayModifiers ConvertModifiers(const T& modifiers) {
+template <class T>
+ReplayModifiers ConvertModifiers(T const& modifiers) {
     ReplayModifiers ret;
     ret.disappearingArrows = modifiers.disappearingArrows;
     ret.fasterSong = modifiers.fasterSong;
@@ -121,10 +121,12 @@ ReplayWrapper ReadFromV1(std::ifstream& input) {
 
     replay->info.hasYOffset = false;
     auto frame = V1KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         frame.head.rotation = frame.head.rotation * 90;
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, 0));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
@@ -144,9 +146,11 @@ ReplayWrapper ReadFromV2(std::ifstream& input) {
 
     replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
@@ -168,9 +172,11 @@ ReplayWrapper ReadFromV3(std::ifstream& input) {
 
     replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
@@ -194,9 +200,11 @@ ReplayWrapper ReadFromV4(std::ifstream& input) {
 
     replay->info.hasYOffset = true;
     auto frame = V2KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
@@ -220,9 +228,11 @@ ReplayWrapper ReadFromV5(std::ifstream& input) {
 
     replay->info.hasYOffset = true;
     auto frame = V5KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
@@ -246,29 +256,31 @@ ReplayWrapper ReadFromV6(std::ifstream& input) {
 
     replay->info.hasYOffset = true;
     auto frame = V5KeyFrame();
-    while(READ_TO(frame)) {
+    while (READ_TO(frame)) {
         replay->scoreFrames.emplace_back(ScoreFrame(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset));
-        replay->frames.emplace_back(Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber)));
+        replay->frames.emplace_back(
+            Frame(ConvertEulerTransform(frame.head), ConvertEulerTransform(frame.leftSaber), ConvertEulerTransform(frame.rightSaber))
+        );
     }
     replay->info.score = frame.score;
 
     return ret;
 }
 
-unsigned char fileHeader[3] = { 0xa1, 0xd2, 0x45 };
+unsigned char fileHeader[3] = {0xa1, 0xd2, 0x45};
 
-ReplayWrapper _ReadReqlay(const std::string& path) {
+ReplayWrapper _ReadReqlay(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
 
-    if(!input.is_open()) {
+    if (!input.is_open()) {
         LOG_ERROR("Failure opening file {}", path);
         return {};
     }
 
     unsigned char headerBytes[3];
-    for(int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         READ_TO(headerBytes[i]);
-        if(headerBytes[i] != fileHeader[i]) {
+        if (headerBytes[i] != fileHeader[i]) {
             input.seekg(0);
             LOG_INFO("Reading reqlay file with version 1");
             return ReadFromV1(input);
@@ -279,23 +291,23 @@ ReplayWrapper _ReadReqlay(const std::string& path) {
     READ_TO(version);
     LOG_INFO("Reading reqlay file with version {}", version);
     switch (version) {
-    case 2:
-        return ReadFromV2(input);
-    case 3:
-        return ReadFromV3(input);
-    case 4:
-        return ReadFromV4(input);
-    case 5:
-        return ReadFromV5(input);
-    case 6:
-        return ReadFromV6(input);
-    default:
-        LOG_ERROR("Unsupported version! Found version {} in file {}", version, path);
-        return {};
+        case 2:
+            return ReadFromV2(input);
+        case 3:
+            return ReadFromV3(input);
+        case 4:
+            return ReadFromV4(input);
+        case 5:
+            return ReadFromV5(input);
+        case 6:
+            return ReadFromV6(input);
+        default:
+            LOG_ERROR("Unsupported version! Found version {} in file {}", version, path);
+            return {};
     }
 }
 
-ReplayWrapper ReadReqlay(const std::string& path) {
+ReplayWrapper ReadReqlay(std::string const& path) {
     ReplayWrapper ret = _ReadReqlay(path);
 
     auto modified = std::filesystem::last_write_time(path);
@@ -305,7 +317,7 @@ ReplayWrapper ReadReqlay(const std::string& path) {
 
     bool rotation = path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos;
     QuaternionAverage averageCalc(Quaternion::identity(), rotation);
-    for(auto& frame : ret.replay->frames)
+    for (auto& frame : ret.replay->frames)
         averageCalc.AddRotation(frame.head.rotation);
 
     ret.replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());

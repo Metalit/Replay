@@ -1,10 +1,10 @@
-#include "Main.hpp"
-#include "Formats/EventReplay.hpp"
-#include "MathUtils.hpp"
-#include "Utils.hpp"
-
 #include <fstream>
 #include <sstream>
+
+#include "Formats/EventReplay.hpp"
+#include "Main.hpp"
+#include "MathUtils.hpp"
+#include "Utils.hpp"
 
 // loading code for beatleader's replay format: https://github.com/BeatLeader/BS-Open-Replay
 
@@ -54,11 +54,11 @@ struct BSORWallEvent {
 };
 
 bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
-    if(abs(info.saberType) > 1)
+    if (abs(info.saberType) > 1)
         return false;
-    if(info.saberSpeed < -1 || info.saberSpeed >= 1000)
+    if (info.saberSpeed < -1 || info.saberSpeed >= 1000)
         return false;
-    if(info.beforeCutRating < 0 || info.afterCutRating < 0)
+    if (info.beforeCutRating < 0 || info.afterCutRating < 0)
         return false;
     return true;
 }
@@ -104,7 +104,7 @@ std::string ReadPotentialUTF16(std::ifstream& input) {
     return str;
 }
 
-ReplayModifiers ParseModifierString(const std::string& modifiers) {
+ReplayModifiers ParseModifierString(std::string const& modifiers) {
     ReplayModifiers ret;
     ret.disappearingArrows = modifiers.find("DA") != std::string::npos;
     ret.fasterSong = modifiers.find("FS") != std::string::npos;
@@ -154,10 +154,10 @@ BSORInfo ReadInfo(std::ifstream& input) {
     return info;
 }
 
-ReplayWrapper ReadBSOR(const std::string& path) {
+ReplayWrapper ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
 
-    if(!input.is_open()) {
+    if (!input.is_open()) {
         LOG_ERROR("Failure opening file {}", path);
         return {};
     }
@@ -216,18 +216,18 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     float firstTime = -1000;
     int skip = 0;
     bool checkDone = false;
-    for(int i = 0; i < framesCount; i++) {
+    for (int i = 0; i < framesCount; i++) {
         auto& frame = replay->frames.emplace_back();
         READ_TO(frame);
-        if(firstTime == -1000 && frame.time != 0)
+        if (firstTime == -1000 && frame.time != 0)
             firstTime = frame.time;
-        else if(firstTime == frame.time) {
+        else if (firstTime == frame.time) {
             skip++;
             continue;
         }
         averageCalc.AddRotation(frame.head.rotation);
-        if(skip > 0) {
-            if(!checkDone) {
+        if (skip > 0) {
+            if (!checkDone) {
                 replay->frames.erase(replay->frames.begin() + 1, replay->frames.end() - 1);
                 checkDone = true;
             }
@@ -247,7 +247,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     int notesCount;
     READ_TO(notesCount);
     BSORNoteEventInfo noteInfo;
-    for(int i = 0; i < notesCount; i++) {
+    for (int i = 0; i < notesCount; i++) {
         auto& note = replay->notes.emplace_back();
         READ_TO(noteInfo);
 
@@ -268,31 +268,32 @@ ReplayWrapper ReadBSOR(const std::string& path) {
 
         note.info.colorType = noteInfo.noteID / 10;
         noteInfo.noteID -= note.info.colorType * 10;
-        if(note.info.colorType == 3) note.info.colorType = -1;
+        if (note.info.colorType == 3)
+            note.info.colorType = -1;
 
         note.info.cutDirection = noteInfo.noteID;
 
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
 
-        if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+        if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
             READ_TO(note.noteCutInfo);
 
             // encoding bug in the beatleader qmod made this value be messed with
             // here we set it to -1, which will be replaced with the approximation from the replayed movements
-            if(note.noteCutInfo.saberSpeed < 0 || note.noteCutInfo.saberSpeed > 100)
+            if (note.noteCutInfo.saberSpeed < 0 || note.noteCutInfo.saberSpeed > 100)
                 note.noteCutInfo.saberSpeed = -1;
 
             // replays on a certain BL version failed to save the NoteCutInfo for chain links correctly
             // so we catch replays with garbage note cut info (to limit failures to maps with the problem) and missing scoring type info
-            if(note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
+            if (note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
                 // either fail to load the replay or force set the data (since most fields don't matter for chain links)
-                if(false) {
+                if (false) {
                     LOG_ERROR("BSOR had garbage NoteCutInfo data in bsor file {}", path);
                     return {};
                 } else {
                     note.noteCutInfo = {0};
-                    if(note.info.eventType == NoteEventInfo::Type::GOOD) {
+                    if (note.info.eventType == NoteEventInfo::Type::GOOD) {
                         note.noteCutInfo.speedOK = true;
                         note.noteCutInfo.directionOK = true;
                         note.noteCutInfo.saberTypeOK = true;
@@ -320,7 +321,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     // oh boy, I get to calculate the end time of wall events based on energy, it's not like anything better could have been done in the recording phase
     float energy = 0.5;
     auto notesIter = replay->notes.begin();
-    for(int i = 0; i < wallsCount; i++) {
+    for (int i = 0; i < wallsCount; i++) {
         auto& wall = replay->walls.emplace_back();
         READ_TO(wallEvent);
         wall.lineIndex = wallEvent.wallID / 100;
@@ -332,30 +333,30 @@ ReplayWrapper ReadBSOR(const std::string& path) {
         wall.width = wallEvent.wallID;
 
         wall.time = wallEvent.time;
-        if(info.platform == "oculus" || version > 1) {
+        if (info.platform == "oculus" || version > 1) {
             wall.endTime = wallEvent.energy;
             // replays on yet another BL version just forgot to record wall event end times
-            if(wall.endTime < wall.time || wall.endTime > replay->notes.back().time * 100) {
+            if (wall.endTime < wall.time || wall.endTime > replay->notes.back().time * 100) {
                 LOG_ERROR("Replay had broken wall event {}", path);
                 return {};
             }
         } else {
             // process all note events up to event time
-            while(notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
+            while (notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
                 energy += EnergyForNote(notesIter->info);
-                if(energy > 1)
+                if (energy > 1)
                     energy = 1;
                 notesIter++;
             }
             float diff = energy - wallEvent.energy;
             // only realistic case for this happening (assuming the recorder is correct)
             // is for a wall event's time span to be fully contained inside another wall event
-            if(diff < 0)
+            if (diff < 0)
                 continue;
             float seconds = diff / 1.3;
             wall.endTime = wallEvent.time + seconds;
             // now we also correct for any misses that happen during the wall...
-            while(notesIter != replay->notes.end() && notesIter->time < wall.endTime) {
+            while (notesIter != replay->notes.end() && notesIter->time < wall.endTime) {
                 wall.endTime -= EnergyForNote(notesIter->info) / 1.3;
                 notesIter++;
             }
@@ -371,7 +372,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int heightCount;
     READ_TO(heightCount);
-    for(int i = 0; i < heightCount; i++) {
+    for (int i = 0; i < heightCount; i++) {
         auto& height = replay->heights.emplace_back();
         READ_TO(height);
         replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
@@ -385,7 +386,7 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     }
     int pauseCount;
     READ_TO(pauseCount);
-    for(int i = 0; i < pauseCount; i++) {
+    for (int i = 0; i < pauseCount; i++) {
         auto& pause = replay->pauses.emplace_back();
         READ_TO(pause);
         replay->events.emplace(pause.time, EventRef::Height, replay->pauses.size() - 1);
@@ -394,43 +395,42 @@ ReplayWrapper ReadBSOR(const std::string& path) {
     return ret;
 }
 
-#include "GlobalNamespace/BeatmapData.hpp"
-
-#include "System/Collections/Generic/LinkedList_1.hpp"
-#include "System/Collections/Generic/LinkedListNode_1.hpp"
-
 #include <list>
+
+#include "GlobalNamespace/BeatmapData.hpp"
+#include "System/Collections/Generic/LinkedListNode_1.hpp"
+#include "System/Collections/Generic/LinkedList_1.hpp"
 
 using namespace GlobalNamespace;
 
 void RecalculateNotes(ReplayWrapper& replay, IReadonlyBeatmapData* beatmapData) {
-    if(replay.type != ReplayType::Event)
+    if (replay.type != ReplayType::Event)
         return;
     auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
-    if(!eventReplay->needsRecalculation)
+    if (!eventReplay->needsRecalculation)
         return;
 
     std::list<NoteEvent*> notes{};
-    for(auto& note : eventReplay->notes)
+    for (auto& note : eventReplay->notes)
         notes.emplace_back(&note);
 
     auto list = beatmapData->get_allBeatmapDataItems();
-    for(auto i = list->head; i->next != list->head; i = i->next) {
+    for (auto i = list->head; i->next != list->head; i = i->next) {
         auto dataOpt = il2cpp_utils::try_cast<NoteData>(i->item);
-        if(!dataOpt.has_value())
+        if (!dataOpt.has_value())
             continue;
         auto noteData = dataOpt.value();
         int mapNoteId = BSORNoteID(noteData);
 
-        for(auto iter = notes.begin(); iter != notes.end(); iter++) {
+        for (auto iter = notes.begin(); iter != notes.end(); iter++) {
             auto& info = (*iter)->info;
             int eventNoteId = BSORNoteID(info);
-            if(mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000)) {
-                info.scoringType = noteData->scoringType.value;
+            if (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000)) {
+                info.scoringType = (int) noteData->scoringType;
                 info.lineIndex = noteData->lineIndex;
-                info.lineLayer = noteData->noteLineLayer.value;
-                info.colorType = noteData->colorType.value;
-                info.cutDirection = noteData->cutDirection.value;
+                info.lineLayer = (int) noteData->noteLineLayer;
+                info.colorType = (int) noteData->colorType;
+                info.cutDirection = (int) noteData->cutDirection;
                 notes.erase(iter);
                 break;
             }

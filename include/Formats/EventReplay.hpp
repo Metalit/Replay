@@ -21,12 +21,7 @@ struct ReplayNoteCutInfo {
 };
 
 struct NoteEventInfo {
-    enum struct Type {
-        GOOD = 0,
-        BAD = 1,
-        MISS = 2,
-        BOMB = 3
-    };
+    enum struct Type { GOOD = 0, BAD = 1, MISS = 2, BOMB = 3 };
 
     short scoringType;
     short lineIndex;
@@ -61,12 +56,7 @@ struct PauseEvent {
 };
 
 struct EventRef {
-    enum Type {
-        Note,
-        Wall,
-        Height,
-        Pause
-    };
+    enum Type { Note, Wall, Height, Pause };
     float time;
     Type eventType;
     int index;
@@ -74,8 +64,8 @@ struct EventRef {
 };
 
 struct EventCompare {
-    constexpr bool operator()(const EventRef& lhs, const EventRef& rhs) const {
-        if(lhs.time == rhs.time)
+    constexpr bool operator()(EventRef const& lhs, EventRef const& rhs) const {
+        if (lhs.time == rhs.time)
             return lhs.eventType < rhs.eventType || (lhs.eventType == rhs.eventType && lhs.index < rhs.index);
         return lhs.time < rhs.time;
     }
@@ -91,7 +81,9 @@ struct EventReplay : public virtual Replay {
     bool cutInfoMissingOKs;
 };
 
-ReplayWrapper ReadBSOR(const std::string& path);
+ReplayWrapper ReadBSOR(std::string const& path);
 
-namespace GlobalNamespace{ class IReadonlyBeatmapData; }
+namespace GlobalNamespace {
+    class IReadonlyBeatmapData;
+}
 void RecalculateNotes(ReplayWrapper& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);

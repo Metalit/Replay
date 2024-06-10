@@ -1,15 +1,14 @@
 #pragma once
 
-#include "beatsaber-hook/shared/config/config-utils.hpp"
-#include "beatsaber-hook/shared/utils/hooking.hpp"
+#include "beatsaber-hook/shared/utils/logging.hpp"
 
-#include "paper/shared/logger.hpp"
+static constexpr auto logger = Paper::ConstLoggerContext(MOD_ID);
 
-#define LOG_INFO(string, ...) Paper::Logger::fmtLogTag<Paper::LogLevel::INF>(string, "Replay" __VA_OPT__(,) __VA_ARGS__)
-#define LOG_DEBUG(string, ...) Paper::Logger::fmtLogTag<Paper::LogLevel::DBG>(string, "Replay" __VA_OPT__(,) __VA_ARGS__)
-#define LOG_ERROR(string, ...) Paper::Logger::fmtLogTag<Paper::LogLevel::ERR>(string, "Replay" __VA_OPT__(,) __VA_ARGS__)
+#define LOG_INFO(...) logger.info(__VA_ARGS__)
+#define LOG_DEBUG(...) logger.debug(__VA_ARGS__)
+#define LOG_ERROR(...) logger.error(__VA_ARGS__)
 
-extern ModInfo modInfo;
+extern modloader::ModInfo modInfo;
 
 inline auto RendersFolder = "/sdcard/Renders";
 

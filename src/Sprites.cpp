@@ -1,13 +1,12 @@
-#include "Main.hpp"
 #include "Assets.hpp"
-
-#include "questui/shared/BeatSaberUI.hpp"
+#include "Main.hpp"
+#include "bsml/shared/Helpers/utilities.hpp"
 
 #define SPRITE_FUNC(name) \
 UnityEngine::Sprite* Get##name##Icon() { \
     auto arr = ArrayW<uint8_t>(name##_png::getLength()); \
-    memcpy(arr->values, name##_png::getData(), name##_png::getLength()); \
-    return QuestUI::BeatSaberUI::ArrayToSprite(arr); \
+    memcpy(arr->_values, name##_png::getData(), name##_png::getLength()); \
+    return BSML::Utilities::LoadSpriteRaw(arr); \
 }
 
 SPRITE_FUNC(Replay)

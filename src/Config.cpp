@@ -1,25 +1,27 @@
-#include "Main.hpp"
 #include "Config.hpp"
-#include "Utils.hpp"
+
 #include "CustomTypes/ReplaySettings.hpp"
-
-#include "questui/shared/BeatSaberUI.hpp"
-
-#include "custom-types/shared/delegate.hpp"
+#include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "GlobalNamespace/IPreviewMediaData.hpp"
+#include "HMUI/TextSegmentedControl.hpp"
+#include "HMUI/Touchable.hpp"
+#include "Main.hpp"
+#include "MenuSelection.hpp"
+#include "System/Action.hpp"
 #include "System/Action_2.hpp"
+#include "System/Collections/Generic/Dictionary_2.hpp"
+#include "System/Collections/IEnumerator.hpp"
 #include "System/Threading/CancellationToken.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
-#include "System/Collections/IEnumerator.hpp"
-#include "UnityEngine/WaitForSeconds.hpp"
-
-#include "HMUI/Touchable.hpp"
-#include "HMUI/TextSegmentedControl.hpp"
-
+#include "UnityEngine/Resources.hpp"
+#include "UnityEngine/UI/ContentSizeFitter.hpp"
 #include "UnityEngine/UI/LayoutRebuilder.hpp"
-#include "UnityEngine/RectTransform_Axis.hpp"
-
-#include "GlobalNamespace/BeatmapLevelsModel.hpp"
-#include "System/Collections/Generic/Dictionary_2.hpp"
+#include "UnityEngine/WaitForSeconds.hpp"
+#include "Utils.hpp"
+#include "bsml/shared/BSML-Lite.hpp"
+#include "bsml/shared/Helpers/creation.hpp"
+#include "bsml/shared/Helpers/delegates.hpp"
+#include "bsml/shared/Helpers/getters.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
@@ -27,89 +29,89 @@ DEFINE_TYPE(ReplaySettings, InputSettings)
 DEFINE_TYPE(ReplaySettings, ModSettings)
 
 using namespace GlobalNamespace;
-using namespace QuestUI;
 using namespace ReplaySettings;
 
 ModSettings* modSettingsInstance = nullptr;
 
-const std::vector<const char*> buttonNames = {
-    "None",
-    "Side Trigger",
-    "Front Trigger",
-    "A/X Button",
-    "B/Y Button",
-    "Joystick Up",
-    "Joystick Down",
-    "Joystick Left",
-    "Joystick Right"
+std::vector<std::string_view> buttonNames = {
+    "None", "Side Trigger", "Front Trigger", "A/X Button", "B/Y Button", "Joystick Up", "Joystick Down", "Joystick Left", "Joystick Right"
 };
-const std::vector<const char*> controllerNames = {
-    "Left",
-    "Right",
-    "Both"
-};
+std::vector<std::string_view> controllerNames = {"Left", "Right", "Both"};
 
-template<BeatSaberUI::HasTransform P>
-void CreateInputDropdowns(P parent, std::string_view name, std::string_view hint, int buttonValue, int controllerValue, auto buttonCallback, auto controllerCallback) {
+void CreateInputDropdowns(
+    BSML::Lite::TransformWrapper parent,
+    std::string_view name,
+    std::string_view hint,
+    int buttonValue,
+    int controllerValue,
+    auto buttonCallback,
+    auto controllerCallback
+) {
     static ConstString labelName("Label");
 
-    auto layout = BeatSaberUI::CreateHorizontalLayoutGroup(parent)->get_transform();
-    layout->template GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredHeight(7);
+    auto layout = BSML::Lite::CreateHorizontalLayoutGroup(parent);
+    layout->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredHeight = 7;
 
-    std::vector<StringW> buttonNamesList(buttonNames.begin(), buttonNames.end());
-    auto dropdown = BeatSaberUI::CreateDropdown(layout, name, buttonNamesList[buttonValue], buttonNamesList, [callback = std::move(buttonCallback)](StringW value){
-        for(int i = 0; i < buttonNames.size(); i++) {
-            if(value == buttonNames[i]) {
-                callback(i);
-                break;
+    BSML::DropdownListSetting* dropdown =
+        BSML::Lite::CreateDropdown(layout, name, buttonNames[buttonValue], buttonNames, [callback = std::move(buttonCallback)](StringW value) {
+            for (int i = 0; i < buttonNames.size(); i++) {
+                if (value == buttonNames[i]) {
+                    callback(i);
+                    break;
+                }
+            }
+        });
+    BSML::Lite::AddHoverHint(dropdown, hint);
+    dropdown->GetComponent<UnityEngine::RectTransform*>()->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 30);
+
+    auto dropdownParent = dropdown->transform->parent;
+    dropdownParent->Find(labelName)->GetComponent<UnityEngine::RectTransform*>()->anchorMax = {2, 1};
+    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 53;
+
+    dropdown = BSML::Lite::CreateDropdown(
+        layout,
+        "  Controller",
+        controllerNames[controllerValue],
+        controllerNames,
+        [callback = std::move(controllerCallback)](StringW value) {
+            for (int i = 0; i < controllerNames.size(); i++) {
+                if (value == controllerNames[i]) {
+                    callback(i);
+                    break;
+                }
             }
         }
-    });
-    BeatSaberUI::AddHoverHint(dropdown, hint);
-    ((UnityEngine::RectTransform*) dropdown->get_transform())->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 30);
+    );
+    BSML::Lite::AddHoverHint(dropdown, hint);
+    dropdown->GetComponent<UnityEngine::RectTransform*>()->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 22);
 
-    UnityEngine::Transform* dropdownParent = dropdown->get_transform()->get_parent();
-    ((UnityEngine::RectTransform*) dropdownParent->Find(labelName))->set_anchorMax({2, 1});
-    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(53);
-
-    std::vector<StringW> controllerNamesList(controllerNames.begin(), controllerNames.end());
-    dropdown = BeatSaberUI::CreateDropdown(layout, "  Controller", controllerNamesList[controllerValue], controllerNamesList, [callback = std::move(controllerCallback)](StringW value){
-        for(int i = 0; i < controllerNames.size(); i++) {
-            if(value == controllerNames[i]) {
-                callback(i);
-                break;
-            }
-        }
-    });
-    BeatSaberUI::AddHoverHint(dropdown, hint);
-    ((UnityEngine::RectTransform*) dropdown->get_transform())->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 22);
-
-    dropdownParent = dropdown->get_transform()->get_parent();
-    ((UnityEngine::RectTransform*) dropdownParent->Find(labelName))->set_anchorMax({2, 1});
-    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->set_preferredWidth(38);
+    dropdownParent = dropdown->transform->parent;
+    dropdownParent->Find(labelName)->GetComponent<UnityEngine::RectTransform*>()->anchorMax = {2, 1};
+    dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 38;
 }
 
-template<BeatSaberUI::HasTransform P>
-inline UnityEngine::UI::Button* CreateSmallButton(P parent, std::string text, auto callback) {
-    auto button = BeatSaberUI::CreateUIButton(parent, text, callback);
-    static ConstString contentName("Content");
-    UnityEngine::Object::Destroy(button->get_transform()->Find(contentName)->template GetComponent<UnityEngine::UI::LayoutElement*>());
-    auto fitter = button->get_gameObject()->template AddComponent<UnityEngine::UI::ContentSizeFitter*>();
-    fitter->set_horizontalFit(UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize);
-    fitter->set_verticalFit(UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize);
+inline UnityEngine::UI::Button* CreateSmallButton(BSML::Lite::TransformWrapper parent, std::string text, auto callback) {
+    auto button = BSML::Lite::CreateUIButton(parent, text, callback);
+    auto fitter = button->gameObject->template AddComponent<UnityEngine::UI::ContentSizeFitter*>();
+    fitter->horizontalFit = UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize;
+    fitter->verticalFit = UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize;
     return button;
 }
 
-std::pair<std::string, std::string> split(const std::string& str, auto delimiter) {
+std::pair<std::string, std::string> split(std::string const& str, auto delimiter) {
     auto pos = str.find(delimiter);
     return std::make_pair(str.substr(0, pos), str.substr(pos + 1, std::string::npos));
 }
 
-template<BeatSaberUI::HasTransform P>
-inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
+inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
     auto strs = split(configValue.GetName(), "|");
     auto value = configValue.GetValue();
-    CreateInputDropdowns(parent, strs.first, configValue.GetHoverHint(), value.ForwardButton, value.ForwardController,
+    CreateInputDropdowns(
+        parent,
+        strs.first,
+        configValue.GetHoverHint(),
+        value.ForwardButton,
+        value.ForwardController,
         [&configValue](int newButton) {
             auto value = configValue.GetValue();
             value.ForwardButton = newButton;
@@ -121,7 +123,12 @@ inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<ButtonPair
             configValue.SetValue(value);
         }
     );
-    CreateInputDropdowns(parent, strs.second, configValue.GetHoverHint(), value.BackButton, value.BackController,
+    CreateInputDropdowns(
+        parent,
+        strs.second,
+        configValue.GetHoverHint(),
+        value.BackButton,
+        value.BackController,
         [&configValue](int newButton) {
             auto value = configValue.GetValue();
             value.BackButton = newButton;
@@ -135,10 +142,14 @@ inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<ButtonPair
     );
 }
 
-template<BeatSaberUI::HasTransform P>
-inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<Button>& configValue) {
+inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<Button>& configValue) {
     auto value = configValue.GetValue();
-    CreateInputDropdowns(parent, configValue.GetName(), configValue.GetHoverHint(), value.Button, value.Controller,
+    CreateInputDropdowns(
+        parent,
+        configValue.GetName(),
+        configValue.GetHoverHint(),
+        value.Button,
+        value.Controller,
         [&configValue](int newButton) {
             auto value = configValue.GetValue();
             value.Button = newButton;
@@ -152,103 +163,79 @@ inline void AddConfigValueDropdown(P parent, ConfigUtils::ConfigValue<Button>& c
     );
 }
 
-template<BeatSaberUI::HasTransform P>
-inline UnityEngine::Transform* MakeVertical(P parent) {
-    auto vertical = BeatSaberUI::CreateVerticalLayoutGroup(parent);
-    vertical->set_childControlHeight(false);
-    vertical->set_childForceExpandHeight(false);
-    vertical->set_spacing(1);
-    return vertical->get_transform();
+inline UnityEngine::Transform* MakeVertical(BSML::Lite::TransformWrapper parent) {
+    auto vertical = BSML::Lite::CreateVerticalLayoutGroup(parent);
+    vertical->childControlHeight = false;
+    vertical->childForceExpandHeight = false;
+    vertical->spacing = 1;
+    return vertical->transform;
 }
 
 inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self, float verticalOffset = 0) {
-    self->get_gameObject()->AddComponent<HMUI::Touchable*>();
-    auto ret = MakeVertical(self->get_transform());
-    if(verticalOffset != 0)
-        self->GetComponent<UnityEngine::RectTransform*>()->set_sizeDelta({0, verticalOffset * 2});
+    self->gameObject->AddComponent<HMUI::Touchable*>();
+    auto ret = MakeVertical(self);
+    if (verticalOffset != 0)
+        self->rectTransform->sizeDelta = {0, verticalOffset * 2};
     return ret;
 }
 
-template<BeatSaberUI::HasTransform P>
-HMUI::TextSegmentedControl* MakeTabSelector(P parent, std::vector<std::string> texts, auto callback) {
-    static SafePtrUnity<HMUI::TextSegmentedControl> tabSelectorTagTemplate;
+HMUI::TextSegmentedControl* MakeTabSelector(BSML::Lite::TransformWrapper parent, std::vector<std::string> texts, auto callback) {
+    static UnityW<HMUI::TextSegmentedControl> tabSelectorTagTemplate;
     if (!tabSelectorTagTemplate) {
-        tabSelectorTagTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::TextSegmentedControl*>().FirstOrDefault(
-            [](auto x) {
-                auto parent = x->get_transform()->get_parent();
-                if(!parent) return false;
-                if(parent->get_name() != "PlayerStatisticsViewController") return false;
-                return x->container != nullptr;
-            }
-        );
+        tabSelectorTagTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::TextSegmentedControl*>()->FirstOrDefault([](auto x) {
+            UnityEngine::Transform* parent = x->transform->parent;
+            if (!parent)
+                return false;
+            if (parent->name != "PlayerStatisticsViewController")
+                return false;
+            return x->_container != nullptr;
+        });
     }
 
-    auto textSegmentedControl = UnityEngine::Object::Instantiate(tabSelectorTagTemplate.ptr(), parent->get_transform(), false);
-    textSegmentedControl->dataSource = nullptr;
+    auto textSegmentedControl = UnityEngine::Object::Instantiate(tabSelectorTagTemplate.ptr(), parent->transform, false);
+    textSegmentedControl->_dataSource = nullptr;
 
-    auto gameObject = textSegmentedControl->get_gameObject();
-    gameObject->set_name("ReplayTabSelector");
-    textSegmentedControl->container = tabSelectorTagTemplate->container;
+    auto gameObject = textSegmentedControl->gameObject;
+    gameObject->name = "ReplayTabSelector";
+    textSegmentedControl->_container = tabSelectorTagTemplate->_container;
 
     auto transform = gameObject->template GetComponent<UnityEngine::RectTransform*>();
-    transform->set_anchoredPosition({0, 0});
-    int childCount = transform->get_childCount();
-    for (int i = 1; i <= childCount; i++) {
-        UnityEngine::Object::DestroyImmediate(transform->GetChild(childCount - i)->get_gameObject());
-    }
+    transform->anchoredPosition = {0, 0};
+    int childCount = transform->childCount;
+    for (int i = 1; i <= childCount; i++)
+        UnityEngine::Object::DestroyImmediate(transform->GetChild(childCount - i)->gameObject);
 
-    auto textList = List<StringW>::New_ctor(texts.size());
-    for(auto text : texts)
+    auto textList = ListW<StringW>::New(texts.size());
+    for (auto text : texts)
         textList->Add(text);
-    textSegmentedControl->SetTexts(textList->i_IReadOnlyList_1_T());
+    textSegmentedControl->SetTexts(textList->i___System__Collections__Generic__IReadOnlyList_1_T_());
 
-    auto delegate = custom_types::MakeDelegate<System::Action_2<HMUI::SegmentedControl*, int>*>(
-        (std::function<void(HMUI::SegmentedControl*, int)>) [callback](HMUI::SegmentedControl* _, int selectedIndex) {
-            callback(selectedIndex);
-        }
-    );
+    auto delegate = BSML::MakeSystemAction((std::function<void(UnityW<HMUI::SegmentedControl>, int)>) [callback](
+        UnityW<HMUI::SegmentedControl>, int selectedIndex
+    ) { callback(selectedIndex); });
     textSegmentedControl->add_didSelectCellEvent(delegate);
 
     gameObject->SetActive(true);
     return textSegmentedControl;
 }
 
-template<BeatSaberUI::HasTransform P>
-inline UnityEngine::UI::Toggle* AddConfigValueToggle(P parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
-    auto object = BeatSaberUI::CreateToggle(parent, configValue.GetName(), configValue.GetValue(),
-        [&configValue, callback](bool value) {
-            configValue.SetValue(value);
-            callback(value);
-        }
-    );
-    if(!configValue.GetHoverHint().empty())
-        BeatSaberUI::AddHoverHint(object->get_gameObject(), configValue.GetHoverHint());
-    ((UnityEngine::RectTransform*) object->get_transform())->set_sizeDelta({18, 8});
+inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+    auto object = BSML::Lite::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), [&configValue, callback](bool value) mutable {
+        configValue.SetValue(value);
+        callback(value);
+    });
+    if (!configValue.GetHoverHint().empty())
+        BSML::Lite::AddHoverHint(object->gameObject, configValue.GetHoverHint());
+    object->template GetComponent<UnityEngine::RectTransform*>()->sizeDelta = {18, 8};
     return object;
 }
 
-const std::vector<std::string> resolutionStrings = {
-    "480 x 640",
-    "720 x 1280",
-    "1080 x 1920",
-    "1440 x 2560",
-    "2160 x 3840"
-};
-const std::vector<std::string> mirrorStrings = {
-    "Off",
-    "Low",
-    "Medium",
-    "High"
-};
-const std::vector<std::string> aaStrings = {
-    "0",
-    "2",
-    "4",
-    "8"
-};
+std::vector<std::string> const resolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
+std::vector<std::string> const mirrorStrings = {"Off", "Low", "Medium", "High"};
+std::vector<std::string> const aaStrings = {"0", "2", "4", "8"};
 
 void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    if(!firstActivation)
+    if (!firstActivation)
         return;
 
     auto transform = MakeLayout(this);
@@ -268,23 +255,19 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
 
-#include "MenuSelection.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
-#include "System/Action.hpp"
-
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    if(!firstActivation)
+    if (!firstActivation)
         return;
 
     auto transform = MakeLayout(this, 8);
     auto graphics = MakeVertical(transform);
     auto rendering = MakeVertical(transform);
     MakeTabSelector(transform, {"Graphics", "Rendering"}, [graphics, rendering](int selected) {
-        graphics->get_gameObject()->SetActive(selected == 0);
-        rendering->get_gameObject()->SetActive(selected == 1);
-    })->get_transform()->SetAsFirstSibling();
+        graphics->gameObject->active = selected == 0;
+        rendering->gameObject->active = selected == 1;
+    })->transform->SetAsFirstSibling();
 
-    AddConfigValueToggle(graphics, getConfig().Walls);
+    AddConfigValueToggle(graphics, getConfig().Walls)->text->text = "Textured Walls";
 
     AddConfigValueToggle(graphics, getConfig().Bloom);
 
@@ -292,20 +275,22 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueIncrementEnum(graphics, getConfig().AntiAlias, aaStrings);
 
-    auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20)->get_transform()->GetChild(1);
-    shockwaveIncrement->get_gameObject()->SetActive(getConfig().ShockwavesOn.GetValue());
-    ((UnityEngine::RectTransform*) shockwaveIncrement)->set_anchoredPosition({-20, 0});
+    // auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20);
+    // auto incrementObject = shockwaveIncrement->transform->GetChild(1)->gameObject;
+    // incrementObject->active = getConfig().ShockwavesOn.GetValue();
+    // incrementObject->GetComponent<UnityEngine::RectTransform*>()->anchoredPosition = {-20, 0};
 
-    auto shockwaveToggle = AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [shockwaveIncrement](bool enabled) {
-        shockwaveIncrement->get_gameObject()->SetActive(enabled);
-    })->get_transform();
-    auto oldParent = shockwaveToggle->GetParent()->get_gameObject();
-    shockwaveToggle->SetParent(shockwaveIncrement->GetParent(), false);
-    UnityEngine::Object::Destroy(oldParent);
+    // auto shockwaveToggle =
+    //     AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [incrementObject](bool enabled) mutable { incrementObject->active = enabled; });
+    // shockwaveToggle->toggle->transform->SetParent(shockwaveIncrement->transform, false);
+    // shockwaveToggle->transform->SetParent(shockwaveIncrement->transform, false);
+    // UnityEngine::Object::Destroy(shockwaveToggle->text->gameObject);
 
     AddConfigValueIncrementEnum(graphics, getConfig().Resolution, resolutionStrings);
 
-    AddConfigValueSliderIncrement(graphics, getConfig().Bitrate, 0, 2500, 2500, 2500, 25000);
+    auto bitrateSlider = AddConfigValueSliderIncrement(graphics, getConfig().Bitrate, 2500, 2500, 25000);
+    bitrateSlider->isInt = true;
+    bitrateSlider->text->text = bitrateSlider->TextForValue(bitrateSlider->get_Value());
 
     AddConfigValueIncrementFloat(graphics, getConfig().FOV, 0, 5, 30, 90);
 
@@ -317,7 +302,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Ding);
 
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(rendering);
+    auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(rendering);
 
     beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", [this]() {
         RenderLevelInConfig();
@@ -329,45 +314,46 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BeatSaberUI::CreateScrollableList(rendering, {90, 33}, [this](int idx) {
+    queueList = BSML::Lite::CreateScrollableList(rendering, {90, 33}, [this](int idx) {
         queueList->tableView->ClearSelection();
         if (modSettingsInstance) {
             auto delegate = custom_types::MakeDelegate<System::Action*>((std::function<void()>) [idx]() { SelectLevelInConfig(idx); });
-            modSettingsInstance->parentFlowCoordinator->DismissFlowCoordinator(modSettingsInstance, HMUI::ViewController::AnimationDirection::Horizontal, delegate, false);
+            modSettingsInstance->_parentFlowCoordinator->DismissFlowCoordinator(
+                modSettingsInstance, HMUI::ViewController::AnimationDirection::Horizontal, delegate, false
+            );
         } else
             SelectLevelInConfig(idx);
     });
-    queueList->set_listStyle(CustomListTableData::List);
+    queueList->listStyle = BSML::CustomListTableData::ListStyle::List;
     queueList->expandCell = true;
     OnEnable();
 
     // for whatever reason, the button is misaligned for a bit, probably the content size fitter
     UnityEngine::UI::LayoutRebuilder::ForceRebuildLayoutImmediate((UnityEngine::RectTransform*) rendering);
-    rendering->get_gameObject()->SetActive(false);
+    rendering->gameObject->active = false;
 }
 
-custom_types::Helpers::Coroutine RenderSettings::GetCoverCoro(IPreviewBeatmapLevel* level) {
-    auto result = level->GetCoverImageAsync(System::Threading::CancellationToken::get_None());
+custom_types::Helpers::Coroutine RenderSettings::GetCoverCoro(BeatmapLevel* level) {
+    auto result = level->previewMediaData->GetCoverSpriteAsync(System::Threading::CancellationToken::get_None());
 
-    while(!result->get_IsCompleted())
+    while (!result->IsCompleted)
         co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
 
-    UpdateCover(level, result->get_ResultOnSuccess());
+    UpdateCover(level, result->ResultOnSuccess);
     co_return;
 }
 
-void RenderSettings::GetCover(IPreviewBeatmapLevel* level) {
+void RenderSettings::GetCover(BeatmapLevel* level) {
     StartCoroutine(custom_types::Helpers::CoroutineHelper::New(GetCoverCoro(level)));
 }
 
-void RenderSettings::UpdateCover(IPreviewBeatmapLevel* level, UnityEngine::Sprite* cover) {
-    if(!queueList || !get_enabled())
+void RenderSettings::UpdateCover(BeatmapLevel* level, UnityEngine::Sprite* cover) {
+    if (!queueList || !enabled)
         return;
-    auto sprite = *il2cpp_utils::GetFieldValue<UnityEngine::Sprite*>(level, "_coverImage");
     auto levels = getConfig().LevelsToSelect.GetValue();
-    for(int i = 0; i < levels.size(); i++) {
-        if(levels[i].ID == level->get_levelID())
-            queueList->data[i].icon = cover;
+    for (int i = 0; i < levels.size(); i++) {
+        if (levels[i].ID == level->levelID)
+            queueList->data[i]->icon = cover;
     }
     queueList->tableView->ReloadData();
 }
@@ -375,25 +361,23 @@ void RenderSettings::UpdateCover(IPreviewBeatmapLevel* level, UnityEngine::Sprit
 void RenderSettings::OnEnable() {
     auto levels = getConfig().LevelsToSelect.GetValue();
     bool empty = levels.empty();
-    if(beginQueueButton)
-        beginQueueButton->set_interactable(!empty);
-    if(clearQueueButton)
-        clearQueueButton->set_interactable(!empty);
-    if(queueList) {
-        queueList->data.clear();
-        for(auto& level : levels) {
-            auto levelPreview = BeatSaberUI::GetMainFlowCoordinator()->beatmapLevelsModel->loadedPreviewBeatmapLevels->get_Item(level.ID);
-            std::string name = levelPreview->get_songName();
-            std::string difficulty = GetDifficultyName(level.Difficulty);
-            std::string characteristic = GetCharacteristicName(level.Characteristic);
-            std::string toptext = "<voffset=0.05em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
-            std::string author = levelPreview->get_songAuthorName();
-            std::string mapper = levelPreview->get_levelAuthorName();
-            std::string subtext = author + " [" + mapper + "] - Replay Index " + std::to_string(level.ReplayIndex + 1);
-            auto sprite = *il2cpp_utils::GetFieldValue<UnityEngine::Sprite*>(levelPreview, "_coverImage");
-            if(!sprite)
-                GetCover(levelPreview);
-            queueList->data.emplace_back(toptext, subtext, sprite);
+    if (beginQueueButton)
+        beginQueueButton->interactable = !empty;
+    if (clearQueueButton)
+        clearQueueButton->interactable = !empty;
+    if (queueList) {
+        queueList->data->Clear();
+        for (auto& selection : levels) {
+            auto level = BSML::Helpers::GetMainFlowCoordinator()->_beatmapLevelsModel->GetBeatmapLevel(selection.ID);
+            std::string name = level->songName;
+            std::string difficulty = GetDifficultyName(selection.Difficulty);
+            std::string characteristic = GetCharacteristicName(selection.Characteristic);
+            std::string toptext = "<voffset=0.1em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
+            std::string author = level->songAuthorName;
+            std::string mapper = level->allMappers->First();
+            std::string subtext = author + " [" + mapper + "] - Replay Index " + std::to_string(selection.ReplayIndex + 1);
+            queueList->data->Add(BSML::CustomCellInfo::construct(toptext, subtext, nullptr));
+            GetCover(level);
         }
         queueList->tableView->ReloadData();
     }
@@ -404,16 +388,16 @@ void RenderSettings::OnDisable() {
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    if(!firstActivation)
+    if (!firstActivation)
         return;
 
     auto transform = MakeLayout(this, 8);
     auto inputs = MakeVertical(transform);
     auto position = MakeVertical(transform);
     MakeTabSelector(transform, {"Inputs", "Position"}, [inputs, position](int selected) {
-        inputs->get_gameObject()->SetActive(selected == 0);
-        position->get_gameObject()->SetActive(selected == 1);
-    })->get_transform()->SetAsFirstSibling();
+        inputs->gameObject->SetActive(selected == 0);
+        position->gameObject->SetActive(selected == 1);
+    })->transform->SetAsFirstSibling();
 
     AddConfigValueDropdown(inputs, getConfig().TimeButton);
 
@@ -431,72 +415,61 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     CreateSmallButton(position, "Reset Position", [this]() {
         auto def = getConfig().ThirdPerPos.GetDefaultValue();
-        positionSettings[0]->CurrentValue = def.x;
-        positionSettings[0]->UpdateValue();
-        positionSettings[1]->CurrentValue = def.y;
-        positionSettings[1]->UpdateValue();
-        positionSettings[2]->CurrentValue = def.z;
-        positionSettings[2]->UpdateValue();
+        getConfig().ThirdPerPos.SetValue(def);
+        positionSettings[0]->set_Value(def.x);
+        positionSettings[1]->set_Value(def.y);
+        positionSettings[2]->set_Value(def.z);
     });
 
-    rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
+    rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 10);
 
-    auto horizontal = BeatSaberUI::CreateHorizontalLayoutGroup(position);
+    auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(position);
 
     CreateSmallButton(horizontal, "Level Rotation", [this]() {
-        rotationSettings[0]->CurrentValue = 0;
-        rotationSettings[0]->UpdateValue();
+        auto value = getConfig().ThirdPerRot.GetValue();
+        getConfig().ThirdPerRot.SetValue({0, value.y, value.z});
+        rotationSettings[0]->set_Value(0);
     });
 
     CreateSmallButton(horizontal, "Reset Rotation", [this]() {
         auto def = getConfig().ThirdPerRot.GetDefaultValue();
-        rotationSettings[0]->CurrentValue = def.x;
-        rotationSettings[0]->UpdateValue();
-        rotationSettings[1]->CurrentValue = def.y;
-        rotationSettings[1]->UpdateValue();
-        rotationSettings[2]->CurrentValue = def.z;
-        rotationSettings[2]->UpdateValue();
+        getConfig().ThirdPerRot.SetValue(def);
+        rotationSettings[0]->set_Value(def.x);
+        rotationSettings[1]->set_Value(def.y);
+        rotationSettings[2]->set_Value(def.z);
     });
 
-    position->get_gameObject()->SetActive(false);
+    position->gameObject->active = false;
 }
 
 void InputSettings::OnEnable() {
     if (!positionSettings[0] || !rotationSettings[0])
         return;
     auto pos = getConfig().ThirdPerPos.GetValue();
-    positionSettings[0]->CurrentValue = pos.x;
-    positionSettings[0]->UpdateValue();
-    positionSettings[1]->CurrentValue = pos.y;
-    positionSettings[1]->UpdateValue();
-    positionSettings[2]->CurrentValue = pos.z;
-    positionSettings[2]->UpdateValue();
+    positionSettings[0]->set_Value(pos.x);
+    positionSettings[1]->set_Value(pos.y);
+    positionSettings[2]->set_Value(pos.z);
     auto rot = getConfig().ThirdPerRot.GetValue();
-    rotationSettings[0]->CurrentValue = rot.x;
-    rotationSettings[0]->UpdateValue();
-    rotationSettings[1]->CurrentValue = rot.y;
-    rotationSettings[1]->UpdateValue();
-    rotationSettings[2]->CurrentValue = rot.z;
-    rotationSettings[2]->UpdateValue();
+    rotationSettings[0]->set_Value(rot.x);
+    rotationSettings[1]->set_Value(rot.y);
+    rotationSettings[2]->set_Value(rot.z);
 }
-
-#include "HMUI/ViewController_AnimationType.hpp"
 
 void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     modSettingsInstance = this;
 
-    if(!firstActivation)
+    if (!firstActivation)
         return;
 
     static SafePtrUnity<MainSettings> mainSettings;
-    if(!mainSettings)
-        mainSettings = BeatSaberUI::CreateViewController<MainSettings*>();
+    if (!mainSettings)
+        mainSettings = BSML::Helpers::CreateViewController<MainSettings*>();
     static SafePtrUnity<RenderSettings> renderSettings;
-    if(!renderSettings)
-        renderSettings = BeatSaberUI::CreateViewController<RenderSettings*>();
+    if (!renderSettings)
+        renderSettings = BSML::Helpers::CreateViewController<RenderSettings*>();
     static SafePtrUnity<InputSettings> inputSettings;
-    if(!inputSettings)
-        inputSettings = BeatSaberUI::CreateViewController<InputSettings*>();
+    if (!inputSettings)
+        inputSettings = BSML::Helpers::CreateViewController<InputSettings*>();
 
     showBackButton = true;
     static ConstString title("Replay Settings");
@@ -506,6 +479,6 @@ void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool 
 }
 
 void ModSettings::BackButtonWasPressed(HMUI::ViewController* topViewController) {
-    parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
+    _parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
     modSettingsInstance = nullptr;
 }

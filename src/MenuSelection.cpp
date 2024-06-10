@@ -1,98 +1,101 @@
-#include "Main.hpp"
-#include "Config.hpp"
-#include "ReplayManager.hpp"
-#include "Utils.hpp"
 #include "MenuSelection.hpp"
-#include "JNIUtils.hpp"
 
-#include "GlobalNamespace/MenuTransitionsHelper.hpp"
-#include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
-#include "UnityEngine/WaitForSeconds.hpp"
-#include "GlobalNamespace/LevelSelectionFlowCoordinator_State.hpp"
-#include "GlobalNamespace/SharedCoroutineStarter.hpp"
-#include "GlobalNamespace/PlayerDataModel.hpp"
-#include "GlobalNamespace/PlayerData.hpp"
+#include "Config.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/BeatmapLevel.hpp"
+#include "GlobalNamespace/BeatmapLevelPack.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
-#include "GlobalNamespace/IBeatmapLevelPackCollection.hpp"
-#include "GlobalNamespace/IBeatmapLevelPack.hpp"
-#include "GlobalNamespace/IBeatmapLevel.hpp"
-#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
+#include "GlobalNamespace/LevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/MenuTransitionsHelper.hpp"
+#include "GlobalNamespace/PlayerData.hpp"
+#include "GlobalNamespace/PlayerDataModel.hpp"
+#include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "HMUI/ViewController.hpp"
+#include "JNIUtils.hpp"
+#include "Main.hpp"
+#include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
-
-#include "questui/shared/BeatSaberUI.hpp"
-
-#include "custom-types/shared/coroutine.hpp"
+#include "Utils.hpp"
+#include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "bsml/shared/Helpers/getters.hpp"
 
 using namespace GlobalNamespace;
 using namespace HMUI;
 
 SinglePlayerLevelSelectionFlowCoordinator* GetLevelSelectionFlowCoordinator() {
-    auto flowCoordinator = (HMUI::FlowCoordinator*) QuestUI::BeatSaberUI::GetMainFlowCoordinator();
+    auto flowCoordinator = (HMUI::FlowCoordinator*) BSML::Helpers::GetMainFlowCoordinator();
     std::optional<SinglePlayerLevelSelectionFlowCoordinator*> opt = std::nullopt;
     do {
         opt = il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator);
-        if(opt)
+        if (opt)
             break;
-    } while((flowCoordinator = flowCoordinator->get_childFlowCoordinator()));
+    } while ((flowCoordinator = flowCoordinator->childFlowCoordinator));
     return opt ? *opt : nullptr;
 }
 
-custom_types::Helpers::Coroutine RenderAfterLoaded() {
+void RenderAfterLoaded() {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
-    if(!levelSelection)
-        co_return;
-    while(!levelSelection->get_selectedBeatmapLevel() || !Manager::Camera::muxingFinished)
-        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
-    co_yield nullptr;
-    RenderCurrentLevel();
-    co_return;
+    if (!levelSelection)
+        return;
+    BSML::MainThreadScheduler::ScheduleUntil(
+        [levelSelection]() { return levelSelection->get_selectedBeatmapLevel() && Manager::Camera::muxingFinished; }, []() { RenderCurrentLevel(); }
+    );
 }
 
 void SelectRenderHelper(bool render, int idx, bool remove) {
     LOG_DEBUG("Selecting level, render: {}, idx: {}", render, idx);
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
-    if(levelsVec.size() <= idx)
+    if (levelsVec.size() <= idx)
         return;
     auto levelToSelect = levelsVec[idx];
-    auto mainCoordinator = QuestUI::BeatSaberUI::GetMainFlowCoordinator();
-    auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf();
-    if(flowCoordinator != (HMUI::FlowCoordinator*) mainCoordinator) {
-        if(!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
+
+    auto mainCoordinator = BSML::Helpers::GetMainFlowCoordinator();
+    auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf().ptr();
+
+    if (flowCoordinator != mainCoordinator) {
+        if (!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
             SelectLevelOnNextSongRefresh(render, idx);
-            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>().First()->RestartGame(nullptr);
+            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First()->RestartGame(nullptr);
             return;
         } else {
-            auto views = flowCoordinator->mainScreenViewControllers;
-            while(views->get_Count() > 1)
-                flowCoordinator->DismissViewController(views->get_Item(views->get_Count() - 1), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+            auto views = flowCoordinator->_mainScreenViewControllers;
+            while (views->get_Count() > 1)
+                flowCoordinator->DismissViewController(
+                    views->get_Item(views->get_Count() - 1), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true
+                );
             mainCoordinator->DismissFlowCoordinator(flowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
         }
     }
+
     if (remove) {
         levelsVec.erase(levelsVec.begin() + idx);
         getConfig().LevelsToSelect.SetValue(levelsVec);
     }
-    auto pack = mainCoordinator->beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
-    if(!pack)
-        pack = mainCoordinator->beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
-    auto level = mainCoordinator->beatmapLevelsModel->GetLevelPreviewForLevelId(levelToSelect.ID);
-    if(!level)
+
+    auto pack = mainCoordinator->_beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
+    if (!pack)
+        pack = mainCoordinator->_beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
+    auto level = mainCoordinator->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
+    if (!level)
         return;
-    auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>().First();
-    auto characteristic = chars->GetBeatmapCharacteristicBySerializedName(levelToSelect.Characteristic);
-    mainCoordinator->playerDataModel->playerData->SetLastSelectedBeatmapCharacteristic(characteristic);
-    mainCoordinator->playerDataModel->playerData->SetLastSelectedBeatmapDifficulty(levelToSelect.Difficulty);
+    auto characteristic = GetCharacteristic(levelToSelect.Characteristic);
+
+    mainCoordinator->_playerDataModel->playerData->SetLastSelectedBeatmapCharacteristic(characteristic);
+    mainCoordinator->_playerDataModel->playerData->SetLastSelectedBeatmapDifficulty(levelToSelect.Difficulty);
+
     auto state = LevelSelectionFlowCoordinator::State::New_ctor(pack, level);
     state->levelCategory.value = levelToSelect.Category;
-    state->levelCategory.has_value = true;
-    mainCoordinator->soloFreePlayFlowCoordinator->Setup(state);
-    mainCoordinator->PresentFlowCoordinator(mainCoordinator->soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false);
+    state->levelCategory.hasValue = true;
+
+    mainCoordinator->_soloFreePlayFlowCoordinator->Setup(state);
+    mainCoordinator->PresentFlowCoordinator(
+        mainCoordinator->_soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false
+    );
+
     getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
     if (render)
-        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(RenderAfterLoaded()));
+        RenderAfterLoaded();
 }
 
 void SelectLevelInConfig(int idx, bool remove) {
@@ -105,27 +108,31 @@ void RenderLevelInConfig() {
 
 std::optional<LevelSelection> GetCurrentLevel() {
     std::optional<LevelSelection> ret = std::nullopt;
+
     auto levelSelection = GetLevelSelectionFlowCoordinator();
-    if(!levelSelection)
+    if (!levelSelection || !levelSelection->selectedBeatmapLevel)
         return ret;
-    auto map = levelSelection->get_selectedDifficultyBeatmap();
-    if(!map)
+    auto map = levelSelection->selectedBeatmapKey;
+    if (!map.IsValid())
         return ret;
+
     ret.emplace();
-    ret->ID = (std::string) map->get_level()->i_IPreviewBeatmapLevel()->get_levelID();
-    ret->Difficulty = map->get_difficulty();
-    ret->Characteristic = (std::string) map->get_parentDifficultyBeatmapSet()->get_beatmapCharacteristic()->serializedName;
-    auto pack = levelSelection->get_selectedBeatmapLevelPack();
-    if(pack)
-        ret->PackID = (std::string) pack->get_packID();
-    ret->Category = levelSelection->get_selectedLevelCategory();
+    ret->ID = (std::string) map.levelId;
+    ret->Difficulty = (int) map.difficulty;
+    ret->Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+
+    auto pack = levelSelection->selectedBeatmapLevelPack;
+    if (pack)
+        ret->PackID = (std::string) pack->packID;
+    ret->Category = (int) levelSelection->selectedLevelCategory;
+
     ret->ReplayIndex = getConfig().LastReplayIdx.GetValue();
     return ret;
 }
 
 void SaveCurrentLevelInConfig() {
     auto newLevel = GetCurrentLevel();
-    if(!newLevel)
+    if (!newLevel)
         return;
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
     levelsVec.emplace_back(*newLevel);
@@ -134,15 +141,12 @@ void SaveCurrentLevelInConfig() {
 
 void RemoveCurrentLevelFromConfig() {
     auto currentLevel = GetCurrentLevel();
-    if(!currentLevel)
+    if (!currentLevel)
         return;
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
-    for(auto iter = levelsVec.begin(); iter != levelsVec.end(); iter++) {
-        if(iter->ID == currentLevel->ID
-            && iter->Characteristic == currentLevel->Characteristic
-            && iter->Difficulty == currentLevel->Difficulty
-            && iter->ReplayIndex == currentLevel->ReplayIndex
-        ) {
+    for (auto iter = levelsVec.begin(); iter != levelsVec.end(); iter++) {
+        if (iter->ID == currentLevel->ID && iter->Characteristic == currentLevel->Characteristic && iter->Difficulty == currentLevel->Difficulty &&
+            iter->ReplayIndex == currentLevel->ReplayIndex) {
             levelsVec.erase(iter);
             break;
         }
@@ -152,15 +156,12 @@ void RemoveCurrentLevelFromConfig() {
 
 bool IsCurrentLevelInConfig() {
     auto currentLevel = GetCurrentLevel();
-    if(!currentLevel)
+    if (!currentLevel)
         return false;
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
-    for(auto level : levelsVec) {
-        if(level.ID == currentLevel->ID
-            && level.Characteristic == currentLevel->Characteristic
-            && level.Difficulty == currentLevel->Difficulty
-            && level.ReplayIndex == currentLevel->ReplayIndex
-        )
+    for (auto level : levelsVec) {
+        if (level.ID == currentLevel->ID && level.Characteristic == currentLevel->Characteristic && level.Difficulty == currentLevel->Difficulty &&
+            level.ReplayIndex == currentLevel->ReplayIndex)
             return true;
     }
     return false;
@@ -168,24 +169,25 @@ bool IsCurrentLevelInConfig() {
 
 void RenderCurrentLevel(bool currentReplay) {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
-    if(!levelSelection) {
+    if (!levelSelection) {
         LOG_ERROR("Failed to get LevelSelectionFlowCoordinator, not rendering");
         return;
     }
-    auto map = levelSelection->get_selectedDifficultyBeatmap();
-    if(!map) {
+    auto map = levelSelection->selectedBeatmapKey;
+    auto level = levelSelection->selectedBeatmapLevel;
+    if (!level || !map.IsValid()) {
         LOG_ERROR("Failed to get selected beatmap, not rendering");
         return;
     }
     Manager::Camera::rendering = true;
-    if(!currentReplay) {
-        auto replays = GetReplays(map);
-        if(replays.empty()) {
+    if (!currentReplay) {
+        auto replays = GetReplays({map, level});
+        if (replays.empty()) {
             LOG_ERROR("Failed to get beatmap replays, not rendering");
             return;
         }
         int idx = getConfig().LastReplayIdx.GetValue();
-        if(idx >= replays.size())
+        if (idx >= replays.size())
             idx = replays.size() - 1;
         Manager::ReplayStarted(replays[idx].second);
     } else

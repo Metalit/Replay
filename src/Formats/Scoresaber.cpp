@@ -1,11 +1,11 @@
-#include "Main.hpp"
+#include <fstream>
+#include <map>
+#include <sstream>
+
 #include "Formats/EventFrame.hpp"
+#include "Main.hpp"
 #include "MathUtils.hpp"
 #include "lzma/lzma.hpp"
-
-#include <fstream>
-#include <sstream>
-#include <map>
 
 struct SSPointers {
     int metadata;
@@ -19,13 +19,7 @@ struct SSPointers {
     int fpsKeyframes;
 };
 
-enum SSNoteEventType {
-    None,
-    GoodCut,
-    BadCut,
-    Miss,
-    Bomb
-};
+enum SSNoteEventType { None, GoodCut, BadCut, Miss, Bomb };
 
 struct SSNoteID {
     float Time;
@@ -36,7 +30,7 @@ struct SSNoteID {
 };
 
 // scoresaber serializes field by field instead of whole structs at a time
-struct __attribute__ ((packed)) SSNoteEvent {
+struct __attribute__((packed)) SSNoteEvent {
     SSNoteID NoteID;
     SSNoteEventType EventType;
     Vector3 CutPoint;
@@ -110,7 +104,7 @@ struct V3SSNoteID {
     float CutDirectionAngleOffset;
 };
 
-struct __attribute__ ((packed)) V3SSNoteEvent {
+struct __attribute__((packed)) V3SSNoteEvent {
     V3SSNoteID NoteID;
     SSNoteEventType EventType;
     Vector3 CutPoint;
@@ -161,7 +155,7 @@ SSMetadata ReadMetadata(std::stringstream& input) {
     READ_STRING(ret.Environment);
     int modifiersLength;
     READ_TO(modifiersLength);
-    for(int i = 0; i < modifiersLength; i++)
+    for (int i = 0; i < modifiersLength; i++)
         ret.Modifiers.emplace_back(ReadString(input));
     READ_TO(ret.NoteSpawnOffset);
     READ_TO(ret.LeftHanded);
@@ -172,29 +166,43 @@ SSMetadata ReadMetadata(std::stringstream& input) {
     return ret;
 }
 
-ReplayModifiers ParseModifiers(const std::vector<std::string>& modifiers) {
+ReplayModifiers ParseModifiers(std::vector<std::string> const& modifiers) {
     ReplayModifiers ret = {0};
-    for(auto& s : modifiers) {
-        if(s == "BE") ret.fourLives = true;
-        else if(s == "NF") ret.noFail = true;
-        else if(s == "IF") ret.oneLife = true;
-        else if(s == "NO") ret.noObstacles = true;
-        else if(s == "NB") ret.noBombs = true;
-        else if(s == "SA") ret.strictAngles = true;
-        else if(s == "DA") ret.disappearingArrows = true;
-        else if(s == "GN") ret.ghostNotes = true;
-        else if(s == "SS") ret.slowerSong = true;
-        else if(s == "FS") ret.fasterSong = true;
-        else if(s == "SF") ret.superFastSong = true;
-        else if(s == "SC") ret.smallNotes = true;
-        else if(s == "PM") ret.proMode = true;
-        else if(s == "NA") ret.noArrows = true;
+    for (auto& s : modifiers) {
+        if (s == "BE")
+            ret.fourLives = true;
+        else if (s == "NF")
+            ret.noFail = true;
+        else if (s == "IF")
+            ret.oneLife = true;
+        else if (s == "NO")
+            ret.noObstacles = true;
+        else if (s == "NB")
+            ret.noBombs = true;
+        else if (s == "SA")
+            ret.strictAngles = true;
+        else if (s == "DA")
+            ret.disappearingArrows = true;
+        else if (s == "GN")
+            ret.ghostNotes = true;
+        else if (s == "SS")
+            ret.slowerSong = true;
+        else if (s == "FS")
+            ret.fasterSong = true;
+        else if (s == "SF")
+            ret.superFastSong = true;
+        else if (s == "SC")
+            ret.smallNotes = true;
+        else if (s == "PM")
+            ret.proMode = true;
+        else if (s == "NA")
+            ret.noArrows = true;
     }
     return ret;
 }
 
-bool DecompressReplay(const std::vector<char>& replay, std::vector<char>& decompressed) {
-    if(replay[0] == (char)93 && replay[1] == 0 && replay[2] == 0 && replay[3] == (char)128) {
+bool DecompressReplay(std::vector<char> const& replay, std::vector<char>& decompressed) {
+    if (replay[0] == (char) 93 && replay[1] == 0 && replay[2] == 0 && replay[3] == (char) 128) {
         LOG_ERROR("Scoresaber replay had legacy magic bytes");
         return false;
     }
@@ -203,16 +211,16 @@ bool DecompressReplay(const std::vector<char>& replay, std::vector<char>& decomp
     return LZMA::lzmaDecompress(compressedReplayBytes, decompressed);
 }
 
-ReplayWrapper ReadScoresaber(const std::string& path) {
+ReplayWrapper ReadScoresaber(std::string const& path) {
     std::ifstream inputCompressed(path, std::ios::binary);
 
-    if(!inputCompressed.is_open()) {
+    if (!inputCompressed.is_open()) {
         LOG_ERROR("Failure opening file {}", path);
         return {};
     }
     std::vector<char> compressed(std::istreambuf_iterator<char>{inputCompressed}, std::istreambuf_iterator<char>{});
     std::vector<char> decompressed = {};
-    if(!DecompressReplay(compressed, decompressed)) {
+    if (!DecompressReplay(compressed, decompressed)) {
         LOG_ERROR("Failure decompressing file {}", path);
         return {};
     }
@@ -253,7 +261,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     int count;
     READ_TO(count);
     VRPoseGroup posFrame;
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         READ_TO(posFrame);
         replay->frames.emplace_back(posFrame.Time, posFrame.FPS, posFrame.Head, posFrame.Left, posFrame.Right);
         averageCalc.AddRotation(posFrame.Head.rotation);
@@ -262,7 +270,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
 
     input.seekg(beginnings.heightKeyframes);
     READ_TO(count);
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         auto& height = replay->heights.emplace_back(HeightEvent());
         READ_TO(height);
         replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
@@ -272,7 +280,7 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     READ_TO(count);
     if (v3) {
         V3SSNoteEvent ssNote;
-        for(int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             auto& note = replay->notes.emplace_back(NoteEvent());
             READ_TO(ssNote);
 
@@ -282,11 +290,11 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
             note.info.lineLayer = ssNote.NoteID.LineLayer;
             note.info.colorType = ssNote.NoteID.ColorType;
             note.info.cutDirection = ssNote.NoteID.CutDirection;
-            note.info.eventType = (NoteEventInfo::Type) (((int) ssNote.EventType) - 1);
+            note.info.eventType = (NoteEventInfo::Type)(((int) ssNote.EventType) - 1);
 
-            if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+            if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
                 note.noteCutInfo.directionOK = ssNote.DirectionOK;
-                note.noteCutInfo.wasCutTooSoon = false; // they do this in their replayer
+                note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
                 note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
                 note.noteCutInfo.saberDir = ssNote.SaberDirection;
                 note.noteCutInfo.saberType = ssNote.SaberType;
@@ -302,21 +310,21 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         }
     } else {
         SSNoteEvent ssNote;
-        for(int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             auto& note = replay->notes.emplace_back(NoteEvent());
             READ_TO(ssNote);
 
             note.time = ssNote.Time;
-            note.info.scoringType = -2; // not present but v3 replays don't exist anyway
+            note.info.scoringType = -2;  // not present but v3 replays don't exist anyway
             note.info.lineIndex = ssNote.NoteID.LineIndex;
             note.info.lineLayer = ssNote.NoteID.LineLayer;
             note.info.colorType = ssNote.NoteID.ColorType;
             note.info.cutDirection = ssNote.NoteID.CutDirection;
-            note.info.eventType = (NoteEventInfo::Type) (((int) ssNote.EventType) - 1);
+            note.info.eventType = (NoteEventInfo::Type)(((int) ssNote.EventType) - 1);
 
-            if(note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+            if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
                 note.noteCutInfo.directionOK = ssNote.DirectionOK;
-                note.noteCutInfo.wasCutTooSoon = false; // they do this in their replayer
+                note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
                 note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
                 note.noteCutInfo.saberDir = ssNote.SaberDirection;
                 note.noteCutInfo.saberType = ssNote.SaberType;
@@ -338,10 +346,10 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     READ_TO(count);
     if (v3) {
         V3SSScoreEvent ssScore;
-        for(int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             READ_TO(ssScore);
             auto existing = framesMap.find(ssScore.Time);
-            if(existing == framesMap.end())
+            if (existing == framesMap.end())
                 framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, ssScore.Score / (float) ssScore.MaxScore, -1, -1, 0});
             else {
                 existing->second.score = ssScore.Score;
@@ -351,10 +359,10 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
         info.score = ssScore.Score;
     } else {
         SSScoreEvent ssScore;
-        for(int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             READ_TO(ssScore);
             auto existing = framesMap.find(ssScore.Time);
-            if(existing == framesMap.end())
+            if (existing == framesMap.end())
                 framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, -1, -1, -1, 0});
             else
                 existing->second.score = ssScore.Score;
@@ -364,10 +372,10 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     input.seekg(beginnings.comboKeyframes);
     READ_TO(count);
     SSComboEvent ssCombo;
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         READ_TO(ssCombo);
         auto existing = framesMap.find(ssCombo.Time);
-        if(existing == framesMap.end())
+        if (existing == framesMap.end())
             framesMap.emplace(ssCombo.Time, ScoreFrame{ssCombo.Time, -1, -1, ssCombo.Combo, -1, 0});
         else
             existing->second.combo = ssCombo.Combo;
@@ -380,15 +388,15 @@ ReplayWrapper ReadScoresaber(const std::string& path) {
     input.seekg(beginnings.energyKeyframes);
     READ_TO(count);
     SSEnergyEvent ssEnergy;
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         READ_TO(ssEnergy);
         auto existing = framesMap.find(ssEnergy.Time);
-        if(existing == framesMap.end())
+        if (existing == framesMap.end())
             framesMap.emplace(ssEnergy.Time, ScoreFrame{ssEnergy.Time, -1, -1, -1, ssEnergy.Energy, 0});
         else
             existing->second.energy = ssEnergy.Energy;
     }
-    for(auto& [_, frame] : framesMap)
+    for (auto& [_, frame] : framesMap)
         replay->scoreFrames.emplace_back(std::move(frame));
 
     auto modified = std::filesystem::last_write_time(path);

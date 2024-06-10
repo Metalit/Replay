@@ -1,54 +1,46 @@
 #pragma once
 
+#include "BSML/shared/BSML/Components/CustomListTableData.hpp"
+#include "BSML/shared/BSML/Components/Settings/IncrementSetting.hpp"
+#include "GlobalNamespace/BeatmapLevel.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
-
 #include "UnityEngine/UI/Button.hpp"
-
-#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-
-#include "questui/shared/CustomTypes/Components/List/CustomListTableData.hpp"
-#include "questui/shared/CustomTypes/Components/Settings/IncrementSetting.hpp"
-
-#include "custom-types/shared/macros.hpp"
 #include "custom-types/shared/coroutine.hpp"
-
-#define METHOD(...) il2cpp_utils::il2cpp_type_check::MetadataGetter<&HMUI::__VA_ARGS__>::get()
+#include "custom-types/shared/macros.hpp"
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController,
-    DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+    DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
     DECLARE_DEFAULT_CTOR();
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController,
-    DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+    DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
     DECLARE_INSTANCE_METHOD(void, OnDisable);
-    DECLARE_INSTANCE_METHOD(void, GetCover, GlobalNamespace::IPreviewBeatmapLevel* level);
-    DECLARE_INSTANCE_METHOD(void, UpdateCover, GlobalNamespace::IPreviewBeatmapLevel* level, UnityEngine::Sprite* cover);
+    DECLARE_INSTANCE_METHOD(void, GetCover, GlobalNamespace::BeatmapLevel* level);
+    DECLARE_INSTANCE_METHOD(void, UpdateCover, GlobalNamespace::BeatmapLevel* level, UnityEngine::Sprite* cover);
     DECLARE_DEFAULT_CTOR();
-    private:
+   private:
     UnityEngine::UI::Button* beginQueueButton;
     UnityEngine::UI::Button* clearQueueButton;
-    QuestUI::CustomListTableData* queueList;
-    custom_types::Helpers::Coroutine GetCoverCoro(GlobalNamespace::IPreviewBeatmapLevel* level);
+    BSML::CustomListTableData* queueList;
+    custom_types::Helpers::Coroutine GetCoverCoro(GlobalNamespace::BeatmapLevel* level);
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController,
-    DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(ViewController::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+    DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
     DECLARE_DEFAULT_CTOR();
-    private:
-    std::array<QuestUI::IncrementSetting*, 3> positionSettings{};
-    std::array<QuestUI::IncrementSetting*, 3> rotationSettings{};
+   private:
+    std::array<BSML::IncrementSetting*, 3> positionSettings{};
+    std::array<BSML::IncrementSetting*, 3> rotationSettings{};
 )
 
 DECLARE_CLASS_CODEGEN(ReplaySettings, ModSettings, HMUI::FlowCoordinator,
-    DECLARE_OVERRIDE_METHOD(void, DidActivate, METHOD(FlowCoordinator::DidActivate), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
-    DECLARE_OVERRIDE_METHOD(void, BackButtonWasPressed, METHOD(FlowCoordinator::BackButtonWasPressed), HMUI::ViewController* topViewController);
+    DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::FlowCoordinator::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+    DECLARE_OVERRIDE_METHOD_MATCH(void, BackButtonWasPressed, &HMUI::FlowCoordinator::BackButtonWasPressed, HMUI::ViewController* topViewController);
     DECLARE_DEFAULT_CTOR();
 )
-
-#undef METHOD
 
 // defined in Config.cpp

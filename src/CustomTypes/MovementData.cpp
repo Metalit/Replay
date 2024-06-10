@@ -1,11 +1,10 @@
-#include "Main.hpp"
 #include "CustomTypes/MovementData.hpp"
 
 #include "GlobalNamespace/BladeMovementDataElement.hpp"
-#include "GlobalNamespace/SaberSwingRatingCounter.hpp"
-
 #include "GlobalNamespace/ISaberSwingRatingCounterDidChangeReceiver.hpp"
 #include "GlobalNamespace/LazyCopyHashSet_1.hpp"
+#include "GlobalNamespace/SaberSwingRatingCounter.hpp"
+#include "Main.hpp"
 
 DEFINE_TYPE(ReplayHelpers, MovementData);
 
@@ -13,7 +12,7 @@ using namespace ReplayHelpers;
 using namespace GlobalNamespace;
 
 BladeMovementDataElement MovementData::get_lastAddedData() {
-    return baseData->get_lastAddedData();
+    return baseData->lastAddedData;
 }
 
 void MovementData::AddDataProcessor(ISaberMovementDataProcessor* dataProcessor) {
@@ -29,12 +28,12 @@ void MovementData::RequestLastDataProcessing(ISaberMovementDataProcessor* dataPr
     // that way overswing counting will "work" (only if the replay stores the overswing, of course)
     auto baseElement = get_lastAddedData();
     auto counter = (SaberSwingRatingCounter*) dataProcessor;
-    counter->notePlaneWasCut = true;
-    counter->cutPlaneNormal = baseElement.segmentNormal;
+    counter->_notePlaneWasCut = true;
+    counter->_cutPlaneNormal = baseElement.segmentNormal;
     baseElement.segmentAngle = afterCutRating * 60;
     // needs to try to calculate after cut rating so that it doesn't immediately finish
-    counter->rateAfterCut = true;
-    counter->afterCutRating = 0;
+    counter->_rateAfterCut = true;
+    counter->_afterCutRating = 0;
     counter->ProcessNewData(baseElement, baseElement, true);
     // register as a data processor and wait for the next data so that the counter can finish properly
     baseData->AddDataProcessor((ISaberMovementDataProcessor*) this);
@@ -50,14 +49,14 @@ float MovementData::ComputeSwingRatingOverload() {
 
 void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovementDataElement prevData, bool prevDataAreValid) {
     auto counter = (SaberSwingRatingCounter*) dataProcessor;
-    if(counter) {
-        if(counter->beforeCutRating > 1)
-            counter->beforeCutRating = 1;
+    if (counter) {
+        if (counter->_beforeCutRating > 1)
+            counter->_beforeCutRating = 1;
         // run change events because the receivers aren't registered at the time of RequestLastDataProcessing
-        ListWrapper<ISaberSwingRatingCounterDidChangeReceiver*> changeEvents = counter->didChangeReceivers->get_items();
-        for(auto& changeEvent : changeEvents)
-            changeEvent->HandleSaberSwingRatingCounterDidChange(counter->i_ISaberSwingRatingCounter(), counter->afterCutRating);
-        counter->Finish(); // TODO: this likely causes finishes to be in an arbitrary order, causing at least part of the scoring issue
+        ListW<ISaberSwingRatingCounterDidChangeReceiver*> changeEvents = counter->_didChangeReceivers->items;
+        for (auto& changeEvent : changeEvents)
+            changeEvent->HandleSaberSwingRatingCounterDidChange(counter->i___GlobalNamespace__ISaberSwingRatingCounter(), counter->afterCutRating);
+        counter->Finish();  // TODO: this likely causes finishes to be in an arbitrary order, causing at least part of the scoring issue
     }
     baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
 }

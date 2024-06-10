@@ -1,20 +1,16 @@
 #pragma once
 
-#include "Utils.hpp"
-
-#include "GlobalNamespace/IDifficultyBeatmap.hpp"
+#include "GlobalNamespace/BeatmapKey.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
-#include "GlobalNamespace/MainEffectGraphicsSettingsPresetsSO_Preset.hpp"
-#include "GlobalNamespace/MainEffectContainerSO.hpp"
-#include "GlobalNamespace/MirrorRendererGraphicsSettingsPresets_Preset.hpp"
-#include "GlobalNamespace/MirrorRendererSO.hpp"
+#include "Utils.hpp"
 
 struct ScoreFrame;
 struct NoteEvent;
 struct WallEvent;
 struct HeightEvent;
 struct PauseEvent;
+
 namespace GlobalNamespace {
     class Saber;
     class PlayerHeadAndObstacleInteraction;
@@ -52,11 +48,6 @@ namespace Manager {
         extern bool muxingFinished;
         extern bool moving;
 
-        extern GlobalNamespace::MainEffectGraphicsSettingsPresetsSO* bloomPresets;
-        extern GlobalNamespace::MainEffectContainerSO* bloomContainer;
-        extern GlobalNamespace::MirrorRendererGraphicsSettingsPresets* mirrorPresets;
-        extern GlobalNamespace::MirrorRendererSO* mirrorRenderer;
-
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
         bool GetAudioMode();
@@ -76,14 +67,14 @@ namespace Manager {
         void RemoveNoteController(GlobalNamespace::NoteController* note);
     }
 
-    void SetLevel(GlobalNamespace::IDifficultyBeatmap* level);
+    void SetLevel(DifficultyBeatmap level);
 
     void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external = false);
     void RefreshLevelReplays();
     bool AreReplaysLocal();
 
     void ReplayStarted(ReplayWrapper& wrapper);
-    void ReplayStarted(const std::string& path);
+    void ReplayStarted(std::string const& path);
     void ReplayRestarted(bool full = true);
     void ReplayEnded(bool quit);
     void ReplayPaused();
@@ -92,16 +83,16 @@ namespace Manager {
     extern bool replaying;
     extern bool paused;
     extern ReplayWrapper currentReplay;
-    extern GlobalNamespace::IDifficultyBeatmap* beatmap;
+    extern DifficultyBeatmap beatmap;
 
-    const ReplayInfo& GetCurrentInfo();
+    ReplayInfo const& GetCurrentInfo();
 
     void UpdateTime(float songTime, float songLength = -1);
     void SetLastCutTime(float lastCutTime);
     void CheckInputs();
     float GetSongTime();
     float GetLength();
-    const Frame& GetFrame();
-    const Frame& GetNextFrame();
+    Frame const& GetFrame();
+    Frame const& GetNextFrame();
     float GetFrameProgress();
 }

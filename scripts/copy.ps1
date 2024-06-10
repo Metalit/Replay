@@ -52,17 +52,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 $modJson = Get-Content "./mod.json" -Raw | ConvertFrom-Json
 
-$modFiles = $modJson.modFiles
-
-foreach ($fileName in $modFiles) {
+foreach ($fileName in $modJson.modFiles) {
     if ($useDebug -eq $true) {
-        & adb push build/debug/$fileName /sdcard/Android/data/com.beatgames.beatsaber/files/mods/$fileName
+        & adb push build/debug/$fileName /sdcard/ModData/com.beatgames.beatsaber/Modloader/early_mods/$fileName
     } else {
-        & adb push build/$fileName /sdcard/Android/data/com.beatgames.beatsaber/files/mods/$fileName
+        & adb push build/$fileName /sdcard/ModData/com.beatgames.beatsaber/Modloader/early_mods/$fileName
     }
 }
 
-& $PSScriptRoot/restart-game.ps1
+foreach ($fileName in $modJson.lateModFiles) {
+    if ($useDebug -eq $true) {
+        & adb push build/debug/$fileName /sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/$fileName
+    } else {
+        & adb push build/$fileName /sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/$fileName
+    }
+}
 
 if ($log -eq $true) {
     & adb logcat -c

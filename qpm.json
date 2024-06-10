@@ -1,19 +1,47 @@
 {
+  "version": "0.1.0",
   "sharedDir": "shared",
   "dependenciesDir": "extern",
   "info": {
     "name": "Replay",
     "id": "replay",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "url": null,
     "additionalData": {
       "overrideSoName": "libreplay.so"
     }
   },
+  "workspace": {
+    "scripts": {
+      "build": [
+        "pwsh ./scripts/build.ps1 $0?"
+      ],
+      "copy": [
+        "pwsh ./scripts/copy.ps1 $0:?",
+        "pwsh ./scripts/restart-game.ps1"
+      ],
+      "log": [
+        "pwsh ./scripts/start-logging.ps1 $0:?"
+      ],
+      "qmod": [
+        "pwsh ./scripts/build.ps1 $0?",
+        "pwsh ./scripts/createqmod.ps1"
+      ],
+      "restart": [
+        "pwsh ./scripts/restart-game.ps1"
+      ],
+      "stack": [
+        "pwsh ./scripts/ndk-stack.ps1 $0?"
+      ],
+      "tomb": [
+        "pwsh ./scripts/pull-tombstone.ps1 -analyze"
+      ]
+    }
+  },
   "dependencies": [
     {
       "id": "beatsaber-hook",
-      "versionRange": "^3.14.0",
+      "versionRange": "^5.1.6",
       "additionalData": {
         "extraFiles": [
           "src/inline-hook"
@@ -21,55 +49,56 @@
       }
     },
     {
-      "id": "modloader",
-      "versionRange": "=1.2.3",
-      "additionalData": {}
+      "id": "scotland2",
+      "versionRange": "^0.1.4",
+      "additionalData": {
+        "includeQmod": false
+      }
     },
     {
-      "id": "codegen",
-      "versionRange": "^0.33.0",
+      "id": "bs-cordl",
+      "versionRange": "^3700.0.0",
       "additionalData": {}
     },
     {
       "id": "paper",
-      "versionRange": "^1.2.9",
+      "versionRange": "^3.6.3",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.15.21",
-      "additionalData": {}
-    },
-    {
-      "id": "questui",
-      "versionRange": "^0.17.5",
+      "versionRange": "^0.17.6",
       "additionalData": {}
     },
     {
       "id": "sombrero",
-      "versionRange": "^0.1.33",
+      "versionRange": "^0.1.40",
       "additionalData": {}
     },
     {
       "id": "bs-utils",
-      "versionRange": "^0.7.0",
+      "versionRange": "^0.8.2",
       "additionalData": {}
     },
     {
       "id": "conditional-dependencies",
-      "versionRange": "*",
+      "versionRange": "^0.3.0",
       "additionalData": {}
     },
     {
       "id": "hollywood",
-      "versionRange": "^0.2.2",
+      "versionRange": "^0.2.3",
       "additionalData": {}
     },
     {
       "id": "config-utils",
-      "versionRange": "^1.1.0",
+      "versionRange": "^1.4.2",
+      "additionalData": {}
+    },
+    {
+      "id": "bsml",
+      "versionRange": "^0.4.26",
       "additionalData": {}
     }
-  ],
-  "additionalData": {}
+  ]
 }

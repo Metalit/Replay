@@ -8,12 +8,14 @@ Tried some modifications but restarting still doesn't work :(
 
 */
 
-#include <string>
-
-#include <jni.h>
 #include <android/log.h>
 #include <android/looper.h>
+#include <jni.h>
 #include <unistd.h>
+
+#include <string>
+
+#include "scotland2/shared/modloader.h"
 
 // I fucking hate everything.
 
@@ -294,191 +296,195 @@ extern int messagePipe[2];
 extern jobject activity;
 
 namespace JNIUtils {
-	inline JavaVM* Jvm;
+    // -- Utils Functions --
 
-	// -- Utils Functions --
+    inline JNIEnv* GetJNIEnv() {
+        JNIEnv* env;
 
-	inline JNIEnv* GetJNIEnv() {
-		JNIEnv* env;
+        JavaVMAttachArgs args;
+        args.version = JNI_VERSION_1_6;
+        args.name = NULL;
+        args.group = NULL;
 
-		JavaVMAttachArgs args;
-		args.version = JNI_VERSION_1_6;
-		args.name = NULL;
-		args.group = NULL;
+        modloader_jvm->AttachCurrentThread(&env, &args);
 
-		Jvm->AttachCurrentThread(&env, &args);
+        return env;
+    }
 
-		return env;
-	}
+    inline std::string ToString(jstring str, JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline std::string ToString(jstring str, JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        jboolean isCopy = true;
+        return std::string(env->GetStringUTFChars(str, &isCopy));
+    }
 
-		jboolean isCopy = true;
-		return std::string(env->GetStringUTFChars(str, &isCopy));
-	}
+    inline jobject GetAppContext(JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline jobject GetAppContext(JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        GET_JCLASS(env, activeThreadClass, "android/app/ActivityThread");
+        CALL_STATIC_JOBJECT_METHOD(env, activeThread, activeThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
 
-		GET_JCLASS(env, activeThreadClass, "android/app/ActivityThread");
-		CALL_STATIC_JOBJECT_METHOD(env, activeThread, activeThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
+        CALL_JOBJECT_METHOD(env, appContext, activeThread, "getApplication", "()Landroid/app/Application;");
+        return appContext;
+    }
 
-		CALL_JOBJECT_METHOD(env, appContext, activeThread, "getApplication", "()Landroid/app/Application;");
-		return appContext;
-	}
+    inline jstring GetPackageName(JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline jstring GetPackageName(JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        jobject appContext = GetAppContext(env);
 
-		jobject appContext = GetAppContext(env);
+        CALL_JSTRING_METHOD(env, packageName, appContext, "getPackageName", "()Ljava/lang/String;");
 
-		CALL_JSTRING_METHOD(env, packageName, appContext, "getPackageName", "()Ljava/lang/String;");
+        return packageName;
+    }
 
-		return packageName;
-	}
+    inline jstring GetGameVersion(JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline jstring GetGameVersion(JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        jstring packageName = GetPackageName(env);
+        jobject appContext = GetAppContext(env);
 
-		jstring packageName = GetPackageName(env);
-		jobject appContext = GetAppContext(env);
+        CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
 
-		CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+        CALL_JOBJECT_METHOD(
+            env, packageInfo, packageManager, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;", packageName, 0
+        );
+        GET_JCLASS_FROM_JOBJECT(env, packageInfoClass, packageInfo);
 
-		CALL_JOBJECT_METHOD(env, packageInfo, packageManager, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;", packageName, 0);
-		GET_JCLASS_FROM_JOBJECT(env, packageInfoClass, packageInfo);
+        GET_JSTRING_FIELD(env, versionName, packageInfo, "versionName", "Ljava/lang/String;");
 
-		GET_JSTRING_FIELD(env, versionName, packageInfo, "versionName", "Ljava/lang/String;");
+        return versionName;
+    }
 
-		return versionName;
-	}
+    inline jint GetPID(JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline jint GetPID(JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        GET_JCLASS(env, processClass, "android/os/Process");
+        CALL_STATIC_JINT_METHOD(env, pid, processClass, "myPid", "()I");
 
-		GET_JCLASS(env, processClass, "android/os/Process");
-		CALL_STATIC_JINT_METHOD(env, pid, processClass, "myPid", "()I");
+        return pid;
+    }
 
-		return pid;
-	}
+    inline void LaunchApp(JNIEnv* env = nullptr, std::string packageNameStr = "") {
+        if (env == nullptr)
+            env = GetJNIEnv();
+        jstring packageName;
 
-	inline void LaunchApp(JNIEnv* env = nullptr, std::string packageNameStr = "") {
-		if (env == nullptr) env = GetJNIEnv();
-		jstring packageName;
+        if (packageNameStr == "")
+            packageName = GetPackageName(env);
+        else
+            packageName = env->NewStringUTF(packageNameStr.c_str());
 
-		if (packageNameStr == "") packageName = GetPackageName(env);
-		else packageName = env->NewStringUTF(packageNameStr.c_str());
+        // Get Activity
+        jobject appContext = GetAppContext(env);
 
-		// Get Activity
-		jobject appContext = GetAppContext(env);
+        CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
 
-		CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+        // Get Intent
+        CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
 
-		// Get Intent
-		CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
+        if (intent != nullptr)
+            CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", intent);
+    }
 
-		if(intent != nullptr)
-			CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", intent);
-	}
+    inline void KillApp(JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline void KillApp(JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        GET_JCLASS(env, processClass, "android/os/Process");
+        CALL_STATIC_VOID_METHOD(env, processClass, "killProcess", "(I)V", GetPID(env));
+    }
 
-		GET_JCLASS(env, processClass, "android/os/Process");
-		CALL_STATIC_VOID_METHOD(env, processClass, "killProcess", "(I)V", GetPID(env));
-	}
+    inline void RestartApp(JNIEnv* env = nullptr, std::string packageNameStr = "") {
+        if (env == nullptr)
+            env = GetJNIEnv();
+        jstring packageName;
 
-	inline void RestartApp(JNIEnv* env = nullptr, std::string packageNameStr = "") {
-		if (env == nullptr) env = GetJNIEnv();
-		jstring packageName;
+        if (packageNameStr == "")
+            packageName = GetPackageName(env);
+        else
+            packageName = env->NewStringUTF(packageNameStr.c_str());
 
-		if (packageNameStr == "") packageName = GetPackageName(env);
-		else packageName = env->NewStringUTF(packageNameStr.c_str());
+        // Get Activity
+        jobject appContext = GetAppContext(env);
 
-		// Get Activity
-		jobject appContext = GetAppContext(env);
+        // Get Package Manager
+        CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
 
-		// Get Package Manager
-		CALL_JOBJECT_METHOD(env, packageManager, appContext, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+        // Get Intent
+        CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
 
-		// Get Intent
-		CALL_JOBJECT_METHOD(env, intent, packageManager, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", packageName);
+        // Get Component Name
+        CALL_JOBJECT_METHOD(env, componentName, intent, "getComponent", "()Landroid/content/ComponentName;");
 
-		// Get Component Name
-		CALL_JOBJECT_METHOD(env, componentName, intent, "getComponent", "()Landroid/content/ComponentName;");
+        // Create Restart Intent
+        GET_JCLASS(env, intentClass, "android/content/Intent");
+        CALL_STATIC_JOBJECT_METHOD(
+            env, restartIntent, intentClass, "makeRestartActivityTask", "(Landroid/content/ComponentName;)Landroid/content/Intent;", componentName
+        );
 
-		// Create Restart Intent
-		GET_JCLASS(env, intentClass, "android/content/Intent");
-		CALL_STATIC_JOBJECT_METHOD(env, restartIntent, intentClass, "makeRestartActivityTask", "(Landroid/content/ComponentName;)Landroid/content/Intent;", componentName);
+        // Restart Game
+        CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", restartIntent);
 
-		// Restart Game
-		CALL_VOID_METHOD(env, appContext, "startActivity", "(Landroid/content/Intent;)V", restartIntent);
+        KillApp(env);
+    }
 
-		KillApp(env);
-	}
+    inline void SetMute(bool muted, JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline void SetMute(bool muted, JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        jstring audioName = env->NewStringUTF("audio");
 
-		jstring audioName = env->NewStringUTF("audio");
+        // Get Context
+        jobject appContext = GetAppContext(env);
 
-		// Get Context
-		jobject appContext = GetAppContext(env);
+        // Get AudioManager
+        CALL_JOBJECT_METHOD(env, audioManager, appContext, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", audioName);
 
-		// Get AudioManager
-		CALL_JOBJECT_METHOD(env, audioManager, appContext, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", audioName);
+        // Call adjustStreamVolume With STREAM_MUSIC, ADJUST_(UN)MUTE, FLAG_REMOVE_SOUND_AND_VIBRATE
+        int adjust = muted ? -100 : 100;
+        CALL_VOID_METHOD(env, audioManager, "adjustStreamVolume", "(III)V", 3, adjust, 8);
+    }
 
-		// Call adjustStreamVolume With STREAM_MUSIC, ADJUST_(UN)MUTE, FLAG_REMOVE_SOUND_AND_VIBRATE
-		int adjust = muted ? -100 : 100;
-		CALL_VOID_METHOD(env, audioManager, "adjustStreamVolume", "(III)V", 3, adjust, 8);
-	}
+    // can only be run from UI thread
+    inline void SetScreenOnImpl(bool on) {
+        auto env = GetJNIEnv();
 
-	// can only be run from UI thread
-	inline void SetScreenOnImpl(bool on) {
-		auto env = GetJNIEnv();
+        // // Get UnityPlayer Class
+        // GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
 
-		// // Get UnityPlayer Class
-		// GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
+        // // Get Activity
+        // GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
 
-		// // Get Activity
-		// GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
+        // Get Window
+        CALL_JOBJECT_METHOD(env, window, activity, "getWindow", "()Landroid/view/Window;");
 
-		// Get Window
-		CALL_JOBJECT_METHOD(env, window, activity, "getWindow", "()Landroid/view/Window;");
+        // Set or Remove Flag
+        auto method = on ? "addFlags" : "clearFlags";
+        CALL_VOID_METHOD(env, window, method, "(I)V", 128);  // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 
-		// Set or Remove Flag
-		auto method = on ? "addFlags" : "clearFlags";
-		CALL_VOID_METHOD(env, window, method, "(I)V", 128); // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        env->DeleteGlobalRef(activity);
+        activity = nullptr;
+    }
 
-		env->DeleteGlobalRef(activity);
-		activity = nullptr;
-	}
+    inline void SetScreenOn(bool on, JNIEnv* env = nullptr) {
+        if (env == nullptr)
+            env = GetJNIEnv();
 
-	inline void SetScreenOn(bool on, JNIEnv* env = nullptr) {
-		if (env == nullptr) env = GetJNIEnv();
+        // Get UnityPlayer Class
+        GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
 
-		// Get UnityPlayer Class
-		GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
+        // Get Activity
+        GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
 
-		// Get Activity
-		GET_STATIC_JOBJECT_FIELD(env, currentActivity, playerClass, "currentActivity", "Landroid/app/Activity;");
+        activity = env->NewGlobalRef(currentActivity);
 
-		activity = env->NewGlobalRef(currentActivity);
-
-		char c = on;
-		write(messagePipe[1], &c, 1);
-	}
-
-	// -- Private Functions --
-
-	inline void __attribute__((constructor)) OnDlopen() {
-		__android_log_print(ANDROID_LOG_VERBOSE, "jni-utils", "Caching Jvm...");
-
-		JNIEnv* env = Modloader::getJni();
-		env->GetJavaVM(&Jvm);
-
-		if (Jvm != nullptr) __android_log_print(ANDROID_LOG_VERBOSE, "jni-utils", "Successfully cached Jvm!");
-		else __android_log_print(ANDROID_LOG_ERROR, "jni-utils", "Failed to cache Jvm, Jvm is a nullptr!");
-	}
+        char c = on;
+        write(messagePipe[1], &c, 1);
+    }
 }

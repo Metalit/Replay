@@ -1,55 +1,64 @@
 #include "Main.hpp"
-#include "Config.hpp"
 
+#include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
+#include "CustomTypes/ReplaySettings.hpp"
+#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
+#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
+#include "JNIUtils.hpp"
+#include "MenuSelection.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
-#include "JNIUtils.hpp"
-#include "CustomTypes/ReplaySettings.hpp"
+#include "bsml/shared/BSML.hpp"
+#include "custom-types/shared/register.hpp"
 
 using namespace GlobalNamespace;
 
-ModInfo modInfo;
+modloader::ModInfo modInfo = {MOD_ID, VERSION, 0};
 
 bool recorderInstalled = false;
 
-Logger& getLogger() {
-    static Logger* logger = new Logger(modInfo);
-    return *logger;
-}
-
-MAKE_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
+MAKE_AUTO_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
     StandardLevelDetailView_RefreshContent(self);
 
     Menu::EnsureSetup(self);
-    Manager::SetLevel(self->selectedDifficultyBeatmap);
+    Manager::SetLevel({self->beatmapKey, self->_beatmapLevel});
     Menu::CheckMultiplayer();
 }
 
-#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
-#include "HMUI/ViewController_AnimationType.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
-
-MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange, &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
-        void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* oldViewController, HMUI::ViewController* newViewController, HMUI::ViewController::AnimationType animationType) {
-
-    if(newViewController->get_name() == "ReplayViewController") {
+MAKE_AUTO_HOOK_MATCH(
+    SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange,
+    &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
+    void,
+    SinglePlayerLevelSelectionFlowCoordinator* self,
+    HMUI::ViewController* oldViewController,
+    HMUI::ViewController* newViewController,
+    HMUI::ViewController::AnimationType animationType
+) {
+    if (newViewController->get_name() == "ReplayViewController") {
         self->SetLeftScreenViewController(nullptr, animationType);
         self->SetRightScreenViewController(nullptr, animationType);
         self->SetBottomScreenViewController(nullptr, animationType);
         self->SetTitle("REPLAY", animationType);
-        self->set_showBackButton(true);
+        self->showBackButton = true;
         return;
     }
 
-    SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange(self, oldViewController, newViewController, animationType);
+    SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange(
+        self, oldViewController, newViewController, animationType
+    );
 }
 
-MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, &SinglePlayerLevelSelectionFlowCoordinator::BackButtonWasPressed,
-        void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* topViewController) {
-
-    if(topViewController->get_name() == "ReplayViewController") {
+MAKE_AUTO_HOOK_MATCH(
+    SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed,
+    &SinglePlayerLevelSelectionFlowCoordinator::BackButtonWasPressed,
+    void,
+    SinglePlayerLevelSelectionFlowCoordinator* self,
+    HMUI::ViewController* topViewController
+) {
+    if (topViewController->name == "ReplayViewController") {
         self->DismissViewController(topViewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
         return;
     }
@@ -57,17 +66,19 @@ MAKE_HOOK_MATCH(SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed, 
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
 }
 
-#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
-#include "MenuSelection.hpp"
-
 static bool selectedAlready = false;
 static bool doRender = true;
 static int nonRenderIdx = 0;
-MAKE_HOOK_MATCH(LevelFilteringNavigationController_UpdateCustomSongs, &LevelFilteringNavigationController::UpdateCustomSongs, void, LevelFilteringNavigationController* self) {
 
+MAKE_AUTO_HOOK_MATCH(
+    LevelFilteringNavigationController_UpdateCustomSongs,
+    &LevelFilteringNavigationController::UpdateCustomSongs,
+    void,
+    LevelFilteringNavigationController* self
+) {
     LevelFilteringNavigationController_UpdateCustomSongs(self);
 
-    if(!selectedAlready) {
+    if (!selectedAlready) {
         selectedAlready = true;
         if (doRender)
             RenderLevelInConfig();
@@ -91,7 +102,7 @@ MAKE_HOOK_NO_CATCH(unity_initJni, 0x0, void, JNIEnv* env, jobject jobj, jobject 
 
     unity_initJni(env, jobj, context);
 
-    if(looperMade)
+    if (looperMade)
         return;
 
     mainThreadLooper = ALooper_forThread();
@@ -110,14 +121,14 @@ int LooperCallback(int fd, int events, void* data) {
     return 1;
 }
 
-extern "C" void setup(ModInfo& info) {
-    info.id = MOD_ID;
-    info.version = VERSION;
-    modInfo = info;
+extern "C" void setup(CModInfo* info) {
+    *info = modInfo.to_c();
 
-    getConfig().Init(info);
+    Paper::Logger::RegisterFileContextId(MOD_ID);
 
-    if(!direxists(RendersFolder))
+    getConfig().Init(modInfo);
+
+    if (!direxists(RendersFolder))
         mkpath(RendersFolder);
 
     // in case it crashed during a render, unmute
@@ -125,35 +136,28 @@ extern "C" void setup(ModInfo& info) {
     JNIUtils::SetMute(false);
     // screen on should be cleared when the activity closes
 
-    LOG_INFO("Installing UI thread hook...");
-    uintptr_t libunity = baseAddr("libunity.so");
-    uintptr_t unity_initJni_addr = findPattern(libunity, "ff c3 00 d1 f5 53 01 a9 f3 7b 02 a9 ff 07 00 f9 08 00 40 f9 f4 03 01 aa e1 23 00 91 f3 03 02 aa 08 6d 43 f9");
-    INSTALL_HOOK_DIRECT(getLogger(), unity_initJni, (void*) unity_initJni_addr);
-    LOG_INFO("Installed UI thread hook!");
-
-    getLogger().info("Completed setup!");
+    LOG_INFO("Completed setup!");
 }
 
-#include "questui/shared/QuestUI.hpp"
-
-#include "custom-types/shared/register.hpp"
-
 extern "C" void load() {
-    Paper::Logger::RegisterFileContextId("Replay");
+    LOG_INFO("Installing UI thread hook...");
+    uintptr_t libunity = baseAddr("libunity.so");
+    uintptr_t unity_initJni_addr =
+        findPattern(libunity, "ff c3 00 d1 f5 53 01 a9 f3 7b 02 a9 ff 07 00 f9 08 00 40 f9 f4 03 01 aa e1 23 00 91 f3 03 02 aa 08 6d 43 f9");
+    LOG_INFO("Found UI thread address: {}", unity_initJni_addr);
+    INSTALL_HOOK_DIRECT(logger, unity_initJni, (void*) unity_initJni_addr);
+    LOG_INFO("Installed UI thread hook!");
+}
 
+extern "C" void late_load() {
     il2cpp_functions::Init();
 
     custom_types::Register::AutoRegister();
 
-    QuestUI::Register::RegisterModSettingsFlowCoordinator<ReplaySettings::ModSettings*>(modInfo);
+    BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);
 
     LOG_INFO("Installing hooks...");
-    auto& logger = getLogger();
-    Hooks::Install(logger);
-    INSTALL_HOOK(logger, StandardLevelDetailView_RefreshContent);
-    INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange);
-    INSTALL_HOOK(logger, SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed);
-    INSTALL_HOOK(logger, LevelFilteringNavigationController_UpdateCustomSongs);
+    Hooks::Install();
     LOG_INFO("Installed all hooks!");
 
     selectedAlready = !getConfig().RenderLaunch.GetValue();
@@ -161,7 +165,7 @@ extern "C" void load() {
 
     getConfig().AudioMode.SetValue(false);
 
-    if(getConfig().Version.GetValue() == 1) {
+    if (getConfig().Version.GetValue() == 1) {
         LOG_INFO("Migrating config from v1 to v2");
         getConfig().TextHeight.SetValue(getConfig().TextHeight.GetValue() / 2);
         getConfig().Bitrate.SetValue(getConfig().Bitrate.GetValue() / 2);
@@ -169,20 +173,23 @@ extern "C" void load() {
     }
 
     // no making the text offscreen through config editing
-    if(getConfig().TextHeight.GetValue() > 5)
+    if (getConfig().TextHeight.GetValue() > 5)
         getConfig().TextHeight.SetValue(5);
-    if(getConfig().TextHeight.GetValue() < 1)
+    if (getConfig().TextHeight.GetValue() < 1)
         getConfig().TextHeight.SetValue(1);
 
     // clamp bitrate to 100 mbps
-    if(getConfig().Bitrate.GetValue() > 100000)
+    if (getConfig().Bitrate.GetValue() > 100000)
         getConfig().Bitrate.SetValue(100000);
 
     getConfig().AudioMode.SetValue(false);
 
-    if(Modloader::requireMod("bl"))
+    CModInfo beatleader{.id = "bl"};
+    CModInfo scoresaber{.id = "ScoreSaber"};
+
+    if (modloader_require_mod(&beatleader, CMatchType::MatchType_IdOnly) == CLoadResultEnum::MatchType_Loaded)
         recorderInstalled = true;
-    else if(Modloader::requireMod("ScoreSaber"))
+    else if (modloader_require_mod(&scoresaber, CMatchType::MatchType_IdOnly) == CLoadResultEnum::MatchType_Loaded)
         recorderInstalled = true;
 
     LOG_INFO("Recording mod installed: {}", recorderInstalled);

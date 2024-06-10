@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release_ver:
-        description: 'Version to tag release'
+        description: 'Version to release (v will be added to the tag)'
         required: true
       release_msg:
         description: 'Message for release'
@@ -75,7 +75,7 @@ jobs:
         uses: softprops/action-gh-release@v0.1.12
         with:
           name: ${{ github.event.inputs.release_msg }}
-          tag_name: ${{ github.event.inputs.release_ver }}
+          tag_name: "v${{ github.event.inputs.release_ver }}"
           files: |
             ./build/${{ steps.libname.outputs.NAME }}
             ./build/debug/debug_${{ steps.libname.outputs.NAME }}

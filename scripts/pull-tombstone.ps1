@@ -1,10 +1,10 @@
 Param(
     [Parameter(Mandatory=$false)]
     [String] $fileName = "RecentCrash.log",
-    
+
     [Parameter(Mandatory=$false)]
     [Switch] $analyze,
-    
+
     [Parameter(Mandatory=$false)]
     [Switch] $help
 )

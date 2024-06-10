@@ -1,7 +1,8 @@
 #pragma once
 
-#include "sombrero/shared/FastVector3.hpp"
+#include "Main.hpp"
 #include "sombrero/shared/FastQuaternion.hpp"
+#include "sombrero/shared/FastVector3.hpp"
 
 using Vector3 = Sombrero::FastVector3;
 using Quaternion = Sombrero::FastQuaternion;
@@ -11,9 +12,12 @@ using Quaternion = Sombrero::FastQuaternion;
 // all credit to @fern [https://github.com/Fernthedev/]
 
 static float ExpoEaseInOut(float t, float b, float c, float d) {
-    if (t == 0.0f) return b;
-    if (t == d) return b + c;
-    if ((t /= d / 2.0f) < 1.0f) return c / 2.0f * (float) std::pow(2.0f, 10.0f * (t - 1.0f)) + b;
+    if (t == 0.0f)
+        return b;
+    if (t == d)
+        return b + c;
+    if ((t /= d / 2.0f) < 1.0f)
+        return c / 2.0f * (float) std::pow(2.0f, 10.0f * (t - 1.0f)) + b;
     return c / 2.0f * (-(float) std::pow(2.0f, -10.0f * --t) + 2.0f) + b;
 }
 
@@ -23,7 +27,9 @@ static float EasedLerp(float from, float to, float time, float deltaTime) {
 
 // This will make it so big movements are actually exponentially bigger while smaller ones are less
 static Vector3 EaseLerp(Vector3 value1, Vector3 value2, float time, float deltaTime) {
-    return Vector3(EasedLerp(value1.x, value2.x, time, deltaTime), EasedLerp(value1.y, value2.y, time, deltaTime), EasedLerp(value1.z, value2.z, time, deltaTime));
+    return Vector3(
+        EasedLerp(value1.x, value2.x, time, deltaTime), EasedLerp(value1.y, value2.y, time, deltaTime), EasedLerp(value1.z, value2.z, time, deltaTime)
+    );
 }
 
 static Quaternion Slerp(Quaternion quaternion1, Quaternion quaternion2, float amount) {
@@ -59,29 +65,27 @@ static inline Quaternion InverseSignQuaternion(Quaternion q) {
 
 // math from https://stackoverflow.com/a/20249699
 struct QuaternionAverage {
-    public:
+   public:
     QuaternionAverage(Quaternion baseRot, bool ignoreY) : baseRotation(baseRot), ignoreY(ignoreY) {}
 
-    void AddRotation(Quaternion& rot) {
-        //Before we add the new rotation to the average (mean), we have to check whether the quaternion has to be inverted. Because
-        //q and -q are the same rotation, but cannot be averaged, we have to make sure they are all the same.
-        if(Quaternion::Dot(rot, baseRotation) < 0) {
-            rot = InverseSignQuaternion(rot);
+    void AddRotation(Quaternion rot) {
+        // remove y rotation from average on 360 degree levels
+        if (ignoreY) {
+            // calculate rotation around y axis (euler angles are in the wrong order)
+            auto yRot = Quaternion::Normalize({0, rot.y, 0, rot.w});
+            // multiply to undo y axis rotation, inverse first to use global y axis
+            rot = Sombrero::QuaternionMultiply(Quaternion::Inverse(yRot), rot);
         }
 
-        if(ignoreY) {
-            Quaternion modRot = {0, rot.y, 0, rot.w};
-            modRot = Sombrero::QuaternionMultiply(rot, Quaternion::Inverse(modRot));
-            cumulative.w += modRot.w;
-            cumulative.x += modRot.x;
-            cumulative.y += modRot.y;
-            cumulative.z += modRot.z;
-        } else {
-            cumulative.w += rot.w;
-            cumulative.x += rot.x;
-            cumulative.y += rot.y;
-            cumulative.z += rot.z;
-        }
+        // before adding the new rotation to the average (mean), we have to check whether the quaternion has to be inverted
+        // because q and -q are the same rotation, but cannot be averaged
+        if (Quaternion::Dot(rot, baseRotation) < 0)
+            rot = InverseSignQuaternion(rot);
+
+        cumulative.w += rot.w;
+        cumulative.x += rot.x;
+        cumulative.y += rot.y;
+        cumulative.z += rot.z;
 
         num++;
     }
@@ -95,18 +99,18 @@ struct QuaternionAverage {
         float z = cumulative.z * avgMult;
 
         // normalize
-        float lengthD = 1 / (w*w + x*x + y*y + z*z);
+        float lengthD = 1 / (w * w + x * x + y * y + z * z);
         w *= lengthD;
         x *= lengthD;
         y *= lengthD;
         z *= lengthD;
 
-        return Sombrero::QuaternionMultiply({x, y, z, w}, UnityEngine::Quaternion::Inverse(baseRotation));
+        return Sombrero::QuaternionMultiply({x, y, z, w}, Quaternion::Inverse(baseRotation));
     }
 
-    private:
+   private:
     Quaternion cumulative = {0, 0, 0, 0};
     int num = 0;
-    const Quaternion baseRotation;
-    const bool ignoreY;
+    Quaternion const baseRotation;
+    bool const ignoreY;
 };

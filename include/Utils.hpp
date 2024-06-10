@@ -1,16 +1,15 @@
 #pragma once
 
-#include "Replay.hpp"
-
-#include "GlobalNamespace/BeatmapDifficulty.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
-#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-#include "GlobalNamespace/IDifficultyBeatmap.hpp"
+#include "GlobalNamespace/BeatmapDifficulty.hpp"
+#include "GlobalNamespace/BeatmapKey.hpp"
+#include "GlobalNamespace/BeatmapLevel.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
-#include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/NoteController.hpp"
+#include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/Saber.hpp"
+#include "Replay.hpp"
 #include "UnityEngine/Sprite.hpp"
 
 std::string SanitizedPath(std::string path);
@@ -25,29 +24,44 @@ std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
 
 std::string GetDifficultyName(int difficulty);
 
+GlobalNamespace::BeatmapCharacteristicSO* GetCharacteristic(std::string serializedName);
+
 std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* characteristic);
 
-std::string GetCharacteristicName(std::string characteristicName);
+std::string GetCharacteristicName(std::string serializedName);
 
-std::string GetMapString(GlobalNamespace::IDifficultyBeatmap* beatmap);
+struct DifficultyBeatmap {
+    GlobalNamespace::BeatmapKey difficulty;
+    GlobalNamespace::BeatmapLevel* level;
 
-std::string GetHash(GlobalNamespace::IPreviewBeatmapLevel* level);
+    DifficultyBeatmap() = default;
+    DifficultyBeatmap(GlobalNamespace::BeatmapKey diff, GlobalNamespace::BeatmapLevel* lev) : difficulty(diff), level(lev){};
 
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::IDifficultyBeatmap* beatmap);
+    bool operator==(DifficultyBeatmap const& rhs) const {
+        return level == rhs.level && GlobalNamespace::BeatmapKey::op_Equality(difficulty, rhs.difficulty);
+    };
+};
+
+std::string GetMapString(DifficultyBeatmap beatmap);
+
+std::string GetHash(DifficultyBeatmap beatmap);
+
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(DifficultyBeatmap beatmap);
 
 std::string SecondsToString(int value);
 
 std::string GetStringForTimeSinceNow(long start);
 
-std::string GetModifierString(const ReplayModifiers& modifiers, bool includeNoFail);
+std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail);
 
-void GetBeatmapData(GlobalNamespace::IDifficultyBeatmap* beatmap, std::function<void(GlobalNamespace::IReadonlyBeatmapData*)> callback);
+void GetBeatmapData(DifficultyBeatmap beatmap, std::function<void(GlobalNamespace::IReadonlyBeatmapData*)> callback);
 
-GlobalNamespace::NoteCutInfo GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
+GlobalNamespace::NoteCutInfo
+GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
 
 GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-float ModifierMultiplier(const ReplayWrapper& replay, bool failed);
+float ModifierMultiplier(ReplayWrapper const& replay, bool failed);
 
 float EnergyForNote(const class NoteEventInfo& noteEvent);
 
@@ -63,7 +77,7 @@ struct MapPreview {
     int maxScore;
 };
 
-MapPreview MapAtTime(const ReplayWrapper& replay, float time);
+MapPreview MapAtTime(ReplayWrapper const& replay, float time);
 
 bool IsButtonDown(const class Button& button);
 

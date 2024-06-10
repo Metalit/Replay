@@ -5,4 +5,4 @@
 
 struct EventFrame : public virtual EventReplay, public virtual FrameReplay {};
 
-ReplayWrapper ReadScoresaber(const std::string& path);
+ReplayWrapper ReadScoresaber(std::string const& path);

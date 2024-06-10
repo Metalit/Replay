@@ -15,6 +15,9 @@ Param(
     [Switch] $help,
 
     [Parameter(Mandatory=$false)]
+    [Switch] $trim,
+
+    [Parameter(Mandatory=$false)]
     [Switch] $excludeHeader
 )
 
@@ -24,10 +27,11 @@ if ($help -eq $true) {
         Write-Output "`n-- Arguments --`n"
     }
 
-    Write-Output "-Self `t`t Only Logs your mod and Crashes"
-    Write-Output "-All `t`t Logs everything, including logs made by the Quest itself"
-    Write-Output "-Custom `t Specify a specific logging pattern, e.g `"custom-types|questui`""
-    Write-Output "`t`t NOTE: The paterent `"AndriodRuntime|CRASH`" is always appended to a custom pattern"
+    Write-Output "-Self `t`t Only logs from your mod and crashes"
+    Write-Output "-All `t`t Logs everything, including logs from other processes"
+    Write-Output "-Custom `t Specify a specific logging pattern, e.g `"custom-types|bsml`""
+    Write-Output "`t`t NOTE: The pattern `"CRASH|scotland2|Unity`" is always appended to a custom pattern"
+    Write-Output "-Trim `t Removes time, level, and mod from the start of lines`""
     Write-Output "-File `t`t Saves the output of the log to the file name given"
 
     exit
@@ -55,16 +59,17 @@ if ($all -eq $false) {
 if ($all -eq $false) {
     $pattern = "("
     if ($self -eq $true) {
-        $modID = (Get-Content "./mod.json" -Raw | ConvertFrom-Json).id
-        $pattern += "$modID|"
+        & $PSScriptRoot/validate-modjson.ps1
+        $name = (Get-Content "./mod.json" -Raw | ConvertFrom-Json).name.Replace(" ", "")
+        $pattern += "${name}|"
     }
     if (![string]::IsNullOrEmpty($custom)) {
         $pattern += "$custom|"
     }
     if ($pattern -eq "(") {
-        $pattern = "(QuestHook|modloader|"
+        $pattern = "( INFO| DEBUG| WARN| ERROR| CRITICAL|"
     }
-    $pattern += "AndroidRuntime|CRASH)"
+    $pattern += "CRASH|scotland2|Unity  )"
     $command += " | Select-String -pattern `"$pattern`""
 }
 
@@ -73,4 +78,5 @@ if (![string]::IsNullOrEmpty($file)) {
 }
 
 Write-Output "Logging using Command `"$command`""
+adb logcat -c
 Invoke-Expression $command

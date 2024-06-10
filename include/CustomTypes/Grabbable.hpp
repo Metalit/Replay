@@ -1,10 +1,10 @@
 #pragma once
 
-#include "UnityEngine/GameObject.hpp"
 #include "GlobalNamespace/VRController.hpp"
-#include "VRUIControls/VRPointer.hpp"
+#include "MathUtils.hpp"
+#include "UnityEngine/GameObject.hpp"
 #include "VRUIControls/VRInputModule.hpp"
-
+#include "VRUIControls/VRPointer.hpp"
 #include "custom-types/shared/macros.hpp"
 
 DECLARE_CLASS_CODEGEN(ReplayHelpers, Grabbable, UnityEngine::MonoBehaviour,
@@ -14,9 +14,9 @@ DECLARE_CLASS_CODEGEN(ReplayHelpers, Grabbable, UnityEngine::MonoBehaviour,
 
     DECLARE_INSTANCE_FIELD(GlobalNamespace::VRController*, controller);
     DECLARE_INSTANCE_FIELD(VRUIControls::VRInputModule*, inputModule);
-    DECLARE_INSTANCE_FIELD(UnityEngine::Vector3, grabPos);
-    DECLARE_INSTANCE_FIELD(UnityEngine::Quaternion, grabRot);
+    DECLARE_INSTANCE_FIELD(Vector3, grabPos);
+    DECLARE_INSTANCE_FIELD(Quaternion, grabRot);
 
-    public:
+   public:
     std::function<void(UnityEngine::GameObject*)> onRelease = nullptr;
 )

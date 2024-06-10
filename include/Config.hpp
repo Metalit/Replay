@@ -2,43 +2,15 @@
 
 #include "config-utils/shared/config-utils.hpp"
 
-const std::vector<std::pair<int, int>> resolutions = {
-    {640, 480},
-    {1280, 720},
-    {1920, 1080},
-    {2560, 1440},
-    {3840, 2160}
-};
+inline std::vector<std::pair<int, int>> resolutions = {{640, 480}, {1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}};
 
-const std::vector<std::string> cameraModes = {
-    "Normal",
-    "Smooth Camera",
-    "Third Person"
-};
+inline std::vector<std::string_view> cameraModes = {"Normal", "Smooth Camera", "Third Person"};
 
-enum struct CameraMode {
-    Headset,
-    Smooth,
-    ThirdPerson
-};
+enum struct CameraMode { Headset, Smooth, ThirdPerson };
 
-enum struct InputButton {
-    None,
-    SideTrigger,
-    FrontTrigger,
-    LowerButton,
-    UpperButton,
-    JoystickUp,
-    JoystickDown,
-    JoystickLeft,
-    JoystickRight
-};
+enum struct InputButton { None, SideTrigger, FrontTrigger, LowerButton, UpperButton, JoystickUp, JoystickDown, JoystickLeft, JoystickRight };
 
-enum struct InputController {
-    None,
-    Left,
-    Right
-};
+enum struct InputController { None, Left, Right };
 
 DECLARE_JSON_CLASS(Button,
     VALUE(int, Button)
