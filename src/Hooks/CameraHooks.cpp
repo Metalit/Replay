@@ -304,7 +304,16 @@ void WaitThenMux() {
 
     if (vidExists && audExists) {
         BSML::MainThreadScheduler::ScheduleAfterTime(5, []() {
-            std::string outputFile = fmt::format("{}/{}.mp4", RendersFolder, fileName);
+            std::string outputFile;
+            int num = 0;
+            do {
+                if (num == 0)
+                    outputFile = fmt::format("{}/{}.mp4", RendersFolder, fileName);
+                else
+                    outputFile = fmt::format("{}/{}_{}.mp4", RendersFolder, fileName, num);
+                num++;
+            } while (fileexists(outputFile));
+
             Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath);
             if (fileexists(TmpOutPath))
                 std::filesystem::rename(TmpOutPath, outputFile);
