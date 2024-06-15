@@ -277,7 +277,7 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::St
             auto canvas = BSML::Lite::CreateCanvas();
             canvas->transform->position = {0, getConfig().TextHeight.GetValue(), 7};
 
-            BSML::Lite::CreateText(canvas, text, 7)->alignment = TMPro::TextAlignmentOptions::Center;
+            BSML::Lite::CreateText(canvas, text, TMPro::FontStyles::Italic, 7, {}, {200, 10})->alignment = TMPro::TextAlignmentOptions::Center;
         }
 
         // set culling matrix for moved camera modes and for rendering
