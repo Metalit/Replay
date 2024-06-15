@@ -36,6 +36,7 @@
 #include "UnityEngine/Playables/PlayableDirector.hpp"
 #include "UnityEngine/PrimitiveType.hpp"
 #include "UnityEngine/Renderer.hpp"
+#include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Shader.hpp"
 #include "UnityEngine/Time.hpp"
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
@@ -126,7 +127,8 @@ CreateCube(UnityEngine::GameObject* parent, UnityEngine::Material* mat, Vector3 
 
 UnityEngine::GameObject* CreateCameraModel() {
     static ConstString searchName("Custom/SimpleLit");
-    auto mat = UnityEngine::Material::New_ctor(UnityEngine::Shader::Find(searchName));
+    auto shader = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Shader*>()->First([](auto s) { return s->name == searchName; });
+    auto mat = UnityEngine::Material::New_ctor(shader);
     mat->set_color(UnityEngine::Color::get_white());
     auto ret = CreateCube(nullptr, mat, {}, {}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
     ret->AddComponent<ReplayHelpers::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
