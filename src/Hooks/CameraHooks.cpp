@@ -52,11 +52,11 @@ static std::string fileName = "";
 MAKE_AUTO_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, PlayerTransforms* self) {
     if (Manager::replaying) {
         if (wasMoving && Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            auto parent = self->_originParentTransform ? self->_originParentTransform : cameraRig->transform->parent;
+            auto parent = self->_originParentTransform ? self->_originParentTransform : cameraRig->fakeHead->parent;
             // always update rotation but only update position when releasing
             if (!Manager::Camera::moving)
-                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(cameraRig->cameraTransform->position));
-            auto rot = TransformExtensions::InverseTransformRotation(parent, cameraRig->cameraTransform->rotation).eulerAngles;
+                getConfig().ThirdPerPos.SetValue(parent->InverseTransformPoint(cameraRig->transform->position));
+            auto rot = TransformExtensions::InverseTransformRotation(parent, cameraRig->transform->rotation).eulerAngles;
             getConfig().ThirdPerRot.SetValue(rot);
         }
         wasMoving = Manager::Camera::moving;
@@ -64,7 +64,7 @@ MAKE_AUTO_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, P
             Vector3 targetPos;
             Quaternion targetRot;
             if (Manager::GetCurrentInfo().positionsAreLocal || Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-                auto parent = self->_originParentTransform ? self->_originParentTransform : cameraRig->transform->parent;
+                auto parent = self->_originParentTransform ? self->_originParentTransform : cameraRig->fakeHead->parent;
                 auto rot = parent->rotation;
                 targetPos = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadPosition()) + parent->position;
                 targetRot = Sombrero::QuaternionMultiply(rot, Manager::Camera::GetHeadRotation());
@@ -139,6 +139,8 @@ void SetupRecording() {
         if (auto comp = customCamera->GetComponent<MainCameraCullingMask*>())
             UnityEngine::Object::DestroyImmediate(comp);
         if (auto comp = customCamera->GetComponent<MainCamera*>())
+            UnityEngine::Object::DestroyImmediate(comp);
+        if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
             UnityEngine::Object::DestroyImmediate(comp);
         if (auto comp = customCamera->GetComponent("CameraController"))
             UnityEngine::Object::DestroyImmediate(comp);

@@ -4,14 +4,14 @@
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/MonoBehaviour.hpp"
+#include "UnityEngine/SpatialTracking/TrackedPoseDriver.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "custom-types/shared/macros.hpp"
 
 DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour,
 
     DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, fakeHead);
-    DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, child);
-    DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, cameraTransform);
+    DECLARE_INSTANCE_FIELD(UnityEngine::SpatialTracking::TrackedPoseDriver*, cameraTracker);
     DECLARE_INSTANCE_FIELD(BeatSaber::BeatAvatarSDK::BeatAvatarPoseController*, avatar);
     DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, progress);
     DECLARE_INSTANCE_FIELD(TMPro::TextMeshProUGUI*, progressText);
