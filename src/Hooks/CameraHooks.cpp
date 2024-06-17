@@ -142,6 +142,8 @@ void SetupRecording() {
             UnityEngine::Object::DestroyImmediate(comp);
         if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
             UnityEngine::Object::DestroyImmediate(comp);
+        if (auto comp = customCamera->GetComponent<ReplayHelpers::CameraRig*>())
+            UnityEngine::Object::DestroyImmediate(comp);
         if (auto comp = customCamera->GetComponent("CameraController"))
             UnityEngine::Object::DestroyImmediate(comp);
 
