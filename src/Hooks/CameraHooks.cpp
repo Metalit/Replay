@@ -132,6 +132,7 @@ void SetupRecording() {
     if (!Manager::Camera::GetAudioMode()) {
         LOG_INFO("Beginning video capture");
         customCamera = UnityEngine::Object::Instantiate(mainCamera);
+        customCamera->gameObject->active = false;
         customCamera->enabled = true;
 
         while (customCamera->transform->childCount > 0)
@@ -186,6 +187,7 @@ void SetupRecording() {
             audioCapture = Hollywood::SetAudioCapture(songSource->_audioSource);
             audioCapture->OpenFile(TmpAudPath);
         }
+        customCamera->gameObject->active = true;
     } else {
         LOG_INFO("Beginning audio capture");
         auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>()->First([](auto x) {
