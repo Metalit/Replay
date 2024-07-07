@@ -16,6 +16,7 @@
 #include "GlobalNamespace/SaberType.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/VRCenterAdjust.hpp"
+#include "GlobalNamespace/VRController.hpp"
 #include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
 #include "Main.hpp"
@@ -161,6 +162,12 @@ MAKE_AUTO_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self
         }
     }
     Saber_ManualUpdate(self);
+}
+// make sure saber positions aren't overridden
+MAKE_AUTO_HOOK_MATCH(VRController_Update, &VRController::Update, void, VRController* self) {
+
+    if (!Manager::replaying)
+        VRController_Update(self);
 }
 
 // disable vibrations during replays

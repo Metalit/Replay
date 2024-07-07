@@ -24,19 +24,29 @@ void CameraRig::Update() {
     if (Manager::replaying && !Manager::paused) {
         pausedLastFrame = false;
 
+        auto& frame = Manager::GetFrame();
+        auto& targetRot = frame.head.rotation;
+        auto& targetPos = frame.head.position;
+
+        // set fake head position so playertransforms is the same as during gameplay
+        if (Manager::GetCurrentInfo().positionsAreLocal) {
+            fakeHead->localPosition = targetPos;
+            fakeHead->localRotation = targetRot;
+        } else
+            fakeHead->SetPositionAndRotation(targetPos, targetRot);
+
         auto mode = (CameraMode) Manager::Camera::GetMode();
 
         bool enabled = getConfig().Avatar.GetValue() && mode == CameraMode::ThirdPerson;
         avatar->gameObject->active = enabled;
         if (enabled) {
-            auto& frame = Manager::GetFrame();
             auto& nextFrame = Manager::GetNextFrame();
             float lerp = Manager::GetFrameProgress();
             avatar->UpdateTransforms(
-                Vector3::Lerp(frame.head.position, nextFrame.head.position, lerp),
+                Vector3::Lerp(targetPos, nextFrame.head.position, lerp),
                 Vector3::Lerp(frame.leftHand.position, nextFrame.leftHand.position, lerp),
                 Vector3::Lerp(frame.rightHand.position, nextFrame.rightHand.position, lerp),
-                Quaternion::Lerp(frame.head.rotation, nextFrame.head.rotation, lerp),
+                Quaternion::Lerp(targetRot, nextFrame.head.rotation, lerp),
                 Quaternion::Lerp(frame.leftHand.rotation, nextFrame.leftHand.rotation, lerp),
                 Quaternion::Lerp(frame.rightHand.rotation, nextFrame.rightHand.rotation, lerp)
             );
@@ -55,7 +65,6 @@ void CameraRig::Update() {
 }
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
-    fakeHead->SetPositionAndRotation(pos, rot);
     if (Manager::Camera::rendering) {
         transform->position = {0, -1000, -1000};
         transform->rotation = Quaternion::Euler({0, 0, -1});
