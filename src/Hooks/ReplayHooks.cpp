@@ -166,7 +166,7 @@ MAKE_AUTO_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self
 // make sure saber positions aren't overridden
 MAKE_AUTO_HOOK_MATCH(VRController_Update, &VRController::Update, void, VRController* self) {
 
-    if (!Manager::replaying)
+    if (!Manager::replaying || Manager::paused)  // I should really just disable them instead of having this hook
         VRController_Update(self);
 }
 
