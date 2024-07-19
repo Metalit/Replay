@@ -37,6 +37,7 @@ class Hooks {
 #define MAKE_AUTO_HOOK_MATCH(name_, mPtr, retval, ...)                                                                                              \
     struct Hook_##name_ {                                                                                                                           \
         using funcType = retval (*)(__VA_ARGS__);                                                                                                   \
+        static_assert(MATCH_HOOKABLE_ASSERT(mPtr));                                                                                                 \
         static_assert(std::is_same_v<funcType, ::Hooking::InternalMethodCheck<decltype(mPtr)>::funcType>, "Hook method signature does not match!"); \
         constexpr static const char* name() { return #name_; }                                                                                      \
         static const MethodInfo* getInfo() { return ::il2cpp_utils::il2cpp_type_check::MetadataGetter<mPtr>::methodInfo(); }                        \
@@ -51,6 +52,7 @@ class Hooks {
 #define MAKE_AUTO_ORIG_HOOK_MATCH(name_, mPtr, retval, ...)                                                                                         \
     struct Hook_##name_ {                                                                                                                           \
         using funcType = retval (*)(__VA_ARGS__);                                                                                                   \
+        static_assert(MATCH_HOOKABLE_ASSERT(mPtr));                                                                                                 \
         static_assert(std::is_same_v<funcType, ::Hooking::InternalMethodCheck<decltype(mPtr)>::funcType>, "Hook method signature does not match!"); \
         constexpr static const char* name() { return #name_; }                                                                                      \
         static const MethodInfo* getInfo() { return ::il2cpp_utils::il2cpp_type_check::MetadataGetter<mPtr>::methodInfo(); }                        \

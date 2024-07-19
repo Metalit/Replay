@@ -58,7 +58,7 @@ ScoringElement* MakeFakeScoringElement(NoteEvent const& noteEvent) {
     switch (noteEvent.info.eventType) {
         case NoteEventInfo::Type::GOOD:
             scoringElement->cutScore = ScoreForNote(noteEvent);
-            scoringElement->executionOrder = scoringElement->get_maxPossibleCutScore();
+            scoringElement->executionOrder = scoringElement->maxPossibleCutScore;
             scoringElement->multiplierType = Element::MultiplierType::Positive;
             scoringElement->bestMultiplierType = Element::MultiplierType::Positive;
             break;
