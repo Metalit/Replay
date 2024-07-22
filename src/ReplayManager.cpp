@@ -606,7 +606,10 @@ namespace Manager {
             return songTime;
         if (!Objects::scoreController || !Objects::scoreController->_audioTimeSyncController)
             return songTime;
-        return Objects::scoreController->_audioTimeSyncController->_audioSource->time;
+        auto audioSource = Objects::scoreController->_audioTimeSyncController->_audioSource;
+        if (!audioSource || !audioSource->isPlaying)
+            return songTime;
+        return audioSource->time;
     }
 
     float GetLength() {
