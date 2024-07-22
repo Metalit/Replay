@@ -1,11 +1,11 @@
 #pragma once
 
-#include "BSML/shared/BSML/Components/CustomListTableData.hpp"
-#include "BSML/shared/BSML/Components/Settings/IncrementSetting.hpp"
 #include "GlobalNamespace/BeatmapLevel.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
 #include "UnityEngine/UI/Button.hpp"
+#include "bsml/shared/BSML/Components/CustomListTableData.hpp"
+#include "bsml/shared/BSML/Components/Settings/IncrementSetting.hpp"
 #include "custom-types/shared/coroutine.hpp"
 #include "custom-types/shared/macros.hpp"
 
