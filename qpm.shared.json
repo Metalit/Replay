@@ -6,7 +6,7 @@
     "info": {
       "name": "Replay",
       "id": "replay",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "url": null,
       "additionalData": {
         "overrideSoName": "libreplay.so"
@@ -139,6 +139,17 @@
     },
     {
       "dependency": {
+        "id": "libil2cpp",
+        "versionRange": "=0.3.2",
+        "additionalData": {
+          "headersOnly": true,
+          "cmake": false
+        }
+      },
+      "version": "0.3.2"
+    },
+    {
+      "dependency": {
         "id": "rapidjson-macros",
         "versionRange": "=1.2.1",
         "additionalData": {
@@ -148,17 +159,6 @@
         }
       },
       "version": "1.2.1"
-    },
-    {
-      "dependency": {
-        "id": "libil2cpp",
-        "versionRange": "=0.3.2",
-        "additionalData": {
-          "headersOnly": true,
-          "cmake": false
-        }
-      },
-      "version": "0.3.2"
     },
     {
       "dependency": {
@@ -188,7 +188,10 @@
         "id": "hollywood",
         "versionRange": "=0.2.4",
         "additionalData": {
-          "overrideSoName": "libhollywood.so"
+          "soLink": "https://github.com/Fernthedev/HollywoodQuest/releases/download/v0.2.4/libhollywood.so",
+          "overrideSoName": "libhollywood.so",
+          "modLink": "https://github.com/Fernthedev/HollywoodQuest/releases/download/v0.2.4/Hollywood.qmod",
+          "branchName": "version/v0_2_4"
         }
       },
       "version": "0.2.4"
@@ -211,13 +214,13 @@
     {
       "dependency": {
         "id": "paper",
-        "versionRange": "=3.6.3",
+        "versionRange": "=3.6.4",
         "additionalData": {
-          "soLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.3/libpaperlog.so",
-          "debugSoLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.3/debug_libpaperlog.so",
+          "soLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.4/libpaperlog.so",
+          "debugSoLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.4/debug_libpaperlog.so",
           "overrideSoName": "libpaperlog.so",
-          "modLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.3/paperlog.qmod",
-          "branchName": "version/v3_6_3",
+          "modLink": "https://github.com/Fernthedev/paperlog/releases/download/v3.6.4/paperlog.qmod",
+          "branchName": "version/v3_6_4",
           "compileOptions": {
             "systemIncludes": [
               "shared/utfcpp/source"
@@ -226,7 +229,7 @@
           "cmake": false
         }
       },
-      "version": "3.6.3"
+      "version": "3.6.4"
     },
     {
       "dependency": {
