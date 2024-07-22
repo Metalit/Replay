@@ -49,10 +49,10 @@ jobs:
           echo libs:
           ls -la ${GITHUB_WORKSPACE}/extern/libs
 
-      - name: Build
+      - name: Build & create qmod
         run: |
           cd ${GITHUB_WORKSPACE}
-          pwsh -Command ./build.ps1
+          qpm s qmod
 
       - name: Get Library Name
         id: libname
@@ -65,10 +65,6 @@ jobs:
       - name: Rename debug
         run: |
           mv ./build/debug/${{ steps.libname.outputs.NAME }} ./build/debug/debug_${{ steps.libname.outputs.NAME }}
-
-      - name: Create qmod
-        run: |
-          pwsh -Command ./createqmod.ps1 ${{env.qmodName}}
 
       - name: Upload to Release
         id: upload_file_release
