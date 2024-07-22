@@ -1,6 +1,7 @@
 #include "Config.hpp"
 #include "CustomTypes/CameraRig.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/HeadObstacleLowPassAudioEffect.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
@@ -34,6 +35,8 @@ using namespace GlobalNamespace;
 
 Hollywood::AudioCapture* audioCapture = nullptr;
 UnityEngine::Camera* customCamera = nullptr;
+
+UnityEngine::AudioSource* whitelistedAudio = nullptr;
 
 ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
@@ -179,16 +182,8 @@ void SetupRecording() {
         Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
 
         UnityEngine::Time::set_captureDeltaTime(1.0 / settings.fps);
-
-        if (!getConfig().SFX.GetValue()) {
-            LOG_INFO("Beginning audio capture");
-            // might not be available from manager objects yet, and I don't mind a bit of lag here lol
-            auto songSource = UnityEngine::Resources::FindObjectsOfTypeAll<AudioTimeSyncController*>()->First();
-            audioCapture = Hollywood::SetAudioCapture(songSource->_audioSource);
-            audioCapture->OpenFile(TmpAudPath);
-        }
-        customCamera->gameObject->active = true;
-    } else {
+    }
+    if (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()) {
         LOG_INFO("Beginning audio capture");
         auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>()->First([](auto x) {
             return x->gameObject->activeInHierarchy;
@@ -196,6 +191,8 @@ void SetupRecording() {
         audioCapture = Hollywood::SetAudioCapture(audioListener);
         audioCapture->OpenFile(TmpAudPath);
     }
+    if (customCamera)
+        customCamera->gameObject->active = true;
 
     // prevent bloom from applying to the main camera
     if (auto comp = mainCamera->GetComponent<MainEffectController*>())
@@ -204,6 +201,21 @@ void SetupRecording() {
     // mask everything but ui
     oldCullingMask = mainCamera->cullingMask;
     mainCamera->cullingMask = uiCullingMask;
+}
+
+// when rendering without sfx, prevent all other audio sources from playing
+MAKE_AUTO_HOOK_MATCH(
+    AudioSource_Play, static_cast<void (UnityEngine::AudioSource::*)()>(&UnityEngine::AudioSource::Play), void, UnityEngine::AudioSource* self
+) {
+    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode() || self == whitelistedAudio)
+        AudioSource_Play(self);
+}
+
+// also prevent head in wall effect
+MAKE_AUTO_HOOK_MATCH(HeadObstacleLowPassAudioEffect_Update, &HeadObstacleLowPassAudioEffect::Update, void, HeadObstacleLowPassAudioEffect* self) {
+
+    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode())
+        HeadObstacleLowPassAudioEffect_Update(self);
 }
 
 // prevent normal graphics settings during rendering
@@ -267,6 +279,9 @@ MAKE_AUTO_HOOK_MATCH(
 
 // setup some general camera stuff
 MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::Start, void, AudioTimeSyncController* self) {
+
+    if (Manager::replaying && Manager::Camera::rendering)
+        whitelistedAudio = self->_audioSource;
 
     AudioTimeSyncController_Start(self);
 
@@ -358,6 +373,7 @@ MAKE_AUTO_HOOK_MATCH(
         mainCamera->enabled = true;
     oldCullingMask = 0;
     mainCamera = nullptr;
+    whitelistedAudio = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
 
