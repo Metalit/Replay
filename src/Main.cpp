@@ -178,12 +178,6 @@ extern "C" void late_load() {
     if (getConfig().TextHeight.GetValue() < 1)
         getConfig().TextHeight.SetValue(1);
 
-    // clamp bitrate to 100 mbps
-    if (getConfig().Bitrate.GetValue() > 100000)
-        getConfig().Bitrate.SetValue(100000);
-
-    getConfig().AudioMode.SetValue(false);
-
     CModInfo beatleader{.id = "bl"};
     CModInfo scoresaber{.id = "ScoreSaber"};
 
