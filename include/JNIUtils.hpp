@@ -476,6 +476,16 @@ namespace JNIUtils {
         if (env == nullptr)
             env = GetJNIEnv();
 
+        // disable or enable proximity sensor
+        jobject appContext = GetAppContext(env);
+
+        jstring intentName = env->NewStringUTF(on ? "com.oculus.vrpowermanager.prox_close" : "com.oculus.vrpowermanager.automation_disable");
+
+        GET_JCLASS(env, intentClass, "android/content/Intent");
+        NEW_JOBJECT(env, proximityIntent, intentClass, "(Ljava/lang/String;)V", intentName);
+
+        CALL_VOID_METHOD(env, appContext, "sendBroadcast", "(Landroid/content/Intent;)V", proximityIntent);
+
         // Get UnityPlayer Class
         GET_JCLASS(env, playerClass, "com/unity3d/player/UnityPlayer");
 
