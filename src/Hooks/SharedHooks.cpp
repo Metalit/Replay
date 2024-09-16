@@ -73,7 +73,7 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
         Manager::CheckInputs();
     }
     auto state = self->_state;
-    bool customTiming = Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode();
+    bool customTiming = Manager::replaying && Manager::Camera::rendering;
     if (customTiming)
         self->_state = AudioTimeSyncController::State::Stopped;
 
@@ -86,9 +86,6 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
         self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - self->_songTime;
         self->_isReady = true;
     }
-    // end video when map ends if the song is slower and we are recording it
-    if (customTiming && !getConfig().SFX.GetValue() && self->_songTime > Manager::GetLength() + 1)
-        Camera_EndVideo();
 
     self->_state = state;
 }

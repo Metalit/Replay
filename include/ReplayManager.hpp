@@ -50,7 +50,6 @@ namespace Manager {
 
         Vector3 GetHeadPosition();
         Quaternion GetHeadRotation();
-        bool GetAudioMode();
         int GetMode();
         void SetMode(int mode);
     }
@@ -91,7 +90,6 @@ namespace Manager {
     void SetLastCutTime(float lastCutTime);
     void CheckInputs();
     float GetSongTime();
-    float GetAudioTime();
     float GetLength();
     Frame const& GetFrame();
     Frame const& GetNextFrame();

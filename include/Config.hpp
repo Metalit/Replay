@@ -35,11 +35,9 @@ DECLARE_JSON_CLASS(LevelSelection,
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(Version, int, "Config Version", 1)
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
-    CONFIG_VALUE(AudioMode, bool, "Audio Mode", false)
     CONFIG_VALUE(RenderLaunch, bool, "Render On Next Launch", false)
     CONFIG_VALUE(LevelsToSelect, std::vector<LevelSelection>, "Select Level On Start", {})
     CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0)
-    CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
     CONFIG_VALUE(OverrideWidth, int, "Override Resolution Width", -1);
     CONFIG_VALUE(OverrideHeight, int, "Override Resolution Height", -1);
 
@@ -64,7 +62,6 @@ DECLARE_CONFIG(Config,
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering")
     CONFIG_VALUE(Restart, bool, "Restart Game", false, "Restart game after finishing a render")
-    CONFIG_VALUE(SFX, bool, "Record SFX", false, "Records SFX when rendering instead of only the song (adds time to the render process)")
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished")
 
     CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay")
@@ -76,4 +73,7 @@ DECLARE_CONFIG(Config,
 
     CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(0, 2, -0.5))
     CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", {})
+
+    CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
+    CONFIG_VALUE(CleanFiles, bool, "Remove Temp Files", true)
 )

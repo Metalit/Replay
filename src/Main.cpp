@@ -163,8 +163,6 @@ extern "C" void late_load() {
     selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);
 
-    getConfig().AudioMode.SetValue(false);
-
     if (getConfig().Version.GetValue() == 1) {
         LOG_INFO("Migrating config from v1 to v2");
         getConfig().TextHeight.SetValue(getConfig().TextHeight.GetValue() / 2);

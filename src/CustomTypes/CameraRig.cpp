@@ -77,16 +77,13 @@ void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Qu
 }
 
 void CameraRig::UpdateProgress() {
-    std::string typ = "";
-    if (getConfig().SFX.GetValue())
-        typ = Manager::Camera::GetAudioMode() ? " Audio" : " Video";
-    std::string time = SecondsToString(fmin(Manager::GetSongTime(), Manager::GetAudioTime()));
+    std::string time = SecondsToString(Manager::GetSongTime());
     std::string tot = SecondsToString(Manager::GetLength());
     std::string queue = "";
     int len = getConfig().LevelsToSelect.GetValue().size();
     if (len > 0)
         queue = fmt::format("\n{} in queue", len);
-    std::string label = fmt::format("{}\nRendering{}...\nSong Time: {} / {}{}", mapString, typ, time, tot, queue);
+    std::string label = fmt::format("{}\nRendering...\nSong Time: {} / {}{}", mapString, time, tot, queue);
     progressText->text = label;
 }
 

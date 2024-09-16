@@ -67,8 +67,6 @@ class Hooks {
 void Camera_Pause();
 void Camera_Unpause();
 
-void Camera_EndVideo();
-
 namespace UnityEngine {
     class Camera;
 }

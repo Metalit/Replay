@@ -109,6 +109,9 @@ namespace Menu {
             canvasTransform->localScale = {1, 1, 1};
             canvasTransform->sizeDelta = {12, 10};
             canvasTransform->SetAsLastSibling();
+            auto canvasComponent = canvas->GetComponent<UnityEngine::Canvas*>();
+            canvasComponent->overrideSorting = true;
+            canvasComponent->sortingOrder = 5;
             auto canvasLayout = canvas->AddComponent<UnityEngine::UI::LayoutElement*>();
             canvasLayout->preferredWidth = 12;
 

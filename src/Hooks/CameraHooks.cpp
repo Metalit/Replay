@@ -28,6 +28,7 @@
 #include "UnityEngine/StereoTargetEyeMask.hpp"
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "hollywood/shared/Hollywood.hpp"
 
@@ -94,12 +95,6 @@ void Camera_Unpause() {
         mainCamera->cullingMask = uiCullingMask;
 }
 
-void Camera_EndVideo() {
-    if (customCamera)
-        UnityEngine::Object::DestroyImmediate(customCamera);
-    customCamera = nullptr;
-}
-
 constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vector) {
     UnityEngine::Matrix4x4 result;
     result.m00 = 1;
@@ -132,96 +127,87 @@ void SetupRecording() {
     LOG_INFO("Keeping screen on");
     JNIUtils::SetScreenOn(true, env);
 
-    if (!Manager::Camera::GetAudioMode()) {
-        LOG_INFO("Beginning video capture");
-        customCamera = UnityEngine::Object::Instantiate(mainCamera);
-        customCamera->gameObject->active = false;
-        customCamera->enabled = true;
+    LOG_INFO("Beginning video capture");
+    customCamera = UnityEngine::Object::Instantiate(mainCamera);
+    customCamera->gameObject->active = false;
+    customCamera->enabled = true;
 
-        while (customCamera->transform->childCount > 0)
-            UnityEngine::Object::DestroyImmediate(customCamera->transform->GetChild(0)->gameObject);
-        if (auto comp = customCamera->GetComponent<MainCameraCullingMask*>())
-            UnityEngine::Object::DestroyImmediate(comp);
-        if (auto comp = customCamera->GetComponent<MainCamera*>())
-            UnityEngine::Object::DestroyImmediate(comp);
-        if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
-            UnityEngine::Object::DestroyImmediate(comp);
-        if (auto comp = customCamera->GetComponent<ReplayHelpers::CameraRig*>())
-            UnityEngine::Object::DestroyImmediate(comp);
-        if (auto comp = customCamera->GetComponent("CameraController"))
-            UnityEngine::Object::DestroyImmediate(comp);
-
-        customCamera->clearFlags = mainCamera->clearFlags;
-        customCamera->nearClipPlane = mainCamera->nearClipPlane;
-        customCamera->farClipPlane = mainCamera->farClipPlane;
-        customCamera->backgroundColor = mainCamera->backgroundColor;
-        customCamera->hideFlags = mainCamera->hideFlags;
-        customCamera->depthTextureMode = mainCamera->depthTextureMode;
-        customCamera->cullingMask = mainCamera->cullingMask;
-        // Makes the camera render before the main
-        customCamera->depth = mainCamera->depth - 1;
-
-        customCamera->stereoTargetEye = UnityEngine::StereoTargetEyeMask::None;
-
-        int width = getConfig().OverrideWidth.GetValue();
-        int height = getConfig().OverrideHeight.GetValue();
-
-        if (width <= 0)
-            width = resolutions[getConfig().Resolution.GetValue()].first;
-        if (height <= 0)
-            height = resolutions[getConfig().Resolution.GetValue()].second;
-
-        Hollywood::CameraRecordingSettings settings{
-            .width = width,
-            .height = height,
-            .fps = getConfig().FPS.GetValue(),
-            .bitrate = getConfig().Bitrate.GetValue(),
-            .fov = getConfig().FOV.GetValue(),
-            .filePath = TmpVidPath,
-        };
-        Hollywood::SetCameraCapture(customCamera, settings)->Init(settings);
-
-        UnityEngine::Time::set_captureDeltaTime(1.0 / settings.fps);
+    int kept = 0;
+    while (customCamera->transform->childCount > kept) {
+        auto child = customCamera->transform->GetChild(kept)->gameObject;
+        if (child->name == "AudioListener")
+            kept++;
+        else
+            UnityEngine::Object::DestroyImmediate(child);
     }
-    if (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()) {
-        LOG_INFO("Beginning audio capture");
-        auto audioListener = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::AudioListener*>()->First([](auto x) {
-            return x->gameObject->activeInHierarchy;
-        });
-        audioCapture = Hollywood::SetAudioCapture(audioListener);
-        audioCapture->OpenFile(TmpAudPath);
-    }
+    if (auto comp = customCamera->GetComponent<MainCameraCullingMask*>())
+        UnityEngine::Object::DestroyImmediate(comp);
+    if (auto comp = customCamera->GetComponent<MainCamera*>())
+        UnityEngine::Object::DestroyImmediate(comp);
+    if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
+        UnityEngine::Object::DestroyImmediate(comp);
+    if (auto comp = customCamera->GetComponent<ReplayHelpers::CameraRig*>())
+        UnityEngine::Object::DestroyImmediate(comp);
+    if (auto comp = customCamera->GetComponent("CameraController"))
+        UnityEngine::Object::DestroyImmediate(comp);
+
+    customCamera->clearFlags = mainCamera->clearFlags;
+    customCamera->nearClipPlane = mainCamera->nearClipPlane;
+    customCamera->farClipPlane = mainCamera->farClipPlane;
+    customCamera->backgroundColor = mainCamera->backgroundColor;
+    customCamera->hideFlags = mainCamera->hideFlags;
+    customCamera->depthTextureMode = mainCamera->depthTextureMode;
+    customCamera->cullingMask = mainCamera->cullingMask;
+    // Makes the camera render before the main
+    customCamera->depth = mainCamera->depth - 1;
+
+    customCamera->stereoTargetEye = UnityEngine::StereoTargetEyeMask::None;
+
+    int width = getConfig().OverrideWidth.GetValue();
+    int height = getConfig().OverrideHeight.GetValue();
+
+    if (width <= 0)
+        width = resolutions[getConfig().Resolution.GetValue()].first;
+    if (height <= 0)
+        height = resolutions[getConfig().Resolution.GetValue()].second;
+
+    Hollywood::SetSyncTimes(true);
+
+    Hollywood::CameraRecordingSettings settings{
+        .width = width,
+        .height = height,
+        .fps = getConfig().FPS.GetValue(),
+        .bitrate = getConfig().Bitrate.GetValue(),
+        .fov = getConfig().FOV.GetValue(),
+        .filePath = TmpVidPath,
+    };
+    Hollywood::SetCameraCapture(customCamera, settings)->Init();
+
+    UnityEngine::Time::set_captureDeltaTime(1.0 / settings.fps);
+
+    LOG_INFO("Beginning audio capture");
+
+    auto audioListener = customCamera->GetComponentInChildren<UnityEngine::AudioListener*>();
+    audioCapture = Hollywood::SetAudioCapture(audioListener);
+    audioCapture->OpenFile(TmpAudPath);
+
     if (customCamera)
         customCamera->gameObject->active = true;
 
     // prevent bloom from applying to the main camera
     if (auto comp = mainCamera->GetComponent<MainEffectController*>())
         UnityEngine::Object::DestroyImmediate(comp);
+    mainCamera->GetComponentInChildren<UnityEngine::AudioListener*>()->enabled = false;
 
     // mask everything but ui
     oldCullingMask = mainCamera->cullingMask;
     mainCamera->cullingMask = uiCullingMask;
 }
 
-// when rendering without sfx, prevent all other audio sources from playing
-MAKE_AUTO_HOOK_MATCH(
-    AudioSource_Play, static_cast<void (UnityEngine::AudioSource::*)()>(&UnityEngine::AudioSource::Play), void, UnityEngine::AudioSource* self
-) {
-    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode() || self == whitelistedAudio)
-        AudioSource_Play(self);
-}
-
-// also prevent head in wall effect
-MAKE_AUTO_HOOK_MATCH(HeadObstacleLowPassAudioEffect_Update, &HeadObstacleLowPassAudioEffect::Update, void, HeadObstacleLowPassAudioEffect* self) {
-
-    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode())
-        HeadObstacleLowPassAudioEffect_Update(self);
-}
-
 // prevent normal graphics settings during rendering
 MAKE_AUTO_HOOK_MATCH(VRRenderingParamsSetup_OnEnable, &VRRenderingParamsSetup::OnEnable, void, VRRenderingParamsSetup* self) {
 
-    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode())
+    if (!Manager::replaying || !Manager::Camera::rendering)
         VRRenderingParamsSetup_OnEnable(self);
 }
 
@@ -233,7 +219,7 @@ MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter* self,
     UnityEngine::Renderer* renderer
 ) {
-    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode())
+    if (!Manager::replaying || !Manager::Camera::rendering)
         ObstacleMaterialSetter_SetCoreMaterial(self, renderer);
     else
         renderer->sharedMaterial = getConfig().Walls.GetValue() ? self->_texturedCoreMaterial : self->_lwCoreMaterial;
@@ -245,7 +231,7 @@ MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter* self,
     UnityEngine::Renderer* renderer
 ) {
-    if (!Manager::replaying || !Manager::Camera::rendering || Manager::Camera::GetAudioMode())
+    if (!Manager::replaying || !Manager::Camera::rendering)
         ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer);
     else
         renderer->sharedMaterial = getConfig().Walls.GetValue() ? self->_fakeGlowTexturedMaterial : self->_fakeGlowLWMaterial;
@@ -317,10 +303,15 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::St
 }
 
 void FinishMux() {
-    if (fileexists(TmpVidPath))
-        std::filesystem::remove(TmpVidPath);
-    if (fileexists(TmpAudPath))
-        std::filesystem::remove(TmpAudPath);
+    if (getConfig().CleanFiles.GetValue()) {
+        if (fileexists(TmpVidPath))
+            std::filesystem::remove(TmpVidPath);
+        if (fileexists(TmpAudPath))
+            std::filesystem::remove(TmpAudPath);
+    }
+
+    LOG_INFO("Removing screen on");
+    JNIUtils::SetScreenOn(false);
 
     Manager::Camera::muxingFinished = true;
 }
@@ -360,6 +351,8 @@ MAKE_AUTO_HOOK_MATCH(
     StandardLevelScenesTransitionSetupDataSO* self,
     LevelCompletionResults* levelCompletionResults
 ) {
+    Hollywood::SetSyncTimes(false);
+
     if (audioCapture)
         UnityEngine::Object::DestroyImmediate(audioCapture);
     audioCapture = nullptr;
@@ -369,22 +362,17 @@ MAKE_AUTO_HOOK_MATCH(
     if (cameraRig)
         UnityEngine::Object::DestroyImmediate(cameraRig);
     cameraRig = nullptr;
-    if (mainCamera)
-        mainCamera->enabled = true;
     oldCullingMask = 0;
     mainCamera = nullptr;
     whitelistedAudio = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
 
-    auto env = JNIUtils::GetJNIEnv();
     LOG_INFO("Unmuting audio");
-    JNIUtils::SetMute(false, env);
-    LOG_INFO("Removing screen on");
-    JNIUtils::SetScreenOn(false, env);
+    JNIUtils::SetMute(false);
 
     // mux audio and video when done with both
-    if (Manager::Camera::rendering && (Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue()))
+    if (Manager::Camera::rendering)
         WaitThenMux();
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
@@ -395,12 +383,8 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncCont
 
     float ret = AudioTimeSyncController_get_songEndTime(self);
 
-    if (Manager::replaying && Manager::Camera::rendering && !Manager::Camera::GetAudioMode()) {
-        // don't end while song is playing (and we are recording it)
-        if (!getConfig().SFX.GetValue() && self->_audioSource->isPlaying)
-            ret = fmax(ret, self->_songTime);
+    if (Manager::replaying && Manager::Camera::rendering)
         return ret + 1;
-    }
     return ret;
 }
 

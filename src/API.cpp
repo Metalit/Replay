@@ -1,11 +1,9 @@
-#include "GlobalNamespace/StandardLevelDetailView.hpp"
-#include "UnityEngine/Resources.hpp"
-#include "UnityEngine/UI/Button.hpp"
-
-#define ID MOD_ID
 #include "CustomTypes/ReplayMenu.hpp"
 #include "Formats/EventReplay.hpp"
+#include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "ReplayManager.hpp"
+#include "UnityEngine/Resources.hpp"
+#include "UnityEngine/UI/Button.hpp"
 #include "conditional-dependencies/shared/main.hpp"
 
 #pragma GCC diagnostic push

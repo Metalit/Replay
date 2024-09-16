@@ -154,15 +154,9 @@ namespace Manager {
             return smoothRotation;
         }
 
-        bool GetAudioMode() {
-            if (!getConfig().SFX.GetValue())
-                return false;
-            return getConfig().AudioMode.GetValue();
-        }
-
         int GetMode() {
             CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
-            if (mode == CameraMode::Headset && !GetAudioMode() && rendering)
+            if (mode == CameraMode::Headset && rendering)
                 return (int) CameraMode::Smooth;
             return (int) mode;
         }
@@ -181,8 +175,6 @@ namespace Manager {
         }
 
         void SetGraphicsSettings() {
-            if (GetAudioMode())
-                return;
             auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<SettingsApplicatorSO*>()->First();
             auto settings = BeatSaber::PerformancePresets::PerformancePreset::New_ctor();
             settings->_vrResolutionScale = 0.8;
@@ -219,8 +211,6 @@ namespace Manager {
             LOG_INFO("applied custom graphics settings");
         }
         void UnsetGraphicsSettings() {
-            if (GetAudioMode())
-                return;
             auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<VRRenderingParamsSetup*>()->First();
             renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
             LOG_INFO("reset graphics settings");
@@ -231,9 +221,8 @@ namespace Manager {
                 SetGraphicsSettings();
                 lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
-            // muxing only needs to be done after the current render if we are rendering
-            // and are recording audio (which is after video) or not recording sfx (so audio at the same time)
-            muxingFinished = !rendering || !(Manager::Camera::GetAudioMode() || !getConfig().SFX.GetValue());
+            // muxing only needs to be done after a render
+            muxingFinished = !rendering;
             if (GetMode() == (int) CameraMode::Smooth) {
                 smoothRotation = GetFrame().head.rotation;
                 // undo rotation by average rotation offset
@@ -504,21 +493,14 @@ namespace Manager {
         bs_utils::Submission::enable(modInfo);
         replaying = false;
         if (Camera::rendering && !quit) {
-            // render audio after all video renders (unless sound effects are off, in which case audio was already recorded)
-            if (getConfig().AudioMode.GetValue() || !getConfig().SFX.GetValue()) {
-                getConfig().AudioMode.SetValue(false);
-                if (!getConfig().LevelsToSelect.GetValue().empty()) {
-                    if (getConfig().Restart.GetValue()) {
-                        getConfig().RenderLaunch.SetValue(true);
-                        RestartGame();
-                    } else
-                        RenderLevelInConfig();
-                } else if (getConfig().Ding.GetValue())
-                    PlayDing();
-            } else {
-                getConfig().AudioMode.SetValue(true);
-                RenderCurrentLevel(true);
-            }
+            if (!getConfig().LevelsToSelect.GetValue().empty()) {
+                if (getConfig().Restart.GetValue()) {
+                    getConfig().RenderLaunch.SetValue(true);
+                    RestartGame();
+                } else
+                    RenderLevelInConfig();
+            } else if (getConfig().Ding.GetValue())
+                PlayDing();
         }
     }
 
@@ -599,17 +581,6 @@ namespace Manager {
 
     float GetSongTime() {
         return songTime;
-    }
-
-    float GetAudioTime() {
-        if (!Camera::rendering || Camera::GetAudioMode())
-            return songTime;
-        if (!Objects::scoreController || !Objects::scoreController->_audioTimeSyncController)
-            return songTime;
-        auto audioSource = Objects::scoreController->_audioTimeSyncController->_audioSource;
-        if (!audioSource || !audioSource->isPlaying)
-            return songTime;
-        return audioSource->time;
     }
 
     float GetLength() {
