@@ -41,6 +41,7 @@ struct ReplayInfo {
     float jumpDistance = -1;
     bool hasYOffset = false;
     std::optional<std::string> playerName;
+    bool playerOk = false;
 
     Quaternion averageOffset;  // inverse of the average difference from looking forward
 

@@ -5,6 +5,7 @@
 #include "Main.hpp"
 #include "MathUtils.hpp"
 #include "Utils.hpp"
+#include "conditional-dependencies/shared/main.hpp"
 
 // loading code for beatleader's replay format: https://github.com/BeatLeader/BS-Open-Replay
 
@@ -157,6 +158,11 @@ BSORInfo ReadInfo(std::ifstream& input) {
 ReplayWrapper ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
 
+    static auto getPlayerId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerId");
+    static auto getPlayerQuestId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerQuestId");
+
+    LOG_DEBUG("found beatleader functions {} {}", getPlayerId.has_value(), getPlayerQuestId.has_value());
+
     if (!input.is_open()) {
         LOG_ERROR("Failure opening file {}", path);
         return {};
@@ -192,6 +198,22 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     replay->info.source = "BeatLeader";
     replay->info.positionsAreLocal = true;
     replay->info.playerName.emplace(info.playerName);
+
+    LOG_DEBUG(
+        "player id {}, bl ids {} {}",
+        info.playerID,
+        getPlayerId ? getPlayerId.value()().value_or("no player") : "no bl",
+        getPlayerQuestId ? getPlayerQuestId.value()().value_or("no player") : "no bl"
+    );
+
+    replay->info.playerOk = false;
+    if (getPlayerId && getPlayerId.value()() == info.playerID)
+        replay->info.playerOk = true;
+    else if (getPlayerQuestId && getPlayerQuestId.value()() == info.playerID)
+        replay->info.playerOk = true;
+
+    LOG_DEBUG("player logged in {}", replay->info.playerOk);
+
     // infer reached 0 energy because no fail is only listed if it did
     replay->info.reached0Energy = replay->info.modifiers.noFail;
     replay->info.jumpDistance = info.jumpDistance;

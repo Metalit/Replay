@@ -280,7 +280,7 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::St
 
         // TODO: maybe move elsewhere
         auto player = Manager::GetCurrentInfo().playerName;
-        if (player.has_value() && (!Manager::AreReplaysLocal() || !getConfig().HideText.GetValue())) {
+        if (player.has_value() && (!Manager::GetCurrentInfo().playerOk || !getConfig().HideText.GetValue())) {
             std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", songName, songAuthor, player.value());
 
             auto canvas = BSML::Lite::CreateCanvas();
