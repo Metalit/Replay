@@ -1,20 +1,20 @@
 #include "Config.hpp"
-#include "Formats/FrameReplay.hpp"
-#include "Hooks.hpp"
-#include "Main.hpp"
-#include "Replay.hpp"
-#include "ReplayManager.hpp"
-
-using namespace GlobalNamespace;
-
 #include "CustomTypes/ScoringElement.hpp"
+#include "Formats/FrameReplay.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
 #include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
+#include "Hooks.hpp"
+#include "Main.hpp"
+#include "Replay.hpp"
+#include "ReplayManager.hpp"
 #include "UnityEngine/AudioSettings.hpp"
+#include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Camera.hpp"
 #include "UnityEngine/Time.hpp"
+
+using namespace GlobalNamespace;
 
 // override max score in frame replays and prevent crashing on attempting to despawn fake scoring elements from event replays
 MAKE_AUTO_HOOK_MATCH(
@@ -79,11 +79,33 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
 
     AudioTimeSyncController_Update(self);
 
-    // remove _songTime clamp
+    // copy default time sync logic because it probably works
     if (customTiming && state == AudioTimeSyncController::State::Playing) {
-        self->_lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->timeScale;
-        self->_songTime += self->_lastFrameDeltaSongTime;
-        self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - self->_songTime;
+        self->_lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->_timeScale;
+        // add regular delta time after audio ends
+        float time = self->_audioSource->isPlaying ? self->_audioSource->time : self->_songTime + UnityEngine::Time::get_deltaTime();
+        float newSongTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
+        self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - time / self->_timeScale;
+        float num3 = std::abs(newSongTime - time);
+        if (num3 > self->_forcedSyncDeltaTime) {
+            self->_audioStartTimeOffsetSinceStart = self->timeSinceStart - time;
+            newSongTime = time;
+        } else {
+            if (self->_fixingAudioSyncError) {
+                if (num3 < self->_stopSyncDeltaTime)
+                    self->_fixingAudioSyncError = false;
+            } else if (num3 > self->_startSyncDeltaTime)
+                self->_fixingAudioSyncError = true;
+
+            if (self->_fixingAudioSyncError) {
+                self->_audioStartTimeOffsetSinceStart = std::lerp(
+                    self->_audioStartTimeOffsetSinceStart, self->timeSinceStart - time, self->_lastFrameDeltaSongTime * self->_audioSyncLerpSpeed
+                );
+            }
+        }
+        newSongTime = std::max(self->_songTime, newSongTime);
+        self->_lastFrameDeltaSongTime = newSongTime - self->_songTime;
+        self->_songTime = newSongTime;
         self->_isReady = true;
     }
 
