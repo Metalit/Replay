@@ -150,7 +150,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     text->alignment = TMPro::TextAlignmentOptions::Center;
     text->rectTransform->anchorMin = {0.5, 0.5};
     text->rectTransform->anchorMax = {0.5, 0.5};
-    text->rectTransform->sizeDelta = {60, 100};
+    text->rectTransform->sizeDelta = {50, 100};
     text->enableWordWrapping = true;
 
     progress->active = Manager::Camera::rendering;
