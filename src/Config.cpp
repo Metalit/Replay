@@ -372,8 +372,10 @@ void RenderSettings::OnEnable() {
             std::string characteristic = GetCharacteristicName(selection.Characteristic);
             std::string toptext = "<voffset=0.1em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
             std::string author = level->songAuthorName;
-            std::string mapper = level->allMappers->First();
-            std::string subtext = author + " [" + mapper + "] - Replay Index " + std::to_string(selection.ReplayIndex + 1);
+            std::string mapper = "";
+            if (!level->allMappers.Empty())
+                mapper = fmt::format(" [{}]", level->allMappers->First());
+            std::string subtext = fmt::format("{}{} - Replay Index {}", author, mapper, selection.ReplayIndex + 1);
             queueList->data->Add(BSML::CustomCellInfo::construct(toptext, subtext, nullptr));
             GetCover(level);
         }
