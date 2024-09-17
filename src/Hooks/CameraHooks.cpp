@@ -6,7 +6,9 @@
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
 #include "GlobalNamespace/ObstacleMaterialSetter.hpp"
+#include "GlobalNamespace/PauseController.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
+#include "GlobalNamespace/ShockwaveEffect.hpp"
 #include "GlobalNamespace/StandardLevelScenesTransitionSetupDataSO.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
 #include "GlobalNamespace/VRRenderingParamsSetup.hpp"
@@ -204,13 +206,6 @@ void SetupRecording() {
     mainCamera->cullingMask = uiCullingMask;
 }
 
-// prevent normal graphics settings during rendering
-MAKE_AUTO_HOOK_MATCH(VRRenderingParamsSetup_OnEnable, &VRRenderingParamsSetup::OnEnable, void, VRRenderingParamsSetup* self) {
-
-    if (!Manager::replaying || !Manager::Camera::rendering)
-        VRRenderingParamsSetup_OnEnable(self);
-}
-
 // apply wall quality without modifying the normal preset
 MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter_SetCoreMaterial,
@@ -235,6 +230,13 @@ MAKE_AUTO_HOOK_MATCH(
         ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer);
     else
         renderer->sharedMaterial = getConfig().Walls.GetValue() ? self->_fakeGlowTexturedMaterial : self->_fakeGlowLWMaterial;
+}
+
+// make sure shockwaves don't spawn
+MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_SpawnShockwave, &ShockwaveEffect::SpawnShockwave, void, ShockwaveEffect* self, UnityEngine::Vector3 pos) {
+
+    if (!Manager::replaying || !Manager::Camera::rendering)
+        ShockwaveEffect_SpawnShockwave(self, pos);
 }
 
 MAKE_AUTO_HOOK_MATCH(
@@ -387,8 +389,6 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncCont
         return ret + 1;
     return ret;
 }
-
-#include "GlobalNamespace/PauseController.hpp"
 
 // prevent pauses during recording
 MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
