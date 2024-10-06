@@ -1,23 +1,26 @@
 Param(
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [Switch] $self,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
+    [Switch] $only,
+
+    [Parameter(Mandatory = $false)]
     [Switch] $all,
 
-    [Parameter(Mandatory=$false)]
-    [String] $custom="",
+    [Parameter(Mandatory = $false)]
+    [String] $custom = "",
 
-    [Parameter(Mandatory=$false)]
-    [String] $file="",
+    [Parameter(Mandatory = $false)]
+    [String] $file = "",
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [Switch] $help,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [Switch] $trim,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [Switch] $excludeHeader
 )
 
@@ -61,15 +64,23 @@ if ($all -eq $false) {
     if ($self -eq $true) {
         & $PSScriptRoot/validate-modjson.ps1
         $name = (Get-Content "./mod.json" -Raw | ConvertFrom-Json).name.Replace(" ", "")
-        $pattern += "${name}|"
+        $pattern += "${name}"
     }
     if (![string]::IsNullOrEmpty($custom)) {
-        $pattern += "$custom|"
+        if ($pattern -ne "(") {
+            $pattern += "|"
+        }
+        $pattern += "${custom}"
     }
     if ($pattern -eq "(") {
-        $pattern = "( INFO| DEBUG| WARN| ERROR| CRITICAL|"
+        $pattern = "( INFO| DEBUG| WARN| ERROR| CRITICAL"
     }
-    $pattern += "CRASH|scotland2|Unity  )"
+    if ($only -eq $false) {
+        $pattern += "|CRASH|scotland2|Unity  )"
+    }
+    else {
+        $pattern += ")"
+    }
     $command += " | Select-String -pattern `"$pattern`""
 }
 

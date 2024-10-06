@@ -306,7 +306,7 @@ void GetBeatmapData(DifficultyBeatmap beatmap, std::function<void(IReadonlyBeatm
                 LOG_ERROR("failed to load beatmap data");
             else {
                 auto data = helper->_beatmapDataLoader->LoadBeatmapDataAsync(
-                    result->ResultOnSuccess.beatmapLevelData, beatmap.difficulty, beatmap.level->beatsPerMinute, false, nullptr, nullptr, nullptr, false
+                    result->ResultOnSuccess.beatmapLevelData, beatmap.difficulty, beatmap.level->beatsPerMinute, false, nullptr, nullptr, nullptr, true
                 );
                 BSML::MainThreadScheduler::ScheduleNextFrame([callback = std::move(callback), data]() {
                     BSML::MainThreadScheduler::ScheduleUntil(

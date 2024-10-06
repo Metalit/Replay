@@ -20,6 +20,10 @@
         "pwsh ./scripts/copy.ps1 $0:?",
         "pwsh ./scripts/restart-game.ps1"
       ],
+      "del": [
+        "pwsh ./scripts/delete.ps1",
+        "pwsh ./scripts/restart-game.ps1"
+      ],
       "log": [
         "pwsh ./scripts/start-logging.ps1 $0:?"
       ],

@@ -61,7 +61,7 @@ void OnQueueButtonClick() {
         RemoveCurrentLevelFromConfig();
     else
         SaveCurrentLevelInConfig();
-    viewController->UpdateUI();
+    viewController->UpdateUI(false);
 }
 
 void OnDeleteButtonClick() {
@@ -170,7 +170,7 @@ namespace Menu {
         auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
         flowCoordinator->showBackButton = true;
         flowCoordinator->PresentViewController(viewController, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
-        viewController->UpdateUI();
+        viewController->UpdateUI(true);
     }
     void DismissMenu() {
         if (viewController->isInViewControllerHierarchy && !viewController->childViewController) {
@@ -333,14 +333,8 @@ void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, R
         getConfig().LastReplayIdx.SetValue(replayInfos.size() - 1);
     auto lastBeatmap = beatmap;
     beatmap = {levelView->beatmapKey, levelView->_beatmapLevel};
-    if (lastBeatmap != beatmap) {
+    if (lastBeatmap != beatmap)
         beatmapData = nullptr;
-        GetBeatmapData(beatmap, [this, replayInfos](IReadonlyBeatmapData* data) {
-            beatmapData = data;
-            if (replays == replayInfos && increment)
-                UpdateUI();
-        });
-    }
     if (increment) {
         increment->maxValue = replayInfos.size();
         increment->set_Value(getConfig().LastReplayIdx.GetValue() + 1);
@@ -350,14 +344,21 @@ void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, R
 
 void Menu::ReplayViewController::SelectReplay(int index) {
     getConfig().LastReplayIdx.SetValue(index);
-    UpdateUI();
+    UpdateUI(false);
 }
 
 std::string& Menu::ReplayViewController::GetReplay() {
     return replays[getConfig().LastReplayIdx.GetValue()].first;
 }
 
-void Menu::ReplayViewController::UpdateUI() {
+void Menu::ReplayViewController::UpdateUI(bool getData) {
+    if (getData && !beatmapData) {
+        GetBeatmapData(beatmap, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
+            beatmapData = data;
+            if (beatmap == forMap && increment)
+                UpdateUI(false);
+        });
+    }
     auto beatmap = levelView->beatmapKey;
     auto level = levelView->_beatmapLevel;
     levelBar->Setup(level, beatmap.difficulty, beatmap.beatmapCharacteristic);
@@ -368,11 +369,12 @@ void Menu::ReplayViewController::UpdateUI() {
     sourceText->text = GetLayeredText("Replay Source:  ", info->source, false);
     std::string date = GetStringForTimeSinceNow(info->timestamp);
     std::string modifiers = GetModifierString(info->modifiers, info->reached0Energy);
-    std::string score = std::to_string(info->score);
+    std::string percent = "...";
     if (beatmapData) {
-        float percent = info->score * 100.0 / ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
-        score = fmt::format("{} <size=80%>(<color=#1dbcd1>{:.2f}%</color>)</size>", info->score, percent);
+        float num = info->score * 100.0 / ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
+        percent = fmt::format("{:.2f}", num);
     }
+    std::string score = fmt::format("{} <size=80%>(<color=#1dbcd1>{}%</color>)</size>", info->score, percent);
     std::string fail = info->failed ? "<color=#cc1818>True</color>" : "<color=#2adb44>False</color>";
     if (info->failed && info->failTime > 0.001)
         fail = fmt::format("<color=#cc1818>{}</color> / {}", SecondsToString(info->failTime), SecondsToString(songLength));

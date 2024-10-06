@@ -12,7 +12,7 @@ if (Test-Path -Path $modTemplate) {
     }
 
     if ($update) {
-        & qpm qmod build
+        & qpm qmod manifest
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }

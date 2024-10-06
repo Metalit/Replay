@@ -36,7 +36,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
 
     DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
 
-    DECLARE_INSTANCE_METHOD(void, UpdateUI);
+    DECLARE_INSTANCE_METHOD(void, UpdateUI, bool getData);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
 
    public:
