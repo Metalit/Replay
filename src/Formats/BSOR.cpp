@@ -342,6 +342,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     BSORWallEvent wallEvent;
     // oh boy, I get to calculate the end time of wall events based on energy, it's not like anything better could have been done in the recording phase
     float energy = 0.5;
+    float latestWallTime = -1;
     auto notesIter = replay->notes.begin();
     for (int i = 0; i < wallsCount; i++) {
         auto& wall = replay->walls.emplace_back();
@@ -357,11 +358,9 @@ ReplayWrapper ReadBSOR(std::string const& path) {
         wall.time = wallEvent.time;
         if (info.platform == "oculus" || version > 1) {
             wall.endTime = wallEvent.energy;
-            // replays on yet another BL version just forgot to record wall event end times
-            if (wall.endTime < wall.time || wall.endTime > replay->notes.back().time * 100) {
-                LOG_ERROR("Replay had broken wall event {}", path);
-                return {};
-            }
+            // should be in order, but doesn't hurt to check
+            if (wall.time > latestWallTime)
+                latestWallTime = wall.time;
         } else {
             // process all note events up to event time
             while (notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
@@ -385,6 +384,15 @@ ReplayWrapper ReadBSOR(std::string const& path) {
             energy = wallEvent.energy;
         }
         replay->events.emplace(wall.time, EventRef::Wall, replay->walls.size() - 1);
+    }
+    // replays on yet another BL version just forgot to record wall event end times
+    if (latestWallTime > -1) {
+        for (auto& wall : replay->walls) {
+            if (wall.endTime < wall.time || wall.endTime > latestWallTime * 1000) {
+                LOG_ERROR("Replay had broken wall event {}", path);
+                return {};
+            }
+        }
     }
 
     READ_TO(section);
