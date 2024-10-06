@@ -13,5 +13,6 @@ extern modloader::ModInfo modInfo;
 inline auto RendersFolder = "/sdcard/Renders";
 
 void SelectLevelOnNextSongRefresh(bool render = true, int idx = 0);
+void SetFadeIsOut(bool val);
 
 extern bool recorderInstalled;

@@ -1,5 +1,7 @@
 #include "Utils.hpp"
 
+#include <regex>
+
 #include "Assets.hpp"
 #include "BGLib/Polyglot/Localization.hpp"
 #include "Config.hpp"
@@ -10,6 +12,8 @@
 #include "GlobalNamespace/BeatmapDifficultyMethods.hpp"
 #include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "GlobalNamespace/FadeInOutController.hpp"
+#include "GlobalNamespace/FloatSO.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/OVRInput.hpp"
@@ -21,10 +25,6 @@
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
-
-// #include <chrono>
-// #include <sstream>
-#include <regex>
 
 using namespace GlobalNamespace;
 
@@ -597,6 +597,27 @@ int IsButtonDown(ButtonPair const& button) {
     if (IsButtonDown(button.BackButton, button.BackController))
         ret -= 1;
     return ret;
+}
+
+void Fade(bool in, bool instant) {
+    static UnityW<FadeInOutController> fade;
+    if (!fade)
+        fade = UnityEngine::Resources::FindObjectsOfTypeAll<FadeInOutController*>()->FirstOrDefault();
+    if (!fade)
+        return;
+    fade->StopAllCoroutines();
+    if (in)
+        SetFadeIsOut(false);
+    fade->StartCoroutine(fade->Fade(
+        fade->_easeValue->value,
+        in ? 1 : 0,
+        instant ? 0 : (in ? fade->_defaultFadeInDuration : fade->_defaultFadeOutDuration),
+        0,
+        in ? fade->_fadeInCurve : fade->_fadeOutCurve,
+        nullptr
+    ));
+    if (!in)
+        SetFadeIsOut(true);
 }
 
 void PlayDing() {

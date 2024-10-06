@@ -83,4 +83,6 @@ bool IsButtonDown(const class Button& button);
 
 int IsButtonDown(const class ButtonPair& button);
 
+void Fade(bool in, bool instant);
+
 void PlayDing();

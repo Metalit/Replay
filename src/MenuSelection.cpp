@@ -18,6 +18,7 @@
 #include "UnityEngine/Resources.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "bsml/shared/Helpers/delegates.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
 
 using namespace GlobalNamespace;
@@ -57,7 +58,9 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
         if (!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
             LOG_DEBUG("Flow coordinator is {}, running soft restart", il2cpp_utils::ClassStandardName(flowCoordinator->klass));
             SelectLevelOnNextSongRefresh(render, idx);
-            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First()->RestartGame(nullptr);
+            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First()->RestartGame(
+                BSML::MakeSystemAction((std::function<void(Zenject::DiContainer*)>) [](Zenject::DiContainer*) { Fade(false, true); })
+            );
             return;
         } else {
             LOG_DEBUG("Dismissing single player flow coordinator view controllers");
@@ -124,6 +127,7 @@ void SelectLevelInConfig(int idx, bool remove) {
 }
 
 void RenderLevelInConfig() {
+    Fade(false, false);
     AwaitMainFlowCoordinator([]() { SelectRenderHelper(true, 0, true); });
 }
 

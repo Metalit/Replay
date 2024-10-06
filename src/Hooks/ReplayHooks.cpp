@@ -24,6 +24,7 @@
 #include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 
 using namespace GlobalNamespace;
@@ -201,6 +202,7 @@ MAKE_AUTO_HOOK_MATCH(
     cancelPresent = false;
     bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
     if (Manager::replaying) {
+        Fade(false, true);
         if (playerSpecificSettings)
             playerSpecificSettings->_leftHanded = wasLeftHanded;
         playerSpecificSettings = nullptr;
@@ -213,7 +215,13 @@ MAKE_AUTO_HOOK_MATCH(
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
             lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
         }
-        BSML::MainThreadScheduler::ScheduleUntil([]() { return Manager::Camera::muxingFinished; }, [quit]() { Manager::ReplayEnded(quit); });
+        BSML::MainThreadScheduler::ScheduleUntil(
+            []() { return Manager::Camera::muxingFinished; },
+            [quit]() {
+                Fade(true, false);
+                Manager::ReplayEnded(quit);
+            }
+        );
     } else if (!quit && !recorderInstalled)
         Menu::SetButtonUninteractable("Install BeatLeader or ScoreSaber to record replays!");
 }
