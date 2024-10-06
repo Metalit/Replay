@@ -2,6 +2,7 @@
 #include "CustomTypes/CameraRig.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/HeadObstacleLowPassAudioEffect.hpp"
+#include "GlobalNamespace/LevelCompletionResults.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
 #include "GlobalNamespace/MainCameraCullingMask.hpp"
 #include "GlobalNamespace/MainEffectController.hpp"
@@ -304,7 +305,7 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::St
     }
 }
 
-void FinishMux() {
+void FinishMux(bool quit) {
     if (getConfig().CleanFiles.GetValue()) {
         if (fileexists(TmpVidPath))
             std::filesystem::remove(TmpVidPath);
@@ -313,17 +314,18 @@ void FinishMux() {
     }
 
     LOG_INFO("Removing screen on");
-    JNIUtils::SetScreenOn(false);
+    if (quit || getConfig().LevelsToSelect.GetValue().empty())
+        JNIUtils::SetScreenOn(false);
 
     Manager::Camera::muxingFinished = true;
 }
 
-void WaitThenMux() {
+void WaitThenMux(bool quit) {
     bool vidExists = fileexists(TmpVidPath);
     bool audExists = fileexists(TmpAudPath);
 
     if (vidExists && audExists) {
-        BSML::MainThreadScheduler::ScheduleAfterTime(5, []() {
+        BSML::MainThreadScheduler::ScheduleAfterTime(5, [quit]() {
             std::string outputFile;
             int num = 0;
             do {
@@ -335,13 +337,25 @@ void WaitThenMux() {
             } while (fileexists(outputFile));
 
             Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath);
-            if (fileexists(TmpOutPath))
-                std::filesystem::rename(TmpOutPath, outputFile);
-            FinishMux();
+
+            if (fileexists(TmpOutPath)) {
+                // idk how but I got a "no such file or directory" error here once
+                int tries = 2;
+                while (tries-- > 0) {
+                    try {
+                        std::filesystem::rename(TmpOutPath, outputFile);
+                        break;
+                    } catch (std::filesystem::filesystem_error const& err) {
+                        LOG_ERROR("filesystem error renaming file {} -> {}: {}", TmpOutPath, outputFile, err.what());
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                    }
+                }
+            }
+            FinishMux(quit);
         });
     } else {
         LOG_ERROR("Video exists: {} Audio exists: {}", vidExists, audExists);
-        FinishMux();
+        FinishMux(quit);
     }
 }
 
@@ -375,7 +389,7 @@ MAKE_AUTO_HOOK_MATCH(
 
     // mux audio and video when done with both
     if (Manager::Camera::rendering)
-        WaitThenMux();
+        WaitThenMux(levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit);
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }
