@@ -3,7 +3,6 @@
 #include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
-#include "GlobalNamespace/LevelFilteringNavigationController.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
@@ -12,7 +11,9 @@
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML.hpp"
+#include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "custom-types/shared/register.hpp"
+#include "songcore/shared/SongCore.hpp"
 
 using namespace GlobalNamespace;
 
@@ -70,20 +71,16 @@ static bool selectedAlready = false;
 static bool doRender = true;
 static int nonRenderIdx = 0;
 
-MAKE_AUTO_HOOK_MATCH(
-    LevelFilteringNavigationController_UpdateCustomSongs,
-    &LevelFilteringNavigationController::UpdateCustomSongs,
-    void,
-    LevelFilteringNavigationController* self
-) {
-    LevelFilteringNavigationController_UpdateCustomSongs(self);
-
+void OnSongsLoaded(std::span<SongCore::SongLoader::CustomBeatmapLevel* const>) {
     if (!selectedAlready) {
-        selectedAlready = true;
-        if (doRender)
-            RenderLevelInConfig();
-        else
-            SelectLevelInConfig(nonRenderIdx);
+        BSML::MainThreadScheduler::ScheduleNextFrame([]() {
+            LOG_DEBUG("Selecting level {} {}", doRender, nonRenderIdx);
+            selectedAlready = true;
+            if (doRender)
+                RenderLevelInConfig();
+            else
+                SelectLevelInConfig(nonRenderIdx);
+        });
     }
 }
 
@@ -155,6 +152,8 @@ extern "C" void late_load() {
     custom_types::Register::AutoRegister();
 
     BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);
+
+    SongCore::API::Loading::GetSongsLoadedEvent().addCallback(OnSongsLoaded);
 
     LOG_INFO("Installing hooks...");
     Hooks::Install();

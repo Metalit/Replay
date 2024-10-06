@@ -40,7 +40,10 @@
       "tomb": [
         "pwsh ./scripts/pull-tombstone.ps1 -analyze"
       ]
-    }
+    },
+    "qmodIncludeDirs": [],
+    "qmodIncludeFiles": [],
+    "qmodOutput": null
   },
   "dependencies": [
     {
@@ -102,6 +105,11 @@
     {
       "id": "bsml",
       "versionRange": "^0.4.36",
+      "additionalData": {}
+    },
+    {
+      "id": "songcore",
+      "versionRange": "^1.1.15",
       "additionalData": {}
     }
   ]

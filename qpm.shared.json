@@ -107,6 +107,11 @@
         "id": "bsml",
         "versionRange": "^0.4.36",
         "additionalData": {}
+      },
+      {
+        "id": "songcore",
+        "versionRange": "^1.1.15",
+        "additionalData": {}
       }
     ]
   },
@@ -128,18 +133,6 @@
     },
     {
       "dependency": {
-        "id": "rapidjson-macros",
-        "versionRange": "=1.2.1",
-        "additionalData": {
-          "headersOnly": true,
-          "branchName": "version/v1_2_1",
-          "cmake": true
-        }
-      },
-      "version": "1.2.1"
-    },
-    {
-      "dependency": {
         "id": "bs-utils",
         "versionRange": "=0.8.4",
         "additionalData": {
@@ -152,6 +145,18 @@
         }
       },
       "version": "0.8.4"
+    },
+    {
+      "dependency": {
+        "id": "rapidjson-macros",
+        "versionRange": "=1.2.1",
+        "additionalData": {
+          "headersOnly": true,
+          "branchName": "version/v1_2_1",
+          "cmake": true
+        }
+      },
+      "version": "1.2.1"
     },
     {
       "dependency": {
@@ -196,6 +201,21 @@
         }
       },
       "version": "0.3.0"
+    },
+    {
+      "dependency": {
+        "id": "songcore",
+        "versionRange": "=1.1.15",
+        "additionalData": {
+          "soLink": "https://github.com/raineio/Quest-SongCore/releases/download/v1.1.15/libsongcore.so",
+          "debugSoLink": "https://github.com/raineio/Quest-SongCore/releases/download/v1.1.15/debug_libsongcore.so",
+          "overrideSoName": "libsongcore.so",
+          "modLink": "https://github.com/raineio/Quest-SongCore/releases/download/v1.1.15/SongCore.qmod",
+          "branchName": "version/v1_1_15",
+          "cmake": true
+        }
+      },
+      "version": "1.1.15"
     },
     {
       "dependency": {

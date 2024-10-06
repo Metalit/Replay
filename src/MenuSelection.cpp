@@ -39,14 +39,14 @@ void RenderAfterLoaded() {
     if (!levelSelection)
         return;
     BSML::MainThreadScheduler::ScheduleUntil(
-        [levelSelection]() { return levelSelection->get_selectedBeatmapLevel() && Manager::Camera::muxingFinished; }, []() { RenderCurrentLevel(); }
+        [levelSelection]() { return levelSelection->selectedBeatmapLevel && Manager::Camera::muxingFinished; }, []() { RenderCurrentLevel(); }
     );
 }
 
 void SelectRenderHelper(bool render, int idx, bool remove) {
     LOG_DEBUG("Selecting level, render: {}, idx: {}", render, idx);
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
-    if (levelsVec.size() <= idx)
+    if (levelsVec.size() <= idx || idx < 0)
         return;
     auto levelToSelect = levelsVec[idx];
 
@@ -55,10 +55,12 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
 
     if (flowCoordinator != mainCoordinator) {
         if (!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
+            LOG_DEBUG("Flow coordinator is {}, running soft restart", il2cpp_utils::ClassStandardName(flowCoordinator->klass));
             SelectLevelOnNextSongRefresh(render, idx);
             UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First()->RestartGame(nullptr);
             return;
         } else {
+            LOG_DEBUG("Dismissing single player flow coordinator view controllers");
             auto views = flowCoordinator->_mainScreenViewControllers;
             while (views->get_Count() > 1)
                 flowCoordinator->DismissViewController(
@@ -77,6 +79,10 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
     if (!pack)
         pack = mainCoordinator->_beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
     auto level = mainCoordinator->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
+
+    LOG_DEBUG("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
+    LOG_DEBUG("found level {} in pack {} ({})", fmt::ptr(level), fmt::ptr(pack), pack ? pack->packName : "");
+
     if (!level)
         return;
     auto characteristic = GetCharacteristic(levelToSelect.Characteristic);
@@ -98,12 +104,27 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
         RenderAfterLoaded();
 }
 
+void AwaitMainFlowCoordinator(std::function<void()> afterPresent) {
+    auto fc = BSML::Helpers::GetMainFlowCoordinator();
+    if (fc && fc->_screenSystem)
+        afterPresent();
+    else {
+        BSML::MainThreadScheduler::ScheduleUntil(
+            []() {
+                auto fc = BSML::Helpers::GetMainFlowCoordinator();
+                return fc && fc->_screenSystem;
+            },
+            afterPresent
+        );
+    }
+}
+
 void SelectLevelInConfig(int idx, bool remove) {
-    SelectRenderHelper(false, idx, remove);
+    AwaitMainFlowCoordinator([idx, remove]() { SelectRenderHelper(false, idx, remove); });
 }
 
 void RenderLevelInConfig() {
-    SelectRenderHelper(true, 0, true);
+    AwaitMainFlowCoordinator([]() { SelectRenderHelper(true, 0, true); });
 }
 
 std::optional<LevelSelection> GetCurrentLevel() {
