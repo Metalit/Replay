@@ -312,7 +312,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BSML::Lite::CreateScrollableList(rendering, {90, 33}, [this](int idx) {
+    queueList = BSML::Lite::CreateScrollableList(rendering, {90, 51}, [this](int idx) {
         queueList->tableView->ClearSelection();
         if (modSettingsInstance) {
             auto delegate = custom_types::MakeDelegate<System::Action*>((std::function<void()>) [idx]() { SelectLevelInConfig(idx); });
