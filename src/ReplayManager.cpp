@@ -417,6 +417,8 @@ namespace Manager {
     }
 
     void SetLevel(DifficultyBeatmap level) {
+        if (!level.level || !level.difficulty.IsValid())
+            return;
         LOG_DEBUG("set level");
         beatmap = level;
         if (!replaying)
