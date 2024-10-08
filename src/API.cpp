@@ -40,3 +40,7 @@ EXPOSE_API(PlayBSORFromFileForced, bool, std::string filePath) {
 EXPOSE_API(IsInReplay, bool) {
     return Manager::replaying;
 }
+
+EXPOSE_API(IsInRender, bool) {
+    return Manager::replaying && Manager::Camera::rendering;
+}
