@@ -86,8 +86,12 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
     LOG_DEBUG("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
     LOG_DEBUG("found level {} in pack {} ({})", fmt::ptr(level), fmt::ptr(pack), pack ? pack->packName : "");
 
-    if (!level)
+    if (!level) {
+        // if we removed the level (at the moment means we're going through the queue), go ahead and try to do the next one
+        if (remove)
+            SelectRenderHelper(render, idx, remove);
         return;
+    }
     auto characteristic = GetCharacteristic(levelToSelect.Characteristic);
 
     mainCoordinator->_playerDataModel->playerData->SetLastSelectedBeatmapCharacteristic(characteristic);
