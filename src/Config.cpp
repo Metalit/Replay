@@ -368,6 +368,10 @@ void RenderSettings::OnEnable() {
         queueList->data->Clear();
         for (auto& selection : levels) {
             auto level = BSML::Helpers::GetMainFlowCoordinator()->_beatmapLevelsModel->GetBeatmapLevel(selection.ID);
+            if (!level) {
+                queueList->data->Add(BSML::CustomCellInfo::construct("Couldn't load level", "Exit and reopen settings to try again", nullptr));
+                continue;
+            }
             std::string name = level->songName;
             std::string difficulty = GetDifficultyName(selection.Difficulty);
             std::string characteristic = GetCharacteristicName(selection.Characteristic);
