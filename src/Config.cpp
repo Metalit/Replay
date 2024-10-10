@@ -27,6 +27,7 @@ DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
 DEFINE_TYPE(ReplaySettings, InputSettings)
 DEFINE_TYPE(ReplaySettings, ModSettings)
+DEFINE_TYPE(ReplaySettings, KeyboardCloseHandler)
 
 using namespace GlobalNamespace;
 using namespace ReplaySettings;
@@ -414,11 +415,8 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
 
     CreateSmallButton(position, "Reset Position", [this]() {
-        auto def = getConfig().ThirdPerPos.GetDefaultValue();
-        getConfig().ThirdPerPos.SetValue(def);
-        positionSettings[0]->set_Value(def.x);
-        positionSettings[1]->set_Value(def.y);
-        positionSettings[2]->set_Value(def.z);
+        getConfig().ThirdPerPos.SetValue(getConfig().ThirdPerPos.GetDefaultValue());
+        OnEnable();
     });
 
     rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 10);
@@ -428,22 +426,82 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     CreateSmallButton(horizontal, "Level Rotation", [this]() {
         auto value = getConfig().ThirdPerRot.GetValue();
         getConfig().ThirdPerRot.SetValue({0, value.y, value.z});
-        rotationSettings[0]->set_Value(0);
+        OnEnable();
     });
 
     CreateSmallButton(horizontal, "Reset Rotation", [this]() {
-        auto def = getConfig().ThirdPerRot.GetDefaultValue();
-        getConfig().ThirdPerRot.SetValue(def);
-        rotationSettings[0]->set_Value(def.x);
-        rotationSettings[1]->set_Value(def.y);
-        rotationSettings[2]->set_Value(def.z);
+        getConfig().ThirdPerRot.SetValue(getConfig().ThirdPerRot.GetDefaultValue());
+        OnEnable();
     });
+
+    auto layout = BSML::Lite::CreateHorizontalLayoutGroup(position);
+    layout->spacing = 1;
+
+    auto presets = getConfig().ThirdPerPresets.GetValue();
+    std::vector<std::string_view> presetNames = {};
+    for (auto& [name, _] : presets)
+        presetNames.emplace_back(name);
+
+    // too lazy to update values and stuff properly
+    presetDropdown = BSML::Lite::CreateDropdown(layout, "Preset", getConfig().ThirdPerPreset.GetValue(), presetNames, [this](StringW name) {
+        getConfig().ThirdPerPreset.SetValue(name);
+        auto preset = getConfig().ThirdPerPresets.GetValue()[name];
+        getConfig().ThirdPerPos.SetValue(preset.Position);
+        getConfig().ThirdPerRot.SetValue(preset.Rotation);
+        OnEnable();
+    });
+    presetDropdown->transform->parent->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 50;
+
+    auto addPresetButton = BSML::Lite::CreateUIButton(layout, "Add", [this]() { nameModal->Show(true, true, nullptr); });
+    addPresetButton->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 15;
+
+    removePresetButton = BSML::Lite::CreateUIButton(layout, "Remove", [this]() {
+        auto presets = getConfig().ThirdPerPresets.GetValue();
+        if (presets.size() <= 1)
+            return;
+        presets.erase(getConfig().ThirdPerPreset.GetValue());
+        getConfig().ThirdPerPresets.SetValue(presets);
+        getConfig().ThirdPerPreset.SetValue(presets.begin()->first);
+        getConfig().ThirdPerPos.SetValue(presets.begin()->second.Position);
+        getConfig().ThirdPerRot.SetValue(presets.begin()->second.Rotation);
+        OnEnable();
+    });
+    removePresetButton->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 20;
+    removePresetButton->interactable = getConfig().ThirdPerPresets.GetValue().size() > 1;
+
+    nameModal = BSML::Lite::CreateModal(this, {95, 20}, nullptr);
+    auto modalLayout2 = BSML::Lite::CreateVerticalLayoutGroup(nameModal);
+    modalLayout2->childControlHeight = false;
+    modalLayout2->childForceExpandHeight = true;
+    modalLayout2->spacing = 1;
+
+    auto text2 = BSML::Lite::CreateText(modalLayout2, "Enter new preset name", {0, 0}, {50, 8});
+    text2->alignment = TMPro::TextAlignmentOptions::Bottom;
+
+    nameInput = BSML::Lite::CreateStringSetting(modalLayout2, "Name", "", {0, 0}, {0, 0, 0});
+    nameInput->gameObject->AddComponent<KeyboardCloseHandler*>()->okCallback = [this]() {
+        std::string val = nameInput->text;
+        if (val.empty())
+            return;
+        nameModal->Hide(true, nullptr);
+        OnDisable();  // save current preset
+        getConfig().ThirdPerPreset.SetValue(val);
+        ThirdPerPreset preset;
+        preset.Position = getConfig().ThirdPerPos.GetDefaultValue();
+        preset.Rotation = getConfig().ThirdPerRot.GetDefaultValue();
+        getConfig().ThirdPerPos.SetValue(preset.Position);
+        getConfig().ThirdPerRot.SetValue(preset.Rotation);
+        auto presets = getConfig().ThirdPerPresets.GetValue();
+        presets[getConfig().ThirdPerPreset.GetValue()] = preset;
+        getConfig().ThirdPerPresets.SetValue(presets);
+        OnEnable();
+    };
 
     position->gameObject->active = false;
 }
 
 void InputSettings::OnEnable() {
-    if (!positionSettings[0] || !rotationSettings[0])
+    if (!positionSettings[0] || !rotationSettings[0] || !removePresetButton)
         return;
     auto pos = getConfig().ThirdPerPos.GetValue();
     positionSettings[0]->set_Value(pos.x);
@@ -453,6 +511,33 @@ void InputSettings::OnEnable() {
     rotationSettings[0]->set_Value(rot.x);
     rotationSettings[1]->set_Value(rot.y);
     rotationSettings[2]->set_Value(rot.z);
+    removePresetButton->interactable = getConfig().ThirdPerPresets.GetValue().size() > 1;
+    // all this to update a dropdown's values
+    auto presets = getConfig().ThirdPerPresets.GetValue();
+    auto preset = getConfig().ThirdPerPreset.GetValue();
+    std::vector<std::string_view> presetNames;
+    for (auto& [name, _] : presets)
+        presetNames.emplace_back(name);
+    auto texts = ListW<System::Object*>::New(presetNames.size());
+    int idx = 0;
+    for (int i = 0; i < presetNames.size(); i++) {
+        texts->Add((System::Object*) StringW(presetNames[i]).convert());
+        if (presetNames[i] == preset)
+            idx = i;
+    }
+    presetDropdown->values = texts;
+    presetDropdown->UpdateChoices();
+    if (!texts.empty())
+        presetDropdown->set_Value(texts[idx]);
+}
+
+void InputSettings::OnDisable() {
+    ThirdPerPreset preset;
+    preset.Position = getConfig().ThirdPerPos.GetValue();
+    preset.Rotation = getConfig().ThirdPerRot.GetValue();
+    auto presets = getConfig().ThirdPerPresets.GetValue();
+    presets[getConfig().ThirdPerPreset.GetValue()] = preset;
+    getConfig().ThirdPerPresets.SetValue(presets);
 }
 
 void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {

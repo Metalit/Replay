@@ -5,6 +5,7 @@
 #include "CustomTypes/ReplaySettings.hpp"
 #include "GlobalNamespace/FadeInOutController.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
+#include "GlobalNamespace/UIKeyboardManager.hpp"
 #include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
 #include "JNIUtils.hpp"
@@ -66,6 +67,14 @@ MAKE_AUTO_HOOK_MATCH(
     }
 
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
+}
+
+MAKE_AUTO_HOOK_MATCH(UIKeyboardManager_HandleKeyboardOkButton, &UIKeyboardManager::HandleKeyboardOkButton, void, UIKeyboardManager* self) {
+    auto handler = self->_selectedInput->GetComponent<ReplaySettings::KeyboardCloseHandler*>();
+    if (handler && handler->okCallback)
+        handler->okCallback();
+
+    UIKeyboardManager_HandleKeyboardOkButton(self);
 }
 
 static bool selectedAlready = false;
@@ -197,6 +206,15 @@ extern "C" void late_load() {
         getConfig().Bitrate.SetValue(getConfig().Bitrate.GetValue() / 2);
         getConfig().Version.SetValue(2);
     }
+
+    if (getConfig().ThirdPerPresets.GetValue().empty()) {
+        ThirdPerPreset preset;
+        preset.Position = getConfig().ThirdPerPos.GetValue();
+        preset.Rotation = getConfig().ThirdPerRot.GetValue();
+        getConfig().ThirdPerPresets.SetValue({{"Default", preset}});
+    }
+    if (!getConfig().ThirdPerPresets.GetValue().contains(getConfig().ThirdPerPreset.GetValue()))
+        getConfig().ThirdPerPreset.SetValue(getConfig().ThirdPerPresets.GetValue().begin()->first);
 
     // no making the text offscreen through config editing
     if (getConfig().TextHeight.GetValue() > 5)

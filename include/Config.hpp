@@ -32,6 +32,11 @@ DECLARE_JSON_CLASS(LevelSelection,
     VALUE(int, ReplayIndex)
 )
 
+DECLARE_JSON_CLASS(ThirdPerPreset,
+    VALUE(ConfigUtils::Vector3, Position)
+    VALUE(ConfigUtils::Vector3, Rotation)
+)
+
 DECLARE_CONFIG(Config,
     CONFIG_VALUE(Version, int, "Config Version", 1)
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0)
@@ -73,6 +78,8 @@ DECLARE_CONFIG(Config,
 
     CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(0, 2, -0.5))
     CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", {})
+    CONFIG_VALUE(ThirdPerPresets, StringKeyedMap<ThirdPerPreset>, "Third Person Presets", {})
+    CONFIG_VALUE(ThirdPerPreset, std::string, "Third Person Preset", "Default")
 
     CONFIG_VALUE(SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made")
     CONFIG_VALUE(CleanFiles, bool, "Remove Temp Files", true)
