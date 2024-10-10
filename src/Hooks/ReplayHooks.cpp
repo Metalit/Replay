@@ -111,7 +111,7 @@ MAKE_AUTO_HOOK_MATCH(
         // setting the local transform doesn't work for some reason, even after the scene change
         roomAdjust = UnityEngine::Resources::FindObjectsOfTypeAll<VRCenterAdjust*>()->First();
         oldPosAdj = roomAdjust->_mainSettingsHandler->instance->roomCenter;
-        oldPosAdj = roomAdjust->_mainSettingsHandler->instance->roomRotation;
+        oldRotAdj = roomAdjust->_mainSettingsHandler->instance->roomRotation;
         roomAdjust->ResetRoom();
 
         if (info.practice)
