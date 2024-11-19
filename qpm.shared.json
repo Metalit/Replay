@@ -95,7 +95,7 @@
       },
       {
         "id": "hollywood",
-        "versionRange": "^0.3.0",
+        "versionRange": "^1.0.0",
         "additionalData": {}
       },
       {
@@ -195,12 +195,12 @@
     {
       "dependency": {
         "id": "hollywood",
-        "versionRange": "=0.3.0",
+        "versionRange": "=1.0.0",
         "additionalData": {
           "overrideSoName": "libhollywood.so"
         }
       },
-      "version": "0.3.0"
+      "version": "1.0.0"
     },
     {
       "dependency": {

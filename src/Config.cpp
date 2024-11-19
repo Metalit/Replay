@@ -232,6 +232,7 @@ inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper pa
 }
 
 std::vector<std::string> const resolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
+std::vector<std::string> const wallStrings = {"Transparent", "Textured", "Distorted"};
 std::vector<std::string> const mirrorStrings = {"Off", "Low", "Medium", "High"};
 std::vector<std::string> const aaStrings = {"0", "2", "4", "8"};
 
@@ -270,7 +271,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         rendering->gameObject->active = selected == 1;
     })->transform->SetAsFirstSibling();
 
-    AddConfigValueToggle(graphics, getConfig().Walls)->text->text = "Textured Walls";
+    AddConfigValueIncrementEnum(graphics, getConfig().Walls, wallStrings);
 
     AddConfigValueToggle(graphics, getConfig().Bloom);
 
@@ -278,16 +279,16 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueIncrementEnum(graphics, getConfig().AntiAlias, aaStrings);
 
-    // auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20);
-    // auto incrementObject = shockwaveIncrement->transform->GetChild(1)->gameObject;
-    // incrementObject->active = getConfig().ShockwavesOn.GetValue();
-    // incrementObject->GetComponent<UnityEngine::RectTransform*>()->anchoredPosition = {-20, 0};
+    auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20);
+    auto incrementObject = shockwaveIncrement->transform->GetChild(1)->gameObject;
+    incrementObject->active = getConfig().ShockwavesOn.GetValue();
+    incrementObject->GetComponent<UnityEngine::RectTransform*>()->anchoredPosition = {-20, 0};
 
-    // auto shockwaveToggle =
-    //     AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [incrementObject](bool enabled) mutable { incrementObject->active = enabled; });
-    // shockwaveToggle->toggle->transform->SetParent(shockwaveIncrement->transform, false);
-    // shockwaveToggle->transform->SetParent(shockwaveIncrement->transform, false);
-    // UnityEngine::Object::Destroy(shockwaveToggle->text->gameObject);
+    auto shockwaveToggle =
+        AddConfigValueToggle(graphics, getConfig().ShockwavesOn, [incrementObject](bool enabled) mutable { incrementObject->active = enabled; });
+    shockwaveToggle->toggle->transform->SetParent(shockwaveIncrement->transform, false);
+    shockwaveToggle->transform->SetParent(shockwaveIncrement->transform, false);
+    UnityEngine::Object::Destroy(shockwaveToggle->text->gameObject);
 
     AddConfigValueIncrementEnum(graphics, getConfig().Resolution, resolutionStrings);
 

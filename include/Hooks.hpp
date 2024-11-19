@@ -67,6 +67,8 @@ class Hooks {
 void Camera_Pause();
 void Camera_Unpause();
 
+void InstallBlitHook();
+
 namespace UnityEngine {
     class Camera;
 }

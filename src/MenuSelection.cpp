@@ -12,7 +12,6 @@
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
-#include "JNIUtils.hpp"
 #include "Main.hpp"
 #include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
@@ -225,7 +224,5 @@ void RenderCurrentLevel(bool currentReplay) {
 }
 
 void RestartGame() {
-    auto env = JNIUtils::GetJNIEnv();
-    JNIUtils::LaunchApp(env, "com.example.norestore");
-    JNIUtils::KillApp(env);
+    LOG_ERROR("Not implemented :(");
 }

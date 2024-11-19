@@ -196,8 +196,7 @@ namespace Manager {
             // shockwaves and walls unused in ApplyPerformancePreset
 
             int antiAlias = 0;
-            bool distortions = false;
-            // bool distortions = getConfig().Walls.GetValue() || (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0);
+            bool distortions = (getConfig().Walls.GetValue() == 2) || (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0);
             if (!distortions) {
                 switch (getConfig().AntiAlias.GetValue()) {
                     case 0:

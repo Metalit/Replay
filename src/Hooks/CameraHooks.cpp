@@ -1,6 +1,9 @@
+#include <GLES3/gl3.h>
+
 #include "Config.hpp"
 #include "CustomTypes/CameraRig.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/GraphicSettingsConditionalActivator.hpp"
 #include "GlobalNamespace/HeadObstacleLowPassAudioEffect.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 #include "GlobalNamespace/MainCamera.hpp"
@@ -14,7 +17,6 @@
 #include "GlobalNamespace/TransformExtensions.hpp"
 #include "GlobalNamespace/VRRenderingParamsSetup.hpp"
 #include "Hooks.hpp"
-#include "JNIUtils.hpp"
 #include "Main.hpp"
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
@@ -33,14 +35,13 @@
 #include "UnityEngine/Transform.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
-#include "hollywood/shared/Hollywood.hpp"
+#include "hollywood/shared/hollywood.hpp"
 
 using namespace GlobalNamespace;
 
 Hollywood::AudioCapture* audioCapture = nullptr;
 UnityEngine::Camera* customCamera = nullptr;
-
-UnityEngine::AudioSource* whitelistedAudio = nullptr;
+std::fstream videoOutput;
 
 ReplayHelpers::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
@@ -49,7 +50,9 @@ int uiCullingMask = 1 << 5;
 
 static bool wasMoving = false;
 
-static auto const TmpVidPath = "/sdcard/replay-tmp.mp4";
+static int reinitDistortions = -1;
+
+static auto const TmpVidPath = "/sdcard/replay-tmp.h264";
 static auto const TmpAudPath = "/sdcard/replay-tmp.wav";
 static auto const TmpOutPath = "/sdcard/replay-tmp-mux.mp4";
 
@@ -124,11 +127,10 @@ void SetupRecording() {
     fileName = SanitizedPath(GetMapString(Manager::beatmap));
     LOG_INFO("Using filename: {}", fileName);
 
-    auto env = JNIUtils::GetJNIEnv();
     LOG_INFO("Muting audio");
-    JNIUtils::SetMute(true, env);
+    Hollywood::SetMuteSpeakers(true);
     LOG_INFO("Keeping screen on");
-    JNIUtils::SetScreenOn(true, env);
+    Hollywood::SetScreenOn(true);
 
     LOG_INFO("Beginning video capture");
     customCamera = UnityEngine::Object::Instantiate(mainCamera);
@@ -174,28 +176,24 @@ void SetupRecording() {
     if (height <= 0)
         height = resolutions[getConfig().Resolution.GetValue()].second;
 
-    Hollywood::SetSyncTimes(true);
-
-    Hollywood::CameraRecordingSettings settings{
-        .width = width,
-        .height = height,
-        .fps = getConfig().FPS.GetValue(),
-        .bitrate = getConfig().Bitrate.GetValue(),
-        .fov = getConfig().FOV.GetValue(),
-        .filePath = TmpVidPath,
+    auto video = customCamera->gameObject->AddComponent<Hollywood::CameraCapture*>();
+    videoOutput.open(TmpVidPath, std::ios::out | std::ios::binary);
+    video->onOutputUnit = [](uint8_t* data, size_t len) {
+        videoOutput.write((char*) data, len);
     };
-    Hollywood::SetCameraCapture(customCamera, settings)->Init();
+    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue());
 
-    UnityEngine::Time::set_captureDeltaTime(1.0 / settings.fps);
+    UnityEngine::Time::set_captureDeltaTime(1 / (float) getConfig().FPS.GetValue());
+
+    Hollywood::SetSyncTimes(true);
 
     LOG_INFO("Beginning audio capture");
 
     auto audioListener = customCamera->GetComponentInChildren<UnityEngine::AudioListener*>();
-    audioCapture = Hollywood::SetAudioCapture(audioListener);
+    audioCapture = audioListener->gameObject->AddComponent<Hollywood::AudioCapture*>();
     audioCapture->OpenFile(TmpAudPath);
 
-    if (customCamera)
-        customCamera->gameObject->active = true;
+    customCamera->gameObject->active = true;
 
     // prevent bloom from applying to the main camera
     if (auto comp = mainCamera->GetComponent<MainEffectController*>())
@@ -205,6 +203,8 @@ void SetupRecording() {
     // mask everything but ui
     oldCullingMask = mainCamera->cullingMask;
     mainCamera->cullingMask = uiCullingMask;
+
+    reinitDistortions = 0;
 }
 
 // apply wall quality without modifying the normal preset
@@ -215,10 +215,20 @@ MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter* self,
     UnityEngine::Renderer* renderer
 ) {
-    if (!Manager::replaying || !Manager::Camera::rendering)
+    if (Manager::replaying && Manager::Camera::rendering) {
+        switch (getConfig().Walls.GetValue()) {
+            case 1:
+                renderer->sharedMaterial = self->_texturedCoreMaterial;
+                break;
+            case 2:
+                renderer->sharedMaterial = self->_hwCoreMaterial;
+                break;
+            default:
+                renderer->sharedMaterial = self->_lwCoreMaterial;
+                break;
+        }
+    } else
         ObstacleMaterialSetter_SetCoreMaterial(self, renderer);
-    else
-        renderer->sharedMaterial = getConfig().Walls.GetValue() ? self->_texturedCoreMaterial : self->_lwCoreMaterial;
 }
 MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter_SetFakeGlowMaterial,
@@ -227,17 +237,28 @@ MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter* self,
     UnityEngine::Renderer* renderer
 ) {
-    if (!Manager::replaying || !Manager::Camera::rendering)
-        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer);
+    if (Manager::replaying && Manager::Camera::rendering)
+        renderer->sharedMaterial = getConfig().Walls.GetValue() == 0 ? self->_fakeGlowLWMaterial : self->_fakeGlowTexturedMaterial;
     else
-        renderer->sharedMaterial = getConfig().Walls.GetValue() ? self->_fakeGlowTexturedMaterial : self->_fakeGlowLWMaterial;
+        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer);
 }
 
-// make sure shockwaves don't spawn
+// override shockwaves too
+MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_Start, &ShockwaveEffect::Start, void, ShockwaveEffect* self) {
+
+    ShockwaveEffect_Start(self);
+
+    if (Manager::replaying && Manager::Camera::rendering)
+        self->_shockwavePS->main.maxParticles = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
+}
+// I think graphics tweaks is what unnecessarily disables the component in addition to the game object
 MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_SpawnShockwave, &ShockwaveEffect::SpawnShockwave, void, ShockwaveEffect* self, UnityEngine::Vector3 pos) {
 
-    if (!Manager::replaying || !Manager::Camera::rendering)
-        ShockwaveEffect_SpawnShockwave(self, pos);
+    if (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0) {
+        self->gameObject->active = true;
+        self->enabled = true;
+    }
+    ShockwaveEffect_SpawnShockwave(self, pos);
 }
 
 MAKE_AUTO_HOOK_MATCH(
@@ -268,9 +289,6 @@ MAKE_AUTO_HOOK_MATCH(
 
 // setup some general camera stuff
 MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::Start, void, AudioTimeSyncController* self) {
-
-    if (Manager::replaying && Manager::Camera::rendering)
-        whitelistedAudio = self->_audioSource;
 
     AudioTimeSyncController_Start(self);
 
@@ -315,7 +333,7 @@ void FinishMux(bool quit) {
 
     LOG_INFO("Removing screen on");
     if (quit || getConfig().LevelsToSelect.GetValue().empty())
-        JNIUtils::SetScreenOn(false);
+        Hollywood::SetScreenOn(false);
 
     Manager::Camera::muxingFinished = true;
 }
@@ -326,17 +344,12 @@ void WaitThenMux(bool quit) {
 
     if (vidExists && audExists) {
         BSML::MainThreadScheduler::ScheduleAfterTime(5, [quit]() {
-            std::string outputFile;
-            int num = 0;
-            do {
-                if (num == 0)
-                    outputFile = fmt::format("{}/{}.mp4", RendersFolder, fileName);
-                else
-                    outputFile = fmt::format("{}/{}_{}.mp4", RendersFolder, fileName, num);
-                num++;
-            } while (fileexists(outputFile));
+            std::string outputFile = fmt::format("{}/{}.mp4", RendersFolder, fileName);
+            int num = 1;
+            while (fileexists(outputFile))
+                outputFile = fmt::format("{}/{}_{}.mp4", RendersFolder, fileName, num++);
 
-            Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath);
+            Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath, getConfig().FPS.GetValue());
 
             if (fileexists(TmpOutPath)) {
                 // idk how but I got a "no such file or directory" error here once
@@ -347,7 +360,7 @@ void WaitThenMux(bool quit) {
                         break;
                     } catch (std::filesystem::filesystem_error const& err) {
                         LOG_ERROR("filesystem error renaming file {} -> {}: {}", TmpOutPath, outputFile, err.what());
-                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     }
                 }
             }
@@ -373,23 +386,27 @@ MAKE_AUTO_HOOK_MATCH(
         UnityEngine::Object::DestroyImmediate(audioCapture);
     audioCapture = nullptr;
     if (customCamera)
-        UnityEngine::Object::DestroyImmediate(customCamera);
+        UnityEngine::Object::DestroyImmediate(customCamera->gameObject);
     customCamera = nullptr;
     if (cameraRig)
         UnityEngine::Object::DestroyImmediate(cameraRig);
     cameraRig = nullptr;
     oldCullingMask = 0;
     mainCamera = nullptr;
-    whitelistedAudio = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
 
-    LOG_INFO("Unmuting audio");
-    JNIUtils::SetMute(false);
+    videoOutput.close();
 
-    // mux audio and video when done with both
-    if (Manager::Camera::rendering)
+    LOG_INFO("Unmuting audio");
+    Hollywood::SetMuteSpeakers(false);
+
+    if (Manager::Camera::rendering) {
+        // mux audio and video when done with both
         WaitThenMux(levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit);
+        // make distortions work for the headset camera again
+        reinitDistortions = 3;
+    }
 
     return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }
@@ -411,4 +428,32 @@ MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPaus
         return getConfig().Pauses.GetValue();
 
     return PauseController_get_canPause(self);
+}
+
+// fix distortions in renders
+MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversion, int passMode) {
+
+    int& programId = *(int*) drawQuad;
+    if (reinitDistortions != -1) {
+        glDeleteProgram(programId);
+        programId = 0;
+        passMode = reinitDistortions;
+    }
+    reinitDistortions = -1;
+
+    if (programId != 0)
+        return;
+
+    initialize_blit_fbo(drawQuad, conversion, passMode);
+}
+
+void InstallBlitHook() {
+    logger.info("Installing blit init hook...");
+    uintptr_t libunity = baseAddr("libunity.so");
+    uintptr_t initialize_blit_fbo_addr = findPattern(
+        libunity, "fc 6f ba a9 fa 67 01 a9 f8 5f 02 a9 f6 57 03 a9 f4 4f 04 a9 fd 7b 05 a9 ff 83 0b d1 58 d0 3b d5 08 17 40 f9 e8 6f", 0x2000000
+    );
+    logger.debug("Found blit init address: {}", initialize_blit_fbo_addr);
+    INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
+    logger.info("Installed blit init hook!");
 }

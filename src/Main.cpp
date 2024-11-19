@@ -8,13 +8,13 @@
 #include "GlobalNamespace/UIKeyboardManager.hpp"
 #include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
-#include "JNIUtils.hpp"
 #include "MenuSelection.hpp"
 #include "ReplayManager.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "custom-types/shared/register.hpp"
+#include "hollywood/shared/hollywood.hpp"
 #include "songcore/shared/SongCore.hpp"
 
 using namespace GlobalNamespace;
@@ -128,34 +128,6 @@ void SetFadeIsOut(bool val) {
     waitForNextFadeOut = val;
 }
 
-ALooper* mainThreadLooper;
-int messagePipe[2];
-jobject activity = nullptr;
-bool looperMade = false;
-
-MAKE_HOOK_NO_CATCH(unity_initJni, 0x0, void, JNIEnv* env, jobject jobj, jobject context) {
-
-    unity_initJni(env, jobj, context);
-
-    if (looperMade)
-        return;
-
-    mainThreadLooper = ALooper_forThread();
-    ALooper_acquire(mainThreadLooper);
-    pipe(messagePipe);
-    ALooper_addFd(mainThreadLooper, messagePipe[0], 0, ALOOPER_EVENT_INPUT, LooperCallback, nullptr);
-    looperMade = true;
-    LOG_INFO("Created looper and registered pipe");
-}
-
-int LooperCallback(int fd, int events, void* data) {
-    char msg;
-    read(fd, &msg, 1);
-    bool on = msg;
-    JNIUtils::SetScreenOnImpl(on);
-    return 1;
-}
-
 extern "C" void setup(CModInfo* info) {
     *info = modInfo.to_c();
 
@@ -166,27 +138,24 @@ extern "C" void setup(CModInfo* info) {
     if (!direxists(RendersFolder))
         mkpath(RendersFolder);
 
-    // in case it crashed during a render, unmute
-    // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
-    JNIUtils::SetMute(false);
-    // screen on should be cleared when the activity closes
-
     LOG_INFO("Completed setup!");
 }
 
 extern "C" void load() {
-    LOG_INFO("Installing UI thread hook...");
-    uintptr_t libunity = baseAddr("libunity.so");
-    uintptr_t unity_initJni_addr =
-        findPattern(libunity, "ff c3 00 d1 f5 53 01 a9 f3 7b 02 a9 ff 07 00 f9 08 00 40 f9 f4 03 01 aa e1 23 00 91 f3 03 02 aa 08 6d 43 f9");
-    LOG_INFO("Found UI thread address: {}", unity_initJni_addr);
-    INSTALL_HOOK_DIRECT(logger, unity_initJni, (void*) unity_initJni_addr);
-    LOG_INFO("Installed UI thread hook!");
+    il2cpp_functions::Init();
+
+    InstallBlitHook();
+
+    Hollywood::Init();
+
+    // in case it crashed during a render, unmute
+    // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
+    Hollywood::SetMuteSpeakers(false);
+    // fix proximity sensor state too
+    Hollywood::SetScreenOn(false);
 }
 
 extern "C" void late_load() {
-    il2cpp_functions::Init();
-
     custom_types::Register::AutoRegister();
 
     BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);

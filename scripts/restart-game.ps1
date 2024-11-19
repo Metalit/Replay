@@ -6,3 +6,4 @@ $on = $str.ToString().Contains("true")
 if (-not $on) {
     adb shell input keyevent KEYCODE_POWER
 }
+adb shell am broadcast -a com.oculus.vrpowermanager.prox_close | Out-Null
