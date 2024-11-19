@@ -245,6 +245,8 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     AddConfigValueToggle(transform, getConfig().Correction);
 
+    AddConfigValueIncrementFloat(transform, getConfig().TargetTilt, 0, 1, -60, 60);
+
     AddConfigValueIncrementVector3(transform, getConfig().Offset, 1, 0.1);
 
     AddConfigValueToggle(transform, getConfig().Relative);

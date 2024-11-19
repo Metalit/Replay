@@ -54,6 +54,17 @@ struct NoteCompare {
 
 std::vector<std::pair<std::string, ReplayWrapper>> currentReplays;
 
+Quaternion ApplyTilt(Quaternion const& rotation, float tilt) {
+    if (tilt == 0)
+        return rotation;
+    // extract global y axis rotation
+    auto yRot = Quaternion::Normalize({0, rotation.y, 0, rotation.w});
+    // apply the y rotation as a global axis on the x tilt
+    auto zRotWithY = Sombrero::QuaternionMultiply(yRot, Quaternion::Euler({tilt, 0, 0}));
+    // then use z rot as a global
+    return Sombrero::QuaternionMultiply(zRotWithY, rotation);
+}
+
 namespace Manager {
 
     int currentFrame = 0;
@@ -149,7 +160,9 @@ namespace Manager {
         Quaternion GetHeadRotation() {
             if (GetMode() == (int) CameraMode::Smooth) {
                 if (getConfig().Correction.GetValue())
-                    return Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
+                    return ApplyTilt(
+                        Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset), getConfig().TargetTilt.GetValue()
+                    );
             }
             return smoothRotation;
         }
@@ -226,8 +239,10 @@ namespace Manager {
             if (GetMode() == (int) CameraMode::Smooth) {
                 smoothRotation = GetFrame().head.rotation;
                 // undo rotation by average rotation offset
-                if (getConfig().Correction.GetValue())
+                if (getConfig().Correction.GetValue()) {
                     smoothRotation = Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
+                    smoothRotation = ApplyTilt(smoothRotation, getConfig().TargetTilt.GetValue());
+                }
                 // add position offset, potentially relative to rotation
                 auto offset = getConfig().Offset.GetValue();
                 if (getConfig().Relative.GetValue())
