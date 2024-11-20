@@ -499,7 +499,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         getConfig().ThirdPerPos.SetValue(preset.Position);
         getConfig().ThirdPerRot.SetValue(preset.Rotation);
         auto presets = getConfig().ThirdPerPresets.GetValue();
-        presets[getConfig().ThirdPerPreset.GetValue()] = preset;
+        presets[val] = preset;
         getConfig().ThirdPerPresets.SetValue(presets);
         OnEnable();
     };

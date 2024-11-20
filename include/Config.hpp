@@ -77,8 +77,8 @@ DECLARE_CONFIG(Config,
     CONFIG_VALUE(TravelButton, ButtonPair, "Travel Forward|Travel Backward", {}, "Moves the environment around you in third person")
     CONFIG_VALUE(TravelSpeed, float, "Travel Speed", 1, "The speed multiplier for the travel function")
 
-    CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(0, 2, -0.5))
-    CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", {})
+    CONFIG_VALUE(ThirdPerPos, UnityEngine::Vector3, "Third Person Position", UnityEngine::Vector3(1, 2, -1))
+    CONFIG_VALUE(ThirdPerRot, UnityEngine::Vector3, "Third Person Rotation", UnityEngine::Vector3(14, 335, 0))
     CONFIG_VALUE(ThirdPerPresets, StringKeyedMap<ThirdPerPreset>, "Third Person Presets", {})
     CONFIG_VALUE(ThirdPerPreset, std::string, "Third Person Preset", "Default")
 
