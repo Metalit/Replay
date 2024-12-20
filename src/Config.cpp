@@ -338,8 +338,11 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 custom_types::Helpers::Coroutine RenderSettings::GetCoverCoro(BeatmapLevel* level) {
     auto result = level->previewMediaData->GetCoverSpriteAsync(System::Threading::CancellationToken::get_None());
 
+    // make sure all the cells have been constructed
+    co_yield nullptr;
+
     while (!result->IsCompleted)
-        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.2);
+        co_yield (System::Collections::IEnumerator*) UnityEngine::WaitForSeconds::New_ctor(0.1);
 
     UpdateCover(level, result->ResultOnSuccess);
     co_return;

@@ -134,6 +134,7 @@ void SetupRecording() {
 
     LOG_INFO("Beginning video capture");
     customCamera = UnityEngine::Object::Instantiate(mainCamera);
+    customCamera->tag = "Untagged";
     customCamera->gameObject->active = false;
     customCamera->enabled = true;
 
@@ -152,8 +153,6 @@ void SetupRecording() {
     if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
         UnityEngine::Object::DestroyImmediate(comp);
     if (auto comp = customCamera->GetComponent<ReplayHelpers::CameraRig*>())
-        UnityEngine::Object::DestroyImmediate(comp);
-    if (auto comp = customCamera->GetComponent("CameraController"))
         UnityEngine::Object::DestroyImmediate(comp);
 
     customCamera->clearFlags = mainCamera->clearFlags;
