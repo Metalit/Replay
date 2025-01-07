@@ -231,6 +231,20 @@ inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper pa
     return object;
 }
 
+inline void AddIncrementIncrement(BSML::IncrementSetting* setting, float increment) {
+    auto transform = setting->transform->Find("ValuePicker").cast<UnityEngine::RectTransform>();
+    transform->anchoredPosition = {-6, 0};
+
+    auto leftButton = BSML::Lite::CreateUIButton(transform, "", "DecButton", {-20, 0}, {6, 8}, [setting, increment]() {
+        setting->currentValue -= increment;
+        setting->EitherPressed();
+    });
+    auto rightButton = BSML::Lite::CreateUIButton(transform, "", "IncButton", {7, 0}, {8, 8}, [setting, increment]() {
+        setting->currentValue += increment;
+        setting->EitherPressed();
+    });
+}
+
 std::vector<std::string> const resolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
 std::vector<std::string> const wallStrings = {"Transparent", "Textured", "Distorted"};
 std::vector<std::string> const mirrorStrings = {"Off", "Low", "Medium", "High"};
@@ -423,13 +437,17 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     AddConfigValueIncrementFloat(inputs, getConfig().TravelSpeed, 1, 0.1, 0.2, 5);
 
     positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
+    for (auto& setting : positionSettings)
+        AddIncrementIncrement(setting, 1);
 
     CreateSmallButton(position, "Reset Position", [this]() {
         getConfig().ThirdPerPos.SetValue(getConfig().ThirdPerPos.GetDefaultValue());
         OnEnable();
     });
 
-    rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 10);
+    rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
+    for (auto& setting : rotationSettings)
+        AddIncrementIncrement(setting, 10);
 
     auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(position);
 
