@@ -180,7 +180,7 @@ void SetupRecording() {
     video->onOutputUnit = [](uint8_t* data, size_t len) {
         videoOutput.write((char*) data, len);
     };
-    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue());
+    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue(), true);
 
     UnityEngine::Time::set_captureDeltaTime(1 / (float) getConfig().FPS.GetValue());
 
