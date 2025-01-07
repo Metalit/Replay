@@ -57,12 +57,8 @@ std::vector<std::pair<std::string, ReplayWrapper>> currentReplays;
 Quaternion ApplyTilt(Quaternion const& rotation, float tilt) {
     if (tilt == 0)
         return rotation;
-    // extract global y axis rotation
-    auto yRot = Quaternion::Normalize({0, rotation.y, 0, rotation.w});
-    // apply the y rotation as a global axis on the x tilt
-    auto zRotWithY = Sombrero::QuaternionMultiply(yRot, Quaternion::Euler({tilt, 0, 0}));
-    // then use z rot as a global
-    return Sombrero::QuaternionMultiply(zRotWithY, rotation);
+    // rotate on local x axis
+    return Sombrero::QuaternionMultiply(rotation, Quaternion::Euler({tilt, 0, 0}));
 }
 
 namespace Manager {
