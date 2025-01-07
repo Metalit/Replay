@@ -454,6 +454,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     // too lazy to update values and stuff properly
     presetDropdown = BSML::Lite::CreateDropdown(layout, "Preset", getConfig().ThirdPerPreset.GetValue(), presetNames, [this](StringW name) {
+        OnDisable();
         getConfig().ThirdPerPreset.SetValue(name);
         auto preset = getConfig().ThirdPerPresets.GetValue()[name];
         getConfig().ThirdPerPos.SetValue(preset.Position);
