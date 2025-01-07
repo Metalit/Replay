@@ -149,6 +149,17 @@ namespace Pause {
 
     bool touchedTime = false, touchedSpeed = false;
 
+    void UpdateCameraActive() {
+        camera = UnityEngine::GameObject::Find("ReplayCameraModel");
+        if (Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
+            if (!camera)
+                camera = CreateCameraModel();
+            camera->active = true;
+            SetCameraModelToThirdPerson(camera);
+        } else if (camera)
+            camera->active = false;
+    }
+
     void EnsureSetup(PauseMenuManager* pauseMenu) {
         static ConstString menuName("ReplayPauseMenu");
         if (lastPauseMenu != pauseMenu && !pauseMenu->_pauseContainerTransform->Find(menuName)) {
@@ -172,21 +183,19 @@ namespace Pause {
             timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
             SetTransform(timeSlider, {0, 6}, {100, 10});
             speedSlider = TextlessSlider(
-                parent, 0.5, 2, 1, 0.1, [](float _) { touchedSpeed = true; }, [](float speed) { return fmt::format("{:.1f}x", speed); }, true
+                parent, 0.5, 2, 1, 0.1, [](float) { touchedSpeed = true; }, [](float speed) { return fmt::format("{:.1f}x", speed); }, true
             );
             SetTransform(speedSlider, {-18, -4}, {65, 10});
-            auto dropdown = AddConfigValueDropdownEnum(parent, getConfig().CamMode, cameraModes)->transform->parent;
-            dropdown->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->text = "";
-            SetTransform(dropdown, {-10, -11.5}, {10, 10});
+            auto dropdown = AddConfigValueDropdownEnum(parent, getConfig().CamMode, cameraModes);
+            dropdown->onChange = [onChange = dropdown->onChange](StringW value) {
+                onChange((System::Object*) value.convert());
+                UpdateCameraActive();
+            };
+            auto transform = dropdown->transform->parent;
+            transform->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->text = "";
+            SetTransform(transform, {-10, -11.5}, {10, 10});
         }
-        camera = UnityEngine::GameObject::Find("ReplayCameraModel");
-        if (Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson) {
-            if (!camera)
-                camera = CreateCameraModel();
-            camera->active = true;
-            SetCameraModelToThirdPerson(camera);
-        } else if (camera)
-            camera->active = false;
+        UpdateCameraActive();
 
         timeSlider->set_Value(scoreController->_audioTimeSyncController->songTime);
         speedSlider->set_Value(scoreController->_audioTimeSyncController->timeScale);
