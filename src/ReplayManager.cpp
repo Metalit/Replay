@@ -1,8 +1,6 @@
 #include "ReplayManager.hpp"
 
-#include "BeatSaber/GameSettings/GraphicSettingsHandler.hpp"
-#include "BeatSaber/PerformancePresets/PerformancePreset.hpp"
-#include "BeatSaber/PerformancePresets/QuestPerformanceSettings.hpp"
+#include "BeatSaber/Settings/Settings.hpp"
 #include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "Formats/EventReplay.hpp"
@@ -18,7 +16,6 @@
 #include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/ObstacleData.hpp"
-#include "GlobalNamespace/ObstaclesQualitySO.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
@@ -40,7 +37,7 @@
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "Utils.hpp"
-#include "bs-utils/shared/utils.hpp"
+#include "metacore/shared/game.hpp"
 
 using namespace GlobalNamespace;
 
@@ -185,9 +182,8 @@ namespace Manager {
 
         void SetGraphicsSettings() {
             auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<SettingsApplicatorSO*>()->First();
-            auto settings = BeatSaber::PerformancePresets::PerformancePreset::New_ctor();
-            settings->_vrResolutionScale = 0.8;
-            settings->_questSettings = BeatSaber::PerformancePresets::QuestPerformanceSettings::New_ctor();
+            auto settings = BeatSaber::Settings::Settings();
+            settings.quality.vrResolutionScale = 0.8;
 
             // shockwaves and walls unused in ApplyPerformancePreset
 
@@ -209,13 +205,13 @@ namespace Manager {
                         break;
                 }
             }
-            settings->_antiAliasingLevel = antiAlias;
+            settings.quality.antiAliasingLevel = antiAlias;
 
-            settings->_mainEffectGraphics = getConfig().Bloom.GetValue() ? BeatSaber::PerformancePresets::MainEffectPreset::Pyramid
-                                                                         : BeatSaber::PerformancePresets::MainEffectPreset::Off;
-            settings->_mirrorGraphics = getConfig().Mirrors.GetValue();
+            settings.quality.mainEffect = getConfig().Bloom.GetValue() ? BeatSaber::Settings::QualitySettings::MainEffectOption::Game
+                                                                       : BeatSaber::Settings::QualitySettings::MainEffectOption::Off;
+            settings.quality.mirror = getConfig().Mirrors.GetValue();
 
-            applicator->ApplyPerformancePreset(settings, GlobalNamespace::SceneType::Game);
+            applicator->ApplyGraphicSettings(settings, GlobalNamespace::SceneType::Game);
             LOG_INFO("applied custom graphics settings");
         }
         void UnsetGraphicsSettings() {
@@ -463,7 +459,7 @@ namespace Manager {
         LOG_INFO("Replay started");
         currentReplay = wrapper;
         frameCount = currentReplay.replay->frames.size();
-        bs_utils::Submission::disable(modInfo);
+        MetaCore::Game::SetScoreSubmission(MOD_ID, false);
         replaying = true;
         paused = false;
         currentFrame = 0;
@@ -502,7 +498,7 @@ namespace Manager {
     void ReplayEnded(bool quit) {
         LOG_INFO("Replay ended");
         Camera::ReplayEnded();
-        bs_utils::Submission::enable(modInfo);
+        MetaCore::Game::SetScoreSubmission(MOD_ID, true);
         replaying = false;
         if (Camera::rendering && !quit) {
             if (!getConfig().LevelsToSelect.GetValue().empty()) {

@@ -41,6 +41,7 @@
 #include "UnityEngine/Time.hpp"
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "bsml/shared/BSML.hpp"
+#include "metacore/shared/strings.hpp"
 
 using namespace GlobalNamespace;
 using namespace Manager::Objects;
@@ -180,7 +181,8 @@ namespace Pause {
                 startTime = info.startTime;
             if (info.failed)
                 endTime = info.failTime;
-            timeSlider = TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return SecondsToString(time); });
+            timeSlider =
+                TextlessSlider(parent, startTime, endTime, time, 1, PreviewTime, [](float time) { return MetaCore::Strings::SecondsToString(time); });
             SetTransform(timeSlider, {0, 6}, {100, 10});
             speedSlider = TextlessSlider(
                 parent, 0.5, 2, 1, 0.1, [](float) { touchedSpeed = true; }, [](float speed) { return fmt::format("{:.1f}x", speed); }, true

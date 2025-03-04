@@ -1,5 +1,3 @@
-#include "BeatSaber/GameSettings/MainSettings.hpp"
-#include "BeatSaber/GameSettings/MainSettingsHandler.hpp"
 #include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "GlobalNamespace/FloatSO.hpp"
@@ -14,6 +12,7 @@
 #include "GlobalNamespace/PracticeSettings.hpp"
 #include "GlobalNamespace/Saber.hpp"
 #include "GlobalNamespace/SaberType.hpp"
+#include "GlobalNamespace/SettingsManager.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "GlobalNamespace/VRCenterAdjust.hpp"
 #include "GlobalNamespace/VRController.hpp"
@@ -22,10 +21,12 @@
 #include "Main.hpp"
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
+#include "Unity/Mathematics/float3.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "metacore/shared/game.hpp"
 
 using namespace GlobalNamespace;
 
@@ -40,7 +41,7 @@ float oldRotAdj;
 MAKE_AUTO_HOOK_MATCH(
     MenuTransitionsHelper_StartStandardLevel,
     static_cast<
-        void (MenuTransitionsHelper::*)(StringW, ByRef<BeatmapKey>, BeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, EnvironmentsListModel*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Action_2<UnityW<LevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Nullable_1<RecordingToolManager::SetupData>)>(
+        void (MenuTransitionsHelper::*)(StringW, ByRef<BeatmapKey>, BeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, bool, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, EnvironmentsListModel*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Nullable_1<RecordingToolManager::SetupData>)>(
         &MenuTransitionsHelper::StartStandardLevel
     ),
     void,
@@ -50,19 +51,20 @@ MAKE_AUTO_HOOK_MATCH(
     BeatmapLevel* f3,
     OverrideEnvironmentSettings* f4,
     ColorScheme* f5,
-    ColorScheme* f6,
-    GameplayModifiers* f7,
-    PlayerSpecificSettings* f8,
-    PracticeSettings* f9,
-    EnvironmentsListModel* f10,
-    StringW f11,
-    bool f12,
+    bool f6,
+    ColorScheme* f7,
+    GameplayModifiers* f8,
+    PlayerSpecificSettings* f9,
+    PracticeSettings* f10,
+    EnvironmentsListModel* f11,
+    StringW f12,
     bool f13,
-    System::Action* f14,
-    System::Action_1<Zenject::DiContainer*>* f15,
-    System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f16,
-    System::Action_2<UnityW<LevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f17,
-    System::Nullable_1<RecordingToolManager::SetupData> f18
+    bool f14,
+    System::Action* f15,
+    System::Action_1<Zenject::DiContainer*>* f16,
+    System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f17,
+    System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f18,
+    System::Nullable_1<RecordingToolManager::SetupData> f19
 ) {
     if (Manager::replaying) {
         auto& info = Manager::GetCurrentInfo();
@@ -103,21 +105,21 @@ MAKE_AUTO_HOOK_MATCH(
             zenMode,
             smallNotes
         );
-        f7 = static_cast<GameplayModifiers*>(modifierHolder);
-        playerSpecificSettings = f8;
-        wasLeftHanded = f8->leftHanded;
-        f8->_leftHanded = modifiers.leftHanded;
+        f8 = static_cast<GameplayModifiers*>(modifierHolder);
+        playerSpecificSettings = f9;
+        wasLeftHanded = f9->leftHanded;
+        f9->_leftHanded = modifiers.leftHanded;
 
         // setting the local transform doesn't work for some reason, even after the scene change
         roomAdjust = UnityEngine::Resources::FindObjectsOfTypeAll<VRCenterAdjust*>()->First();
-        oldPosAdj = roomAdjust->_mainSettingsHandler->instance->roomCenter;
-        oldRotAdj = roomAdjust->_mainSettingsHandler->instance->roomRotation;
+        oldPosAdj = Unity::Mathematics::float3::op_Implicit___UnityEngine__Vector3(roomAdjust->_settingsManager->settings.room.center);
+        oldRotAdj = roomAdjust->_settingsManager->settings.room.rotation;
         roomAdjust->ResetRoom();
 
         if (info.practice)
-            f9 = PracticeSettings::New_ctor(info.startTime, info.speed);
+            f10 = PracticeSettings::New_ctor(info.startTime, info.speed);
     }
-    MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18);
+    MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19);
 }
 
 // handle restarts
@@ -202,23 +204,23 @@ MAKE_AUTO_HOOK_MATCH(
     cancelPresent = false;
     bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
     if (Manager::replaying) {
-        Fade(false, true);
+        MetaCore::Game::SetCameraFadeOut(MOD_ID, true, 0);
         if (playerSpecificSettings)
             playerSpecificSettings->_leftHanded = wasLeftHanded;
         playerSpecificSettings = nullptr;
         if (roomAdjust) {
-            roomAdjust->_mainSettingsHandler->instance->roomCenter = oldPosAdj;
-            roomAdjust->_mainSettingsHandler->instance->roomRotation = oldRotAdj;
+            roomAdjust->_settingsManager->settings.room.center = Unity::Mathematics::float3::op_Implicit___Unity__Mathematics__float3(oldPosAdj);
+            roomAdjust->_settingsManager->settings.room.rotation = oldRotAdj;
         }
         roomAdjust = nullptr;
         if (!quit) {
             auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
-            lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false);
+            lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false, 0);
         }
         BSML::MainThreadScheduler::ScheduleUntil(
             []() { return Manager::Camera::muxingFinished; },
             [quit]() {
-                Fade(true, false);
+                MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
                 Manager::ReplayEnded(quit);
             }
         );

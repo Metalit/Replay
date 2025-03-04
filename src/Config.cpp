@@ -20,14 +20,14 @@
 #include "Utils.hpp"
 #include "bsml/shared/BSML-Lite.hpp"
 #include "bsml/shared/Helpers/creation.hpp"
-#include "bsml/shared/Helpers/delegates.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
+#include "metacore/shared/delegates.hpp"
+#include "metacore/shared/ui.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)
 DEFINE_TYPE(ReplaySettings, InputSettings)
 DEFINE_TYPE(ReplaySettings, ModSettings)
-DEFINE_TYPE(ReplaySettings, KeyboardCloseHandler)
 
 using namespace GlobalNamespace;
 using namespace ReplaySettings;
@@ -180,46 +180,6 @@ inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self, float vert
     return ret;
 }
 
-HMUI::TextSegmentedControl* MakeTabSelector(BSML::Lite::TransformWrapper parent, std::vector<std::string> texts, auto callback) {
-    static UnityW<HMUI::TextSegmentedControl> tabSelectorTagTemplate;
-    if (!tabSelectorTagTemplate) {
-        tabSelectorTagTemplate = UnityEngine::Resources::FindObjectsOfTypeAll<HMUI::TextSegmentedControl*>()->FirstOrDefault([](auto x) {
-            UnityEngine::Transform* parent = x->transform->parent;
-            if (!parent)
-                return false;
-            if (parent->name != "PlayerStatisticsViewController")
-                return false;
-            return x->_container != nullptr;
-        });
-    }
-
-    auto textSegmentedControl = UnityEngine::Object::Instantiate(tabSelectorTagTemplate.ptr(), parent->transform, false);
-    textSegmentedControl->_dataSource = nullptr;
-
-    auto gameObject = textSegmentedControl->gameObject;
-    gameObject->name = "ReplayTabSelector";
-    textSegmentedControl->_container = tabSelectorTagTemplate->_container;
-
-    auto transform = gameObject->template GetComponent<UnityEngine::RectTransform*>();
-    transform->anchoredPosition = {0, 0};
-    int childCount = transform->childCount;
-    for (int i = 1; i <= childCount; i++)
-        UnityEngine::Object::DestroyImmediate(transform->GetChild(childCount - i)->gameObject);
-
-    auto textList = ListW<StringW>::New(texts.size());
-    for (auto text : texts)
-        textList->Add(text);
-    textSegmentedControl->SetTexts(textList->i___System__Collections__Generic__IReadOnlyList_1_T_());
-
-    auto delegate = BSML::MakeSystemAction((std::function<void(UnityW<HMUI::SegmentedControl>, int)>) [callback](
-        UnityW<HMUI::SegmentedControl>, int selectedIndex
-    ) { callback(selectedIndex); });
-    textSegmentedControl->add_didSelectCellEvent(delegate);
-
-    gameObject->SetActive(true);
-    return textSegmentedControl;
-}
-
 inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
     auto object = BSML::Lite::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), [&configValue, callback](bool value) mutable {
         configValue.SetValue(value);
@@ -229,20 +189,6 @@ inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper pa
         BSML::Lite::AddHoverHint(object->gameObject, configValue.GetHoverHint());
     object->template GetComponent<UnityEngine::RectTransform*>()->sizeDelta = {18, 8};
     return object;
-}
-
-inline void AddIncrementIncrement(BSML::IncrementSetting* setting, float increment) {
-    auto transform = setting->transform->Find("ValuePicker").cast<UnityEngine::RectTransform>();
-    transform->anchoredPosition = {-6, 0};
-
-    auto leftButton = BSML::Lite::CreateUIButton(transform, "", "DecButton", {-20, 0}, {6, 8}, [setting, increment]() {
-        setting->currentValue -= increment;
-        setting->EitherPressed();
-    });
-    auto rightButton = BSML::Lite::CreateUIButton(transform, "", "IncButton", {7, 0}, {8, 8}, [setting, increment]() {
-        setting->currentValue += increment;
-        setting->EitherPressed();
-    });
 }
 
 std::vector<std::string> const resolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
@@ -280,7 +226,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     auto transform = MakeLayout(this, 8);
     auto graphics = MakeVertical(transform);
     auto rendering = MakeVertical(transform);
-    MakeTabSelector(transform, {"Graphics", "Rendering"}, [graphics, rendering](int selected) {
+    MetaCore::UI::CreateTextSegmentedControl(transform, {"Graphics", "Rendering"}, [graphics, rendering](int selected) {
         graphics->gameObject->active = selected == 0;
         rendering->gameObject->active = selected == 1;
     })->transform->SetAsFirstSibling();
@@ -350,7 +296,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 }
 
 custom_types::Helpers::Coroutine RenderSettings::GetCoverCoro(BeatmapLevel* level) {
-    auto result = level->previewMediaData->GetCoverSpriteAsync(System::Threading::CancellationToken::get_None());
+    auto result = level->previewMediaData->GetCoverSpriteAsync();
 
     // make sure all the cells have been constructed
     co_yield nullptr;
@@ -419,7 +365,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     auto transform = MakeLayout(this, 8);
     auto inputs = MakeVertical(transform);
     auto position = MakeVertical(transform);
-    MakeTabSelector(transform, {"Inputs", "Position"}, [inputs, position](int selected) {
+    MetaCore::UI::CreateTextSegmentedControl(transform, {"Inputs", "Position"}, [inputs, position](int selected) {
         inputs->gameObject->SetActive(selected == 0);
         position->gameObject->SetActive(selected == 1);
     })->transform->SetAsFirstSibling();
@@ -438,7 +384,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     positionSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerPos, 1, 0.1);
     for (auto& setting : positionSettings)
-        AddIncrementIncrement(setting, 1);
+        MetaCore::UI::AddIncrementIncrement(setting, 1);
 
     CreateSmallButton(position, "Reset Position", [this]() {
         getConfig().ThirdPerPos.SetValue(getConfig().ThirdPerPos.GetDefaultValue());
@@ -447,7 +393,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 
     rotationSettings = AddConfigValueIncrementVector3(position, getConfig().ThirdPerRot, 0, 1);
     for (auto& setting : rotationSettings)
-        AddIncrementIncrement(setting, 10);
+        MetaCore::UI::AddIncrementIncrement(setting, 10);
 
     auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(position);
 
@@ -471,9 +417,9 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         presetNames.emplace_back(name);
 
     // too lazy to update values and stuff properly
-    presetDropdown = BSML::Lite::CreateDropdown(layout, "Preset", getConfig().ThirdPerPreset.GetValue(), presetNames, [this](StringW name) {
+    presetDropdown = BSML::Lite::CreateDropdown(layout, "Preset", getConfig().CurrentThirdPerPreset.GetValue(), presetNames, [this](StringW name) {
         OnDisable();
-        getConfig().ThirdPerPreset.SetValue(name);
+        getConfig().CurrentThirdPerPreset.SetValue(name);
         auto preset = getConfig().ThirdPerPresets.GetValue()[name];
         getConfig().ThirdPerPos.SetValue(preset.Position);
         getConfig().ThirdPerRot.SetValue(preset.Rotation);
@@ -488,9 +434,9 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         auto presets = getConfig().ThirdPerPresets.GetValue();
         if (presets.size() <= 1)
             return;
-        presets.erase(getConfig().ThirdPerPreset.GetValue());
+        presets.erase(getConfig().CurrentThirdPerPreset.GetValue());
         getConfig().ThirdPerPresets.SetValue(presets);
-        getConfig().ThirdPerPreset.SetValue(presets.begin()->first);
+        getConfig().CurrentThirdPerPreset.SetValue(presets.begin()->first);
         getConfig().ThirdPerPos.SetValue(presets.begin()->second.Position);
         getConfig().ThirdPerRot.SetValue(presets.begin()->second.Rotation);
         OnEnable();
@@ -508,13 +454,13 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
     text2->alignment = TMPro::TextAlignmentOptions::Bottom;
 
     nameInput = BSML::Lite::CreateStringSetting(modalLayout2, "Name", "", {0, 0}, {0, 0, 0});
-    nameInput->gameObject->AddComponent<KeyboardCloseHandler*>()->okCallback = [this]() {
+    MetaCore::UI::AddStringSettingOnClose(nameInput, nullptr, [this]() {
         std::string val = nameInput->text;
         if (val.empty())
             return;
         nameModal->Hide(true, nullptr);
         OnDisable();  // save current preset
-        getConfig().ThirdPerPreset.SetValue(val);
+        getConfig().CurrentThirdPerPreset.SetValue(val);
         ThirdPerPreset preset;
         preset.Position = getConfig().ThirdPerPos.GetDefaultValue();
         preset.Rotation = getConfig().ThirdPerRot.GetDefaultValue();
@@ -524,7 +470,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
         presets[val] = preset;
         getConfig().ThirdPerPresets.SetValue(presets);
         OnEnable();
-    };
+    });
 
     position->gameObject->active = false;
 }
@@ -543,7 +489,7 @@ void InputSettings::OnEnable() {
     removePresetButton->interactable = getConfig().ThirdPerPresets.GetValue().size() > 1;
     // all this to update a dropdown's values
     auto presets = getConfig().ThirdPerPresets.GetValue();
-    auto preset = getConfig().ThirdPerPreset.GetValue();
+    auto preset = getConfig().CurrentThirdPerPreset.GetValue();
     std::vector<std::string_view> presetNames;
     for (auto& [name, _] : presets)
         presetNames.emplace_back(name);
@@ -565,7 +511,7 @@ void InputSettings::OnDisable() {
     preset.Position = getConfig().ThirdPerPos.GetValue();
     preset.Rotation = getConfig().ThirdPerRot.GetValue();
     auto presets = getConfig().ThirdPerPresets.GetValue();
-    presets[getConfig().ThirdPerPreset.GetValue()] = preset;
+    presets[getConfig().CurrentThirdPerPreset.GetValue()] = preset;
     getConfig().ThirdPerPresets.SetValue(presets);
 }
 

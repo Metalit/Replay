@@ -12,8 +12,6 @@
 #include "Replay.hpp"
 #include "UnityEngine/Sprite.hpp"
 
-std::string SanitizedPath(std::string path);
-
 std::string GetReqlaysPath();
 
 std::string GetBSORsPath();
@@ -35,7 +33,7 @@ struct DifficultyBeatmap {
     GlobalNamespace::BeatmapLevel* level;
 
     DifficultyBeatmap() = default;
-    DifficultyBeatmap(GlobalNamespace::BeatmapKey diff, GlobalNamespace::BeatmapLevel* lev) : difficulty(diff), level(lev){};
+    DifficultyBeatmap(GlobalNamespace::BeatmapKey diff, GlobalNamespace::BeatmapLevel* lev) : difficulty(diff), level(lev) {};
 
     bool operator==(DifficultyBeatmap const& rhs) const {
         return level == rhs.level && GlobalNamespace::BeatmapKey::op_Equality(difficulty, rhs.difficulty);
@@ -44,17 +42,9 @@ struct DifficultyBeatmap {
 
 std::string GetMapString(DifficultyBeatmap beatmap);
 
-std::string GetHash(DifficultyBeatmap beatmap);
-
 std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(DifficultyBeatmap beatmap);
 
-std::string SecondsToString(int value);
-
-std::string GetStringForTimeSinceNow(long start);
-
 std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail);
-
-void GetBeatmapData(DifficultyBeatmap beatmap, std::function<void(GlobalNamespace::IReadonlyBeatmapData*)> callback);
 
 GlobalNamespace::NoteCutInfo
 GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
@@ -82,7 +72,5 @@ MapPreview MapAtTime(ReplayWrapper const& replay, float time);
 bool IsButtonDown(const class Button& button);
 
 int IsButtonDown(const class ButtonPair& button);
-
-void Fade(bool in, bool instant);
 
 void PlayDing();

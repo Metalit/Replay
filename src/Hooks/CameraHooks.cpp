@@ -36,6 +36,7 @@
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "hollywood/shared/hollywood.hpp"
+#include "metacore/shared/strings.hpp"
 
 using namespace GlobalNamespace;
 
@@ -124,7 +125,7 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
 
 void SetupRecording() {
     LOG_INFO("Setting up recording");
-    fileName = SanitizedPath(GetMapString(Manager::beatmap));
+    fileName = MetaCore::Strings::SanitizedPath(GetMapString(Manager::beatmap));
     LOG_INFO("Using filename: {}", fileName);
 
     LOG_INFO("Muting audio");
@@ -212,7 +213,9 @@ MAKE_AUTO_HOOK_MATCH(
     &ObstacleMaterialSetter::SetCoreMaterial,
     void,
     ObstacleMaterialSetter* self,
-    UnityEngine::Renderer* renderer
+    UnityEngine::Renderer* renderer,
+    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality,
+    bool screenDisplacementEffects
 ) {
     if (Manager::replaying && Manager::Camera::rendering) {
         switch (getConfig().Walls.GetValue()) {
@@ -227,19 +230,20 @@ MAKE_AUTO_HOOK_MATCH(
                 break;
         }
     } else
-        ObstacleMaterialSetter_SetCoreMaterial(self, renderer);
+        ObstacleMaterialSetter_SetCoreMaterial(self, renderer, obstacleQuality, screenDisplacementEffects);
 }
 MAKE_AUTO_HOOK_MATCH(
     ObstacleMaterialSetter_SetFakeGlowMaterial,
     &ObstacleMaterialSetter::SetFakeGlowMaterial,
     void,
     ObstacleMaterialSetter* self,
-    UnityEngine::Renderer* renderer
+    UnityEngine::Renderer* renderer,
+    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality
 ) {
     if (Manager::replaying && Manager::Camera::rendering)
         renderer->sharedMaterial = getConfig().Walls.GetValue() == 0 ? self->_fakeGlowLWMaterial : self->_fakeGlowTexturedMaterial;
     else
-        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer);
+        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer, obstacleQuality);
 }
 
 // override shockwaves too
@@ -449,9 +453,8 @@ MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversio
 void InstallBlitHook() {
     logger.info("Installing blit init hook...");
     uintptr_t libunity = baseAddr("libunity.so");
-    uintptr_t initialize_blit_fbo_addr = findPattern(
-        libunity, "fc 6f ba a9 fa 67 01 a9 f8 5f 02 a9 f6 57 03 a9 f4 4f 04 a9 fd 7b 05 a9 ff 83 0b d1 58 d0 3b d5 08 17 40 f9 e8 6f", 0x2000000
-    );
+    uintptr_t initialize_blit_fbo_addr =
+        findPattern(libunity, "fd 7b ba a9 fc 6f 01 a9 fa 67 02 a9 f8 5f 03 a9 f6 57 04 a9 f4 4f 05 a9 ff 83 0b d1 58 d0 3b d5 08", 0x2000000);
     logger.debug("Found blit init address: {}", initialize_blit_fbo_addr);
     INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
     logger.info("Installed blit init hook!");

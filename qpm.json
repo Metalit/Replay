@@ -5,7 +5,7 @@
   "info": {
     "name": "Replay",
     "id": "replay",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "url": null,
     "additionalData": {
       "overrideSoName": "libreplay.so"
@@ -48,43 +48,34 @@
   "dependencies": [
     {
       "id": "beatsaber-hook",
-      "versionRange": "^5.1.9",
-      "additionalData": {
-        "extraFiles": [
-          "src/inline-hook"
-        ]
-      }
+      "versionRange": "^6.4.0",
+      "additionalData": {}
     },
     {
       "id": "scotland2",
-      "versionRange": "^0.1.4",
+      "versionRange": "^0.1.6",
       "additionalData": {
         "includeQmod": false
       }
     },
     {
       "id": "bs-cordl",
-      "versionRange": "^3700.0.0",
+      "versionRange": "^4030.0.0",
       "additionalData": {}
     },
     {
-      "id": "paper",
-      "versionRange": "^3.6.4",
+      "id": "paper2_scotland2",
+      "versionRange": "^4.4.2",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.17.10",
+      "versionRange": "^0.18.0",
       "additionalData": {}
     },
     {
       "id": "sombrero",
       "versionRange": "^0.1.40",
-      "additionalData": {}
-    },
-    {
-      "id": "bs-utils",
-      "versionRange": "^0.8.2",
       "additionalData": {}
     },
     {
@@ -94,22 +85,27 @@
     },
     {
       "id": "hollywood",
-      "versionRange": "^1.0.1",
+      "versionRange": "^1.0.2",
       "additionalData": {}
     },
     {
       "id": "config-utils",
-      "versionRange": "^1.4.2",
+      "versionRange": "^2.0.2",
       "additionalData": {}
     },
     {
       "id": "bsml",
-      "versionRange": "^0.4.36",
+      "versionRange": "^0.4.47",
+      "additionalData": {}
+    },
+    {
+      "id": "metacore",
+      "versionRange": "^1.0.0",
       "additionalData": {}
     },
     {
       "id": "songcore",
-      "versionRange": "^1.1.15",
+      "versionRange": "^1.1.19",
       "additionalData": {}
     }
   ]

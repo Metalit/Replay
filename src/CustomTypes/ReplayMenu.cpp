@@ -10,15 +10,17 @@
 #include "Main.hpp"
 #include "MenuSelection.hpp"
 #include "ReplayManager.hpp"
-#include "Sprites.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/UI/ContentSizeFitter.hpp"
 #include "Utils.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
+#include "assets.hpp"
 #include "bsml/shared/BSML-Lite.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "bsml/shared/Helpers/creation.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
+#include "metacore/shared/songs.hpp"
+#include "metacore/shared/strings.hpp"
 
 DEFINE_TYPE(Menu, ReplayViewController);
 
@@ -117,7 +119,7 @@ namespace Menu {
 
             auto replayButton = BSML::Lite::CreateUIButton(canvasTransform, "", OnReplayButtonClick);
             auto buttonTransform = replayButton->GetComponent<UnityEngine::RectTransform*>();
-            auto icon = BSML::Lite::CreateImage(buttonTransform, GetReplayIcon());
+            auto icon = BSML::Lite::CreateImage(buttonTransform, PNG_SPRITE(Replay));
             icon->transform->localScale = {0.6, 0.6, 0.6};
             icon->preserveAspect = true;
             auto iconDims = icon->GetComponent<UnityEngine::UI::LayoutElement*>();
@@ -285,14 +287,14 @@ void Menu::ReplayViewController::DidActivate(bool firstActivation, bool addedToH
 
     auto settingsButton = BSML::Lite::CreateUIButton(transform, "", {32, -62}, {10, 10}, OnSettingsButtonClick);
     SetPreferred(settingsButton, -1, std::nullopt);
-    auto settigsIcon = BSML::Lite::CreateImage(settingsButton, GetSettingsIcon());
+    auto settigsIcon = BSML::Lite::CreateImage(settingsButton, PNG_SPRITE(Settings));
     settigsIcon->transform->localScale = {0.8, 0.8, 0.8};
     settigsIcon->preserveAspect = true;
     SetPreferred(settigsIcon, 8, 8);
 
     deleteButton = BSML::Lite::CreateUIButton(transform, "", {128, -62}, {10, 10}, [this]() { confirmModal->Show(true, true, nullptr); });
     SetPreferred(deleteButton, -1, std::nullopt);
-    auto deleteIcon = BSML::Lite::CreateImage(deleteButton, GetDeleteIcon());
+    auto deleteIcon = BSML::Lite::CreateImage(deleteButton, PNG_SPRITE(Delete));
     deleteIcon->transform->localScale = {0.8, 0.8, 0.8};
     deleteIcon->preserveAspect = true;
     deleteButton->gameObject->SetActive(usingLocalReplays);
@@ -353,7 +355,7 @@ std::string& Menu::ReplayViewController::GetReplay() {
 
 void Menu::ReplayViewController::UpdateUI(bool getData) {
     if (getData && !beatmapData) {
-        GetBeatmapData(beatmap, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
+        MetaCore::Songs::GetBeatmapData(beatmap.difficulty, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
             beatmapData = data;
             if (beatmap == forMap && increment)
                 UpdateUI(false);
@@ -367,7 +369,7 @@ void Menu::ReplayViewController::UpdateUI(bool getData) {
     auto info = replays[getConfig().LastReplayIdx.GetValue()].second;
 
     sourceText->text = GetLayeredText("Replay Source:  ", info->source, false);
-    std::string date = GetStringForTimeSinceNow(info->timestamp);
+    std::string date = MetaCore::Strings::TimeAgoString(info->timestamp);
     std::string modifiers = GetModifierString(info->modifiers, info->reached0Energy);
     std::string percent = "...";
     if (beatmapData) {
@@ -377,7 +379,9 @@ void Menu::ReplayViewController::UpdateUI(bool getData) {
     std::string score = fmt::format("{} <size=80%>(<color=#1dbcd1>{}%</color>)</size>", info->score, percent);
     std::string fail = info->failed ? "<color=#cc1818>True</color>" : "<color=#2adb44>False</color>";
     if (info->failed && info->failTime > 0.001)
-        fail = fmt::format("<color=#cc1818>{}</color> / {}", SecondsToString(info->failTime), SecondsToString(songLength));
+        fail = fmt::format(
+            "<color=#cc1818>{}</color> / {}", MetaCore::Strings::SecondsToString(info->failTime), MetaCore::Strings::SecondsToString(songLength)
+        );
 
     dateText->text = GetLayeredText("Date Played", date);
     modifiersText->text = GetLayeredText("Modifiers", modifiers);

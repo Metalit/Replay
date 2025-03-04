@@ -32,10 +32,12 @@ ScoringElement* MakeFakeScoringElement(NoteEvent const& noteEvent) {
         noteData->gameplayType = NoteData::GameplayType::Bomb;
     else {
         switch ((NoteData::ScoringType) noteEvent.info.scoringType) {
-            case NoteData::ScoringType::BurstSliderHead:
+            case NoteData::ScoringType::ChainHead:
+            case NoteData::ScoringType::ChainHeadArcTail:
                 noteData->gameplayType = NoteData::GameplayType::BurstSliderHead;
                 break;
-            case NoteData::ScoringType::BurstSliderElement:
+            case NoteData::ScoringType::ChainLink:
+            case NoteData::ScoringType::ChainLinkArcHead:
                 noteData->gameplayType = NoteData::GameplayType::BurstSliderElement;
                 break;
             default:

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Main.hpp"
 #include "sombrero/shared/FastQuaternion.hpp"
 #include "sombrero/shared/FastVector3.hpp"
 
@@ -57,60 +56,3 @@ static Quaternion Slerp(Quaternion quaternion1, Quaternion quaternion2, float am
     result.w = num2 * quaternion1.w + num3 * quaternion2.w;
     return result;
 }
-
-// Changes the sign of the quaternion components. This is not the same as the inverse.
-static inline Quaternion InverseSignQuaternion(Quaternion q) {
-    return {-q.x, -q.y, -q.z, -q.w};
-}
-
-// math from https://stackoverflow.com/a/20249699
-struct QuaternionAverage {
-   public:
-    QuaternionAverage(Quaternion baseRot, bool ignoreY) : baseRotation(baseRot), ignoreY(ignoreY) {}
-
-    void AddRotation(Quaternion rot) {
-        // remove y rotation from average on 360 degree levels
-        if (ignoreY) {
-            // calculate rotation around y axis (euler angles are in the wrong order)
-            auto yRot = Quaternion::Normalize({0, rot.y, 0, rot.w});
-            // multiply to undo y axis rotation, inverse first to use global y axis
-            rot = Sombrero::QuaternionMultiply(Quaternion::Inverse(yRot), rot);
-        }
-
-        // before adding the new rotation to the average (mean), we have to check whether the quaternion has to be inverted
-        // because q and -q are the same rotation, but cannot be averaged
-        if (Quaternion::Dot(rot, baseRotation) < 0)
-            rot = InverseSignQuaternion(rot);
-
-        cumulative.w += rot.w;
-        cumulative.x += rot.x;
-        cumulative.y += rot.y;
-        cumulative.z += rot.z;
-
-        num++;
-    }
-
-    Quaternion GetAverage() {
-        // average values
-        float avgMult = 1 / (float) num;
-        float w = cumulative.w * avgMult;
-        float x = cumulative.x * avgMult;
-        float y = cumulative.y * avgMult;
-        float z = cumulative.z * avgMult;
-
-        // normalize
-        float lengthD = 1 / (w * w + x * x + y * y + z * z);
-        w *= lengthD;
-        x *= lengthD;
-        y *= lengthD;
-        z *= lengthD;
-
-        return Sombrero::QuaternionMultiply({x, y, z, w}, Quaternion::Inverse(baseRotation));
-    }
-
-   private:
-    Quaternion cumulative = {0, 0, 0, 0};
-    int num = 0;
-    Quaternion const baseRotation;
-    bool const ignoreY;
-};

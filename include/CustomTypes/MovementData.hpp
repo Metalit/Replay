@@ -5,10 +5,10 @@
 #include "GlobalNamespace/ISaberMovementDataProcessor.hpp"
 #include "custom-types/shared/macros.hpp"
 
-#define INTERFACES std::vector<Il2CppClass*>({ classof(GlobalNamespace::ISaberMovementData*), classof(GlobalNamespace::ISaberMovementDataProcessor*) })
+DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, GlobalNamespace::ISaberMovementData*, GlobalNamespace::ISaberMovementDataProcessor*) {
+    DECLARE_DEFAULT_CTOR();
 
-DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, INTERFACES,
-
+   public:
     using DataElement = GlobalNamespace::BladeMovementDataElement;
     using IData = GlobalNamespace::ISaberMovementData;
     using IDataProcessor = GlobalNamespace::ISaberMovementDataProcessor;
@@ -23,12 +23,14 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, INTE
     DECLARE_OVERRIDE_METHOD_MATCH(void, RemoveDataProcessor, &IData::RemoveDataProcessor, IDataProcessor* dataProcessor);
     DECLARE_OVERRIDE_METHOD_MATCH(void, RequestLastDataProcessing, &IData::RequestLastDataProcessing, IDataProcessor* dataProcessor);
 
-    DECLARE_OVERRIDE_METHOD(float, ComputeSwingRating, il2cpp_utils::FindMethodUnsafe("", "ISaberMovementData", "ComputeSwingRating", 1), float overrideSegmentAngle);
+    DECLARE_OVERRIDE_METHOD(
+        float, ComputeSwingRating, il2cpp_utils::FindMethodUnsafe("", "ISaberMovementData", "ComputeSwingRating", 1), float overrideSegmentAngle
+    );
     DECLARE_OVERRIDE_METHOD(float, ComputeSwingRatingOverload, il2cpp_utils::FindMethodUnsafe("", "ISaberMovementData", "ComputeSwingRating", 0));
 
-    DECLARE_OVERRIDE_METHOD_MATCH(void, ProcessNewData, &IDataProcessor::ProcessNewData, DataElement newData, DataElement prevData, bool prevDataAreValid);
-)
-
-#undef INTERFACES
+    DECLARE_OVERRIDE_METHOD_MATCH(
+        void, ProcessNewData, &IDataProcessor::ProcessNewData, DataElement newData, DataElement prevData, bool prevDataAreValid
+    );
+};
 
 GlobalNamespace::ISaberMovementData* MakeFakeMovementData(GlobalNamespace::ISaberMovementData* baseData, float beforeCutRating, float afterCutRating);

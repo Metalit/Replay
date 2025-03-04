@@ -3,6 +3,7 @@
 #include "Formats/FrameReplay.hpp"
 #include "Main.hpp"
 #include "MathUtils.hpp"
+#include "metacore/shared/unity.hpp"
 
 // loading code for henwill's old replay versions
 
@@ -316,7 +317,7 @@ ReplayWrapper ReadReqlay(std::string const& path) {
     ret.replay->info.positionsAreLocal = false;
 
     bool rotation = path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos;
-    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     for (auto& frame : ret.replay->frames)
         averageCalc.AddRotation(frame.head.rotation);
 

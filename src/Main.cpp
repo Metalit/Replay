@@ -3,9 +3,7 @@
 #include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
-#include "GlobalNamespace/FadeInOutController.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
-#include "GlobalNamespace/UIKeyboardManager.hpp"
 #include "HMUI/ViewController.hpp"
 #include "Hooks.hpp"
 #include "MenuSelection.hpp"
@@ -69,14 +67,6 @@ MAKE_AUTO_HOOK_MATCH(
     SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
 }
 
-MAKE_AUTO_HOOK_MATCH(UIKeyboardManager_HandleKeyboardOkButton, &UIKeyboardManager::HandleKeyboardOkButton, void, UIKeyboardManager* self) {
-    auto handler = self->_selectedInput->GetComponent<ReplaySettings::KeyboardCloseHandler*>();
-    if (handler && handler->okCallback)
-        handler->okCallback();
-
-    UIKeyboardManager_HandleKeyboardOkButton(self);
-}
-
 static bool selectedAlready = false;
 static bool doRender = true;
 static int nonRenderIdx = 0;
@@ -98,34 +88,6 @@ void SelectLevelOnNextSongRefresh(bool render, int idx) {
     selectedAlready = false;
     doRender = render;
     nonRenderIdx = idx;
-}
-
-static bool waitForNextFadeOut = false;
-
-MAKE_AUTO_HOOK_MATCH(
-    FadeInOutController_Fade,
-    &FadeInOutController::Fade,
-    System::Collections::IEnumerator*,
-    FadeInOutController* self,
-    float fromValue,
-    float toValue,
-    float duration,
-    float startDelay,
-    UnityEngine::AnimationCurve* curve,
-    System::Action* finishedCallback
-) {
-    LOG_DEBUG("fade {} -> {} in {} (after {})", fromValue, toValue, duration, startDelay);
-    if (!waitForNextFadeOut)
-        return FadeInOutController_Fade(self, fromValue, toValue, duration, startDelay, curve, finishedCallback);
-    else if (toValue == 0)
-        waitForNextFadeOut = false;
-    // stay faded out
-    return FadeInOutController_Fade(self, 0, 0, 0, 0, curve, finishedCallback);
-}
-
-void SetFadeIsOut(bool val) {
-    // if we have faded out, don't let the game fade in until after it fades out first
-    waitForNextFadeOut = val;
 }
 
 extern "C" void setup(CModInfo* info) {
@@ -182,8 +144,8 @@ extern "C" void late_load() {
         preset.Rotation = getConfig().ThirdPerRot.GetValue();
         getConfig().ThirdPerPresets.SetValue({{"Default", preset}});
     }
-    if (!getConfig().ThirdPerPresets.GetValue().contains(getConfig().ThirdPerPreset.GetValue()))
-        getConfig().ThirdPerPreset.SetValue(getConfig().ThirdPerPresets.GetValue().begin()->first);
+    if (!getConfig().ThirdPerPresets.GetValue().contains(getConfig().CurrentThirdPerPreset.GetValue()))
+        getConfig().CurrentThirdPerPreset.SetValue(getConfig().ThirdPerPresets.GetValue().begin()->first);
 
     // no making the text offscreen through config editing
     if (getConfig().TextHeight.GetValue() > 5)

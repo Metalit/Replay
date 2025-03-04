@@ -6,6 +6,7 @@
 #include "Main.hpp"
 #include "MathUtils.hpp"
 #include "lzma/lzma.hpp"
+#include "metacore/shared/unity.hpp"
 
 struct SSPointers {
     int metadata;
@@ -256,7 +257,7 @@ ReplayWrapper ReadScoresaber(std::string const& path) {
     info.jumpDistance = meta.NoteSpawnOffset;
 
     bool rotation = meta.Characteristic.find("Degree") != std::string::npos;
-    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     input.seekg(beginnings.poseKeyframes);
     int count;
     READ_TO(count);

@@ -85,10 +85,9 @@ MAKE_AUTO_HOOK_MATCH(
     void,
     BeatmapObjectManager* self,
     NoteController* noteController,
-    BeatmapObjectSpawnMovementData::NoteSpawnData noteSpawnData,
-    float rotation
+    NoteSpawnData noteSpawnData
 ) {
-    BeatmapObjectManager_AddSpawnedNoteController(self, noteController, noteSpawnData, rotation);
+    BeatmapObjectManager_AddSpawnedNoteController(self, noteController, noteSpawnData);
 
     if (Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
         Manager::Events::AddNoteController(noteController);

@@ -9,10 +9,12 @@
 #include "Main.hpp"
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
-#include "Sprites.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/XR/XRNode.hpp"
+#include "assets.hpp"
+#include "bsml/shared/Helpers/utilities.hpp"
+#include "metacore/shared/strings.hpp"
 
 DEFINE_TYPE(ReplayHelpers, CameraRig);
 
@@ -20,7 +22,6 @@ using namespace ReplayHelpers;
 using namespace UnityEngine::XR;
 
 void CameraRig::Update() {
-    auto trans = transform;
     if (Manager::replaying && !Manager::paused) {
         pausedLastFrame = false;
 
@@ -77,8 +78,8 @@ void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Qu
 }
 
 void CameraRig::UpdateProgress() {
-    std::string time = SecondsToString(Manager::GetSongTime());
-    std::string tot = SecondsToString(Manager::GetLength());
+    std::string time = MetaCore::Strings::SecondsToString(Manager::GetSongTime());
+    std::string tot = MetaCore::Strings::SecondsToString(Manager::GetLength());
     std::string queue = "";
     int len = getConfig().LevelsToSelect.GetValue().size();
     if (len > 0)
@@ -142,7 +143,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     transform->localPosition = {0, 0, 2};
     transform->localScale = {0.05, 0.05, 0.05};
 
-    auto image = BSML::Lite::CreateImage(progress, GetWhiteIcon());
+    auto image = BSML::Lite::CreateImage(progress, BSML::Utilities::ImageResources::GetWhitePixel());
     image->color = UnityEngine::Color::get_black();
     image->rectTransform->anchorMin = {0, 0};
     image->rectTransform->anchorMax = {1, 1};

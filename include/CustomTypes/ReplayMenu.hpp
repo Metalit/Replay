@@ -10,9 +10,9 @@
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "Utils.hpp"
-#include "custom-types/shared/macros.hpp"
 #include "bsml/shared/BSML/Components/Settings/DropdownListSetting.hpp"
 #include "bsml/shared/BSML/Components/Settings/IncrementSetting.hpp"
+#include "custom-types/shared/macros.hpp"
 
 struct ReplayInfo;
 
@@ -32,9 +32,12 @@ namespace Menu {
     bool AreReplaysLocal();
 }
 
-DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
+DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
+    DECLARE_DEFAULT_CTOR();
 
-    DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
+    DECLARE_OVERRIDE_METHOD_MATCH(
+        void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling
+    );
 
     DECLARE_INSTANCE_METHOD(void, UpdateUI, bool getData);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
@@ -43,6 +46,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
     void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays);
     void SelectReplay(int index);
     std::string& GetReplay();
+
    private:
     GlobalNamespace::LevelBar* levelBar;
     TMPro::TextMeshProUGUI* sourceText;
@@ -61,4 +65,4 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController,
     std::vector<std::pair<std::string, ReplayInfo*>> replays;
     DifficultyBeatmap beatmap;
     GlobalNamespace::IReadonlyBeatmapData* beatmapData;
-)
+};

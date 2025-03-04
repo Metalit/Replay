@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Main.hpp"
 #include "beatsaber-hook/shared/utils/hooking.hpp"
 
 class Hooks {

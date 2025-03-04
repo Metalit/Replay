@@ -2,7 +2,6 @@
 
 #include <regex>
 
-#include "Assets.hpp"
 #include "BGLib/Polyglot/Localization.hpp"
 #include "Config.hpp"
 #include "CustomTypes/MovementData.hpp"
@@ -24,29 +23,11 @@
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "metacore/shared/songs.hpp"
 
 using namespace GlobalNamespace;
-
-std::string SanitizedPath(std::string path) {
-    std::string newName;
-    // just whitelist simple characters
-    static auto const okChar = [](unsigned char c) {
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
-            return true;
-        if (c == '_' || c == '-' || c == '.' || c == '/' || c == '(' || c == ')')
-            return true;
-        return false;
-    };
-    std::transform(path.begin(), path.end(), std::back_inserter(newName), [](unsigned char c) {
-        if (!okChar(c))
-            return (unsigned char) ('_');
-        return c;
-    });
-    if (newName == "")
-        return "_";
-    return newName;
-}
 
 std::string GetReqlaysPath() {
     static auto path = getDataDir("Replay") + "replays/";
@@ -99,25 +80,15 @@ std::string GetMapString(DifficultyBeatmap beatmap) {
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
 
-std::string GetHash(DifficultyBeatmap beatmap) {
-    std::string id = beatmap.difficulty.levelId;
-    // should be in all songloader levels
-    auto prefixIndex = id.find("custom_level_");
-    if (prefixIndex != std::string::npos)
-        id.erase(0, 13);
-    std::transform(id.begin(), id.end(), id.begin(), tolower);
-    return id;
-}
-
-std::string const reqlaySuffix1 = ".reqlay";
-std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
-std::string const bsorSuffix = ".bsor";
-std::string const ssSuffix = ".dat";
+static std::string const reqlaySuffix1 = ".reqlay";
+static std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
+static std::string const bsorSuffix = ".bsor";
+static std::string const ssSuffix = ".dat";
 
 void GetReqlays(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
     std::vector<std::string> tests;
 
-    std::string hash = GetHash(beatmap);
+    std::string hash = MetaCore::Songs::GetHash(beatmap.level);
     std::string diff = std::to_string((int) beatmap.difficulty.difficulty);
     std::string mode = beatmap.difficulty.beatmapCharacteristic->compoundIdPartName;
     std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
@@ -203,61 +174,6 @@ std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(DifficultyBeatmap 
     return replays;
 }
 
-std::string GetStringForTimeSinceNow(long start) {
-    long seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() - start;
-
-    int minutes = seconds / 60;
-    int hours = minutes / 60;
-    int days = hours / 24;
-    int weeks = days / 7;
-    int months = weeks / 4;
-    int years = weeks / 52;
-
-    std::string unit;
-    int value;
-
-    if (years != 0) {
-        unit = "year";
-        value = years;
-    } else if (months != 0) {
-        unit = "month";
-        value = months;
-    } else if (weeks != 0) {
-        unit = "week";
-        value = weeks;
-    } else if (days != 0) {
-        unit = "day";
-        value = days;
-    } else if (hours != 0) {
-        unit = "hour";
-        value = hours;
-    } else if (minutes != 0) {
-        unit = "minute";
-        value = minutes;
-    } else {
-        unit = "second";
-        value = (int) seconds;
-    }
-
-    if (value != 1)
-        unit += "s";
-
-    return std::to_string(value) + " " + unit + " ago";
-}
-
-std::string SecondsToString(int value) {
-    int minutes = value / 60;
-    int seconds = value - minutes * 60;
-
-    std::string minutesString = std::to_string(minutes);
-    std::string secondsString = std::to_string(seconds);
-    if (seconds < 10) {
-        secondsString = "0" + secondsString;
-    }
-
-    return minutesString + ":" + secondsString;
-}
-
 std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail) {
     std::stringstream s;
     if (modifiers.disappearingArrows)
@@ -293,31 +209,6 @@ std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFa
     return str;
 }
 
-void GetBeatmapData(DifficultyBeatmap beatmap, std::function<void(IReadonlyBeatmapData*)> callback) {
-    LOG_DEBUG("getting beatmap data");
-    auto helper = UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First();
-    auto result = helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(beatmap.difficulty.levelId, nullptr);
-
-    BSML::MainThreadScheduler::ScheduleUntil(
-        [result]() { return result->IsCompleted; },
-        [callback = std::move(callback), beatmap, helper, result]() {
-            LOG_DEBUG("got beatmap level data");
-            if (result->ResultOnSuccess.isError)
-                LOG_ERROR("failed to load beatmap data");
-            else {
-                auto data = helper->_beatmapDataLoader->LoadBeatmapDataAsync(
-                    result->ResultOnSuccess.beatmapLevelData, beatmap.difficulty, beatmap.level->beatsPerMinute, false, nullptr, nullptr, nullptr, true
-                );
-                BSML::MainThreadScheduler::ScheduleNextFrame([callback = std::move(callback), data]() {
-                    BSML::MainThreadScheduler::ScheduleUntil(
-                        [data]() { return data->IsCompleted; }, [callback = std::move(callback), data]() { callback(data->ResultOnSuccess); }
-                    );
-                });
-            }
-        }
-    );
-}
-
 NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo const& info) {
     return NoteCutInfo(
         note ? note->noteData : nullptr,
@@ -338,7 +229,7 @@ NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo
         note ? note->inverseWorldRotation : Quaternion::identity(),
         note ? note->noteTransform->rotation : Quaternion::identity(),
         note ? note->noteTransform->position : Vector3::zero(),
-        saber ? MakeFakeMovementData((ISaberMovementData*) saber->movementData, info.beforeCutRating, info.afterCutRating) : nullptr
+        saber ? MakeFakeMovementData((ISaberMovementData*) saber->_movementData, info.beforeCutRating, info.afterCutRating) : nullptr
     );
 }
 
@@ -362,7 +253,7 @@ NoteCutInfo GetBombCutInfo(NoteController* note, Saber* saber) {
         note ? note->inverseWorldRotation : Quaternion::identity(),
         note ? note->noteTransform->rotation : Quaternion::identity(),
         note ? note->noteTransform->position : Vector3::zero(),
-        saber ? (ISaberMovementData*) saber->movementData : nullptr
+        saber ? (ISaberMovementData*) saber->_movementData : nullptr
     );
 }
 
@@ -398,9 +289,11 @@ float EnergyForNote(NoteEventInfo const& noteEvent) {
     switch (noteEvent.scoringType) {
         case -2:
         case (int) NoteData::ScoringType::Normal:
-        case (int) NoteData::ScoringType::BurstSliderHead:
+        case (int) NoteData::ScoringType::ChainHead:
+        case (int) NoteData::ScoringType::ChainHeadArcTail:
             return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
-        case (int) NoteData::ScoringType::BurstSliderElement:
+        case (int) NoteData::ScoringType::ChainLink:
+        case (int) NoteData::ScoringType::ChainLinkArcHead:
             return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
         default:
             return 0;
@@ -599,38 +492,17 @@ int IsButtonDown(ButtonPair const& button) {
     return ret;
 }
 
-void Fade(bool in, bool instant) {
-    static UnityW<FadeInOutController> fade;
-    if (!fade)
-        fade = UnityEngine::Resources::FindObjectsOfTypeAll<FadeInOutController*>()->FirstOrDefault();
-    if (!fade)
-        return;
-    fade->StopAllCoroutines();
-    if (in)
-        SetFadeIsOut(false);
-    fade->StartCoroutine(fade->Fade(
-        fade->_easeValue->value,
-        in ? 1 : 0,
-        instant ? 0 : (in ? fade->_defaultFadeInDuration : fade->_defaultFadeOutDuration),
-        0,
-        in ? fade->_fadeInCurve : fade->_fadeOutCurve,
-        nullptr
-    ));
-    if (!in)
-        SetFadeIsOut(true);
-}
-
 void PlayDing() {
     static int const offset = 44;
     static int const frequency = 44100;
     static int const sampleSize = 2;
-    using sampleSizeType = int16_t;
-    int length = (Ding_wav::getLength() - offset) / sampleSize;
+    using SampleType = int16_t;
+    int length = (IncludedAssets::Ding_wav.size() - offset) / sampleSize;
     length -= frequency * 2.5;  // remove some static that shows up at the end for some reason
     auto arr = ArrayW<float>(length);
     for (int i = 0; i < length; i++) {
-        arr[i] = *((sampleSizeType*) Ding_wav::getData() + offset + i * sampleSize);
-        arr[i] /= std::numeric_limits<sampleSizeType>::max();
+        arr[i] = *((SampleType*) IncludedAssets::Ding_wav.data() + offset + i * sampleSize);
+        arr[i] /= std::numeric_limits<SampleType>::max();
     }
     auto clip = UnityEngine::AudioClip::Create("Ding", length, 1, frequency, false);
     clip->SetData(arr, 0);

@@ -6,6 +6,7 @@
 #include "MathUtils.hpp"
 #include "Utils.hpp"
 #include "conditional-dependencies/shared/main.hpp"
+#include "metacore/shared/unity.hpp"
 
 // loading code for beatleader's replay format: https://github.com/BeatLeader/BS-Open-Replay
 
@@ -233,7 +234,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     int framesCount;
     READ_TO(framesCount);
     bool rotation = info.mode.find("Degree") != std::string::npos;
-    QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     // here we have yet another lecagy bug where multiplayer replays record all the avatars
     float firstTime = -1000;
     int skip = 0;
