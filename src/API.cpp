@@ -44,3 +44,11 @@ EXPOSE_API(IsInReplay, bool) {
 EXPOSE_API(IsInRender, bool) {
     return Manager::replaying && Manager::Camera::rendering;
 }
+
+// every added callback will be called when replay start, if we don't have that custom data, the first parameter will be nullptr
+EXPOSE_API(AddReplayCustomDataCallback, void, std::string key, std::function<void(const char*, size_t)> callback){
+    if( Manager::customDataCallbacks.count(key) == 0){
+        Manager::customDataCallbacks.insert({key, {}});
+    }
+    Manager::customDataCallbacks[key].push_back(callback);
+}

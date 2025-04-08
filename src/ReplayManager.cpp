@@ -70,6 +70,8 @@ namespace Manager {
     float lerpAmount = 0;
     float lastCutTime = -1;
 
+    std::map<std::string, std::vector<CustomDataCallbackType> > customDataCallbacks;
+
     namespace Objects {
         Saber *leftSaber, *rightSaber;
         PlayerHeadAndObstacleInteraction* obstacleChecker;
@@ -475,6 +477,26 @@ namespace Manager {
         if (currentReplay.type & ReplayType::Frame)
             Frames::ReplayStarted();
         Camera::ReplayStarted();
+
+        for(auto & pair : customDataCallbacks){
+            const std::string & key = pair.first;
+            std::vector<CustomDataCallbackType> & callbacks = pair.second;
+
+            const char * data = nullptr;
+            size_t length = 0;
+            auto eventReplay = dynamic_cast<EventReplay*>(currentReplay.replay.get());
+            if(eventReplay){
+                auto data_it = eventReplay->customDatas.find(key);
+                if(data_it != eventReplay->customDatas.end()){
+                    const std::vector<char>& data_vec = data_it->second;
+                    data = data_vec.data();
+                    length = data_vec.size();
+                }
+            }
+            for(CustomDataCallbackType & cb : callbacks){
+                cb(data, length);
+            }
+        }
     }
 
     void ReplayStarted(std::string const& path) {
