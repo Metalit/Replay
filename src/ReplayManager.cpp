@@ -493,8 +493,8 @@ namespace Manager {
                     length = data_vec.size();
                 }
             }
-            for (CustomDataCallbackType& cb : callbacks) {
-                cb(data, length);
+            for (int idx = 0; idx < callbacks.size(); idx++) {
+                callbacks[idx](data, length);
             }
         }
     }
