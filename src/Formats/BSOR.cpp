@@ -169,8 +169,8 @@ bool ReadCustomDataItem(std::ifstream& input, struct EventReplay* replay) {
         return false;
     }
     std::vector<char> content;
-    if (length < 0 || length > 512 * 1024 * 1024) {  // 512MB limit for a single custom data.
-        LOG_DEBUG("ReadCustomDataItem: Invalid custom data {}.", length);
+    if (length < 0) {
+        LOG_DEBUG("ReadCustomDataItem: Invalid custom data length {}.", length);
         return false;
     }
     content.resize(length);
