@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Replay.hpp"
 #include <map>
+
+#include "Replay.hpp"
 
 struct ReplayNoteCutInfo {
     bool speedOK;
@@ -79,7 +80,6 @@ struct ReplayOffset {
     Quaternion rightSaberRot;
 };
 static_assert(sizeof(ReplayOffset) == sizeof(float) * (3 + 4 + 3 + 4));
-
 
 struct EventReplay : public virtual Replay {
     std::vector<NoteEvent> notes;

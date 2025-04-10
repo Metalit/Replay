@@ -155,27 +155,27 @@ BSORInfo ReadInfo(std::ifstream& input) {
     return info;
 }
 
-bool ReadCustomDataItem(std::ifstream& input, struct EventReplay* replay){
+bool ReadCustomDataItem(std::ifstream& input, struct EventReplay* replay) {
     std::string key;
     int length;
     READ_STRING(key);
-    if(input.eof()){
+    if (input.eof()) {
         LOG_DEBUG("ReadCustomDataItem: Can't read input key.");
         return false;
     }
     READ_TO(length);
-    if(input.eof()){
+    if (input.eof()) {
         LOG_DEBUG("ReadCustomDataItem: Can't read input length.");
         return false;
     }
     std::vector<char> content;
-    if(length < 0 || length > 512 * 1024 * 1024){ // 512MB limit for a single custom data.
+    if (length < 0 || length > 512 * 1024 * 1024) {  // 512MB limit for a single custom data.
         LOG_DEBUG("ReadCustomDataItem: Invalid custom data {}.", length);
         return false;
     }
     content.resize(length);
     input.read(content.data(), length);
-    if(input.eof()){
+    if (input.eof()) {
         LOG_DEBUG("ReadCustomDataItem: Can't read custom data content.");
         return false;
     }
@@ -451,33 +451,33 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     }
 
     // the section 6 or 7 is optional, we will read them and hide errors carefully.
-    try{
-        while(READ_TO(section), !input.eof()){
-            if(section == 6){
+    try {
+        while (READ_TO(section), !input.eof()) {
+            if (section == 6) {
                 ReplayOffset offset;
-                if(READ_TO(offset), input.eof()){
+                if (READ_TO(offset), input.eof()) {
                     LOG_DEBUG("Can't read section 6 in replay file.");
                     break;
                 }
                 replay->offsets = offset;
-            }else if(section == 7){
+            } else if (section == 7) {
                 int length;
-                if(READ_TO(length), input.eof()){
+                if (READ_TO(length), input.eof()) {
                     LOG_DEBUG("Can't read section 7: Invalid length.");
                     break;
                 }
                 bool all_success = true;
-                for(int i = 0; all_success && i < length; i++){
+                for (int i = 0; all_success && i < length; i++) {
                     all_success &= ReadCustomDataItem(input, replay);
                 }
-                if(!all_success)
+                if (!all_success)
                     break;
-            }else{
+            } else {
                 LOG_DEBUG("Ignore the unknown section {}.", section);
                 break;
             }
-        }    
-    }catch(const std::bad_alloc& e){
+        }
+    } catch (std::bad_alloc const& e) {
         LOG_DEBUG("Allocation failed while reading optional sections: {}", e.what());
     }
 

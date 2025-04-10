@@ -1,10 +1,11 @@
 #pragma once
 
+#include <map>
+
 #include "GlobalNamespace/BeatmapKey.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
 #include "Utils.hpp"
-#include <map>
 
 struct ScoreFrame;
 struct NoteEvent;
@@ -28,8 +29,8 @@ namespace GlobalNamespace {
 }
 
 namespace Manager {
-    using CustomDataCallbackType = std::function<void(const char*, size_t)>;
-    extern std::map<std::string, std::vector<CustomDataCallbackType> > customDataCallbacks;
+    using CustomDataCallbackType = std::function<void(char const*, size_t)>;
+    extern std::map<std::string, std::vector<CustomDataCallbackType>> customDataCallbacks;
 
     namespace Objects {
         extern GlobalNamespace::Saber *leftSaber, *rightSaber;
