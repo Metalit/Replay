@@ -13,9 +13,10 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, Glob
     using IData = GlobalNamespace::ISaberMovementData;
     using IDataProcessor = GlobalNamespace::ISaberMovementDataProcessor;
 
-    IData* baseData;
-    float beforeCutRating, afterCutRating;
-    IDataProcessor* dataProcessor;
+    DECLARE_INSTANCE_FIELD(IData*, baseData);
+    DECLARE_INSTANCE_FIELD(float, beforeCutRating);
+    DECLARE_INSTANCE_FIELD(float, afterCutRating);
+    DECLARE_INSTANCE_FIELD(IDataProcessor*, dataProcessor);
 
     DECLARE_OVERRIDE_METHOD_MATCH(DataElement, get_lastAddedData, &IData::get_lastAddedData);
 
@@ -23,10 +24,8 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, Glob
     DECLARE_OVERRIDE_METHOD_MATCH(void, RemoveDataProcessor, &IData::RemoveDataProcessor, IDataProcessor* dataProcessor);
     DECLARE_OVERRIDE_METHOD_MATCH(void, RequestLastDataProcessing, &IData::RequestLastDataProcessing, IDataProcessor* dataProcessor);
 
-    DECLARE_OVERRIDE_METHOD(
-        float, ComputeSwingRating, il2cpp_utils::FindMethodUnsafe("", "ISaberMovementData", "ComputeSwingRating", 1), float overrideSegmentAngle
-    );
-    DECLARE_OVERRIDE_METHOD(float, ComputeSwingRatingOverload, il2cpp_utils::FindMethodUnsafe("", "ISaberMovementData", "ComputeSwingRating", 0));
+    DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRating, static_cast<float(IData::*)(float)>(&IData::ComputeSwingRating), float overrideSegmentAngle);
+    DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRatingOverload, static_cast<float(IData::*)()>(&IData::ComputeSwingRating));
 
     DECLARE_OVERRIDE_METHOD_MATCH(
         void, ProcessNewData, &IDataProcessor::ProcessNewData, DataElement newData, DataElement prevData, bool prevDataAreValid

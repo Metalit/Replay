@@ -72,11 +72,11 @@ std::string GetCharacteristicName(std::string serializedName) {
     return GetCharacteristicName(GetCharacteristic(serializedName));
 }
 
-std::string GetMapString(DifficultyBeatmap beatmap) {
-    std::string songName = beatmap.level->songName;
-    std::string songAuthor = beatmap.level->songAuthorName;
-    std::string characteristic = GetCharacteristicName(beatmap.difficulty.beatmapCharacteristic);
-    std::string difficulty = GetDifficultyName(beatmap.difficulty.difficulty);
+std::string GetMapString() {
+    std::string songName = MetaCore::Songs::GetSelectedLevel()->songName;
+    std::string songAuthor = MetaCore::Songs::GetSelectedLevel()->songAuthorName;
+    std::string characteristic = GetCharacteristicName(MetaCore::Songs::GetSelectedKey().beatmapCharacteristic);
+    std::string difficulty = GetDifficultyName(MetaCore::Songs::GetSelectedKey().difficulty);
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
 
@@ -85,12 +85,12 @@ static std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAls
 static std::string const bsorSuffix = ".bsor";
 static std::string const ssSuffix = ".dat";
 
-void GetReqlays(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
+void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
     std::vector<std::string> tests;
 
-    std::string hash = MetaCore::Songs::GetHash(beatmap.level);
-    std::string diff = std::to_string((int) beatmap.difficulty.difficulty);
-    std::string mode = beatmap.difficulty.beatmapCharacteristic->compoundIdPartName;
+    std::string hash = MetaCore::Songs::GetHash(beatmap);
+    std::string diff = std::to_string((int) beatmap.difficulty);
+    std::string mode = beatmap.beatmapCharacteristic->compoundIdPartName;
     std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
     tests.emplace_back(reqlayName + reqlaySuffix1);
     tests.emplace_back(reqlayName + reqlaySuffix2);
@@ -106,13 +106,13 @@ void GetReqlays(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, Re
     }
 }
 
-void GetBSORs(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
-    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty.difficulty);
+void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
+    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
     if (diffName == "Unknown")
         diffName = "Error";
-    std::string characteristic = beatmap.difficulty.beatmapCharacteristic->serializedName;
+    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
 
-    std::string bsorHash = regex_replace((std::string) beatmap.difficulty.levelId, std::basic_regex("custom_level_"), "");
+    std::string bsorHash = regex_replace((std::string) beatmap.levelId, std::basic_regex("custom_level_"), "");
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
     std::string search = fmt::format("{}-{}-{}", diffName, characteristic, bsorHash);
     LOG_DEBUG("searching for bl replays with string {}", search);
@@ -131,11 +131,11 @@ void GetBSORs(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, Repl
     }
 }
 
-void GetSSReplays(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
-    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty.difficulty);
-    std::string characteristic = beatmap.difficulty.beatmapCharacteristic->serializedName;
-    std::string levelHash = beatmap.difficulty.levelId;
-    std::string songName = beatmap.level->songName;
+void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
+    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
+    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
+    std::string levelHash = beatmap.levelId;
+    std::string songName = MetaCore::Songs::FindLevel(beatmap)->songName;
 
     if (levelHash.find("custom_level_") == std::string::npos)
         levelHash = "ost_" + levelHash;
@@ -159,7 +159,11 @@ void GetSSReplays(DifficultyBeatmap beatmap, std::vector<std::pair<std::string, 
     }
 }
 
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(DifficultyBeatmap beatmap) {
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::BeatmapKey beatmap) {
+    LOG_DEBUG("search replays {} {}", beatmap.levelId, beatmap.IsValid());
+    if (!beatmap.IsValid())
+        return {};
+
     std::vector<std::pair<std::string, ReplayWrapper>> replays;
 
     if (std::filesystem::exists(GetReqlaysPath()))

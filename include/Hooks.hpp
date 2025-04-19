@@ -1,37 +1,38 @@
 #pragma once
 
 #include "beatsaber-hook/shared/utils/hooking.hpp"
+#include "Main.hpp"
 
 class Hooks {
    private:
-    inline static std::vector<void (*)()> installFuncs;
+    static inline std::vector<void (*)()> installFuncs;
 
    public:
-    static void AddInstallFunc(void (*installFunc)()) { installFuncs.push_back(installFunc); }
+    static inline void AddInstallFunc(void (*installFunc)()) { installFuncs.push_back(installFunc); }
 
     static inline void Install() {
+        LOG_INFO("Installing hooks...");
         for (auto& func : installFuncs)
             func();
+        LOG_INFO("Installed all hooks!");
     }
 };
 
-#define AUTO_INSTALL_ORIG(name_)                                                                    \
-    struct Auto_Hook_##name_ {                                                                      \
-        static void Auto_Hook_##name_##_Install() {                                                 \
-            ::Hooking::InstallOrigHook<Hook_##name_>(logger);                                       \
-        }                                                                                           \
-        Auto_Hook_##name_() { ::Hooks::AddInstallFunc(Auto_Hook_##name_##_Install); }               \
-    };                                                                                              \
-    static Auto_Hook_##name_ Auto_Hook_Instance_##name_;
+#define AUTO_HOOK_FUNCTION(name_)                                        \
+    namespace {                                                          \
+        struct Auto_Install_##name_ {                                    \
+            static void Install();                                       \
+            Auto_Install_##name_() { ::Hooks::AddInstallFunc(Install); } \
+        };                                                               \
+    }                                                                    \
+    static Auto_Install_##name_ Auto_Install_Instance_##name_;           \
+    void Auto_Install_##name_::Install()
 
-#define AUTO_INSTALL(name_)                                                                         \
-    struct Auto_Hook_##name_ {                                                                      \
-        static void Auto_Hook_##name_##_Install() {                                                 \
-            ::Hooking::InstallHook<Hook_##name_>(logger);                                           \
-        }                                                                                           \
-        Auto_Hook_##name_() { ::Hooks::AddInstallFunc(Auto_Hook_##name_##_Install); }               \
-    };                                                                                              \
-    static Auto_Hook_##name_ Auto_Hook_Instance_##name_;
+#define AUTO_INSTALL_ORIG(name_) \
+    AUTO_HOOK_FUNCTION(Hook_##name_) { ::Hooking::InstallOrigHook<Hook_##name_>(logger); }
+
+#define AUTO_INSTALL(name_) \
+    AUTO_HOOK_FUNCTION(Hook_##name_) { ::Hooking::InstallHook<Hook_##name_>(logger); }
 
 #define MAKE_AUTO_HOOK_MATCH(name_, mPtr, retval, ...)                                                                                              \
     struct Hook_##name_ {                                                                                                                           \
@@ -65,8 +66,6 @@ class Hooks {
 
 void Camera_Pause();
 void Camera_Unpause();
-
-void InstallBlitHook();
 
 namespace UnityEngine {
     class Camera;

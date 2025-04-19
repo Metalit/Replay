@@ -21,13 +21,13 @@ modloader::ModInfo modInfo = {MOD_ID, VERSION, 0};
 
 bool recorderInstalled = false;
 
-MAKE_AUTO_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
-    StandardLevelDetailView_RefreshContent(self);
+// MAKE_AUTO_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
+//     Menu::EnsureSetup(self);
+//     Manager::RefreshLevelReplays();
+//     Menu::CheckMultiplayer();
 
-    Menu::EnsureSetup(self);
-    Manager::SetLevel({self->beatmapKey, self->_beatmapLevel});
-    Menu::CheckMultiplayer();
-}
+//     StandardLevelDetailView_RefreshContent(self);
+// }
 
 MAKE_AUTO_HOOK_MATCH(
     SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange,
@@ -103,30 +103,21 @@ extern "C" void setup(CModInfo* info) {
     LOG_INFO("Completed setup!");
 }
 
-extern "C" void load() {
+extern "C" void late_load() {
     il2cpp_functions::Init();
-
-    InstallBlitHook();
-
-    Hollywood::Init();
+    custom_types::Register::AutoRegister();
 
     // in case it crashed during a render, unmute
     // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
     Hollywood::SetMuteSpeakers(false);
     // fix proximity sensor state too
     Hollywood::SetScreenOn(false);
-}
-
-extern "C" void late_load() {
-    custom_types::Register::AutoRegister();
 
     BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);
 
     SongCore::API::Loading::GetSongsLoadedEvent().addCallback(OnSongsLoaded);
 
-    LOG_INFO("Installing hooks...");
     Hooks::Install();
-    LOG_INFO("Installed all hooks!");
 
     selectedAlready = !getConfig().RenderLaunch.GetValue();
     getConfig().RenderLaunch.SetValue(false);

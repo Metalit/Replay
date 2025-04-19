@@ -317,7 +317,7 @@ ReplayWrapper ReadReqlay(std::string const& path) {
     ret.replay->info.positionsAreLocal = false;
 
     bool rotation = path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos;
-    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     for (auto& frame : ret.replay->frames)
         averageCalc.AddRotation(frame.head.rotation);
 

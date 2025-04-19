@@ -12,6 +12,8 @@
 #include "GlobalNamespace/BoolSO.hpp"
 #include "GlobalNamespace/GameEnergyUIPanel.hpp"
 #include "GlobalNamespace/IRenderingParamsApplicator.hpp"
+#include "GlobalNamespace/LevelCollectionNavigationController.hpp"
+#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
 #include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
 #include "GlobalNamespace/NoteData.hpp"
@@ -23,6 +25,8 @@
 #include "GlobalNamespace/SceneType.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/SettingsApplicatorSO.hpp"
+#include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "GlobalNamespace/StandardLevelDetailViewController.hpp"
 #include "GlobalNamespace/VRRenderingParamsSetup.hpp"
 #include "Main.hpp"
 #include "MathUtils.hpp"
@@ -37,7 +41,10 @@
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "Utils.hpp"
+#include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
+#include "metacore/shared/songs.hpp"
+#include "metacore/shared/stats.hpp"
 
 using namespace GlobalNamespace;
 
@@ -62,12 +69,11 @@ namespace Manager {
 
     int currentFrame = 0;
     int frameCount = 0;
-    float songTime = -1;
-    float songLength = -1;
     float lerpAmount = 0;
     float lastCutTime = -1;
 
     namespace Objects {
+        bool hasObjects = false;
         Saber *leftSaber, *rightSaber;
         PlayerHeadAndObstacleInteraction* obstacleChecker;
         PlayerTransforms* playerTransforms;
@@ -97,6 +103,7 @@ namespace Manager {
             audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>()->First();
             beatmapObjectManager = noteSoundManager->_beatmapObjectManager;
             callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>()->First()->_beatmapCallbacksController;
+            hasObjects = true;
         }
     }
 
@@ -117,7 +124,7 @@ namespace Manager {
 
         void UpdateTime() {
             if (rendering && UnityEngine::Time::get_unscaledTime() - lastProgressUpdate >= 15) {
-                LOG_INFO("Current song time: {:.2f}", songTime);
+                LOG_INFO("Current song time: {:.2f}", MetaCore::Stats::GetSongTime());
                 lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
             if (GetMode() == (int) CameraMode::Smooth) {
@@ -277,8 +284,8 @@ namespace Manager {
                 Increment();
         }
 
-        void UpdateTime() {
-            while (scoreFrame != replay->scoreFrames.end() && scoreFrame->time < songTime)
+        void UpdateTime(float time) {
+            while (scoreFrame != replay->scoreFrames.end() && scoreFrame->time < time)
                 Increment();
         }
 
@@ -317,7 +324,7 @@ namespace Manager {
             if (currentValues.percent >= 0)
                 return true;
             // fix scoresaber replays having incorrect max score before cut finishes
-            return songTime - lastCutTime > 0.4;
+            return MetaCore::Stats::GetSongTime() - lastCutTime > 0.4;
         }
     }
 
@@ -395,8 +402,8 @@ namespace Manager {
             wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
         }
 
-        void UpdateTime() {
-            while (event != replay->events.end() && event->time < songTime) {
+        void UpdateTime(float time) {
+            while (event != replay->events.end() && event->time < time) {
                 switch (event->eventType) {
                     case EventRef::Note:
                         if (!notes.empty())
@@ -416,19 +423,17 @@ namespace Manager {
     bool replaying = false;
     bool paused = false;
     ReplayWrapper currentReplay;
-    DifficultyBeatmap beatmap;
 
     ReplayInfo const& GetCurrentInfo() {
         return currentReplay.replay->info;
     }
 
-    void SetLevel(DifficultyBeatmap level) {
-        if (!level.level || !level.difficulty.IsValid())
-            return;
-        LOG_DEBUG("set level");
-        beatmap = level;
-        if (!replaying)
-            RefreshLevelReplays();
+    ON_EVENT(MetaCore::Events::MapSelected) {
+        Menu::EnsureSetup(MetaCore::Game::GetMainFlowCoordinator()
+                              ->_soloFreePlayFlowCoordinator->levelSelectionNavigationController->_levelCollectionNavigationController
+                              ->_levelDetailViewController->_standardLevelDetailView);
+        RefreshLevelReplays();
+        Menu::CheckMultiplayer();
     }
 
     void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external) {
@@ -452,7 +457,8 @@ namespace Manager {
     }
 
     void RefreshLevelReplays() {
-        SetReplays(GetReplays(beatmap));
+        LOG_DEBUG("Refresh replays");
+        SetReplays(GetReplays(MetaCore::Songs::GetSelectedKey()));
     }
 
     void ReplayStarted(ReplayWrapper& wrapper) {
@@ -460,10 +466,10 @@ namespace Manager {
         currentReplay = wrapper;
         frameCount = currentReplay.replay->frames.size();
         MetaCore::Game::SetScoreSubmission(MOD_ID, false);
+        Objects::hasObjects = false;
         replaying = true;
         paused = false;
         currentFrame = 0;
-        songTime = -1;
         lerpAmount = 0;
         lastCutTime = -1;
         if (currentReplay.type & ReplayType::Event)
@@ -482,10 +488,11 @@ namespace Manager {
 
     void ReplayRestarted(bool full) {
         LOG_INFO("Replay restarted {}", full);
-        if (full)
+        if (full) {
             paused = false;
+            Objects::hasObjects = false;
+        }
         currentFrame = 0;
-        songTime = full ? -1 : 0;
         lerpAmount = 0;
         lastCutTime = -1;
         if (currentReplay.type & ReplayType::Event)
@@ -493,6 +500,12 @@ namespace Manager {
         if (currentReplay.type & ReplayType::Frame)
             Frames::ReplayStarted();
         Camera::ReplayStarted();
+    }
+
+    ON_EVENT(MetaCore::Events::MapRestarted) {
+        if (!replaying)
+            return;
+        ReplayRestarted();
     }
 
     void ReplayEnded(bool quit) {
@@ -512,31 +525,29 @@ namespace Manager {
         }
     }
 
-    void ReplayPaused() {
+    ON_EVENT(MetaCore::Events::MapPaused) {
+        if (!replaying)
+            return;
         Pause::EnsureSetup(Objects::pauseManager);
         paused = true;
         Camera::moving = false;
     }
 
-    void ReplayUnpaused() {
+    ON_EVENT(MetaCore::Events::MapUnpaused) {
+        if (!replaying)
+            return;
         Pause::OnUnpause();
         paused = false;
     }
 
-    void UpdateTime(float time, float length) {
-        if (length >= 0)
-            songLength = length;
-        if (songTime < 0) {
-            if (time != 0)
-                return;
+    void UpdateTime(float time) {
+        if (!Objects::hasObjects)
             Objects::GetObjects();
-        }
         if (currentReplay.type == ReplayType::Frame)
             time += 0.01;
-        songTime = time;
         auto& frames = currentReplay.replay->frames;
 
-        while (currentFrame < frameCount && frames[currentFrame].time <= songTime)
+        while (currentFrame < frameCount && frames[currentFrame].time <= time)
             currentFrame++;
         if (currentFrame > 0)
             currentFrame--;
@@ -544,14 +555,14 @@ namespace Manager {
         if (currentFrame == frameCount - 1)
             lerpAmount = 0;
         else {
-            float timeDiff = songTime - frames[currentFrame].time;
+            float timeDiff = time - frames[currentFrame].time;
             float frameDur = frames[currentFrame + 1].time - frames[currentFrame].time;
             lerpAmount = timeDiff / frameDur;
         }
         if (currentReplay.type & ReplayType::Event)
-            Events::UpdateTime();
+            Events::UpdateTime(time);
         if (currentReplay.type & ReplayType::Frame)
-            Frames::UpdateTime();
+            Frames::UpdateTime(time);
         Camera::UpdateTime();
     }
 
@@ -568,9 +579,9 @@ namespace Manager {
 
         int timeState = IsButtonDown(getConfig().TimeButton.GetValue());
         if (timeState == 1 && !timeForwardPressed)
-            Pause::SetTime(GetSongTime() + getConfig().TimeSkip.GetValue());
+            Pause::SetTime(MetaCore::Stats::GetSongTime() + getConfig().TimeSkip.GetValue());
         else if (timeState == -1 && !timeBackPressed)
-            Pause::SetTime(GetSongTime() - getConfig().TimeSkip.GetValue());
+            Pause::SetTime(MetaCore::Stats::GetSongTime() - getConfig().TimeSkip.GetValue());
         timeForwardPressed = timeState == 1;
         timeBackPressed = timeState == -1;
 
@@ -587,14 +598,17 @@ namespace Manager {
         Camera::Move(IsButtonDown(getConfig().TravelButton.GetValue()));
     }
 
-    float GetSongTime() {
-        return songTime;
+    ON_EVENT(MetaCore::Events::Update) {
+        if (!replaying)
+            return;
+        UpdateTime(MetaCore::Stats::GetSongTime());
+        CheckInputs();
     }
 
     float GetLength() {
         if (GetCurrentInfo().failed)
             return GetCurrentInfo().failTime;
-        return songLength;
+        return MetaCore::Stats::GetSongLength();
     }
 
     Frame const& GetFrame() {

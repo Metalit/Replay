@@ -3,7 +3,6 @@
 #include "Formats/FrameReplay.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
-#include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
 #include "Hooks.hpp"
 #include "Main.hpp"
@@ -13,6 +12,7 @@
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Camera.hpp"
 #include "UnityEngine/Time.hpp"
+#include "metacore/shared/events.hpp"
 
 using namespace GlobalNamespace;
 
@@ -68,10 +68,6 @@ MAKE_AUTO_HOOK_MATCH(
 // keep song time and current frame up to date, plus controller inputs, and delay ending of renders
 MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
 
-    if (Manager::replaying && !Manager::paused) {
-        Manager::UpdateTime(self->songTime, self->get_songLength());
-        Manager::CheckInputs();
-    }
     auto state = self->_state;
     bool customTiming = Manager::replaying && Manager::Camera::rendering;
     if (customTiming)
@@ -110,24 +106,4 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
     }
 
     self->_state = state;
-}
-
-// enable camera when pausing and track it for the manager
-MAKE_AUTO_HOOK_MATCH(PauseMenuManager_ShowMenu, &PauseMenuManager::ShowMenu, void, PauseMenuManager* self) {
-
-    if (Manager::replaying)
-        Manager::ReplayPaused();
-    Camera_Pause();
-
-    PauseMenuManager_ShowMenu(self);
-}
-
-MAKE_AUTO_HOOK_MATCH(
-    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish, &PauseMenuManager::HandleResumeFromPauseAnimationDidFinish, void, PauseMenuManager* self
-) {
-    if (Manager::replaying)
-        Manager::ReplayUnpaused();
-    Camera_Unpause();
-
-    PauseMenuManager_HandleResumeFromPauseAnimationDidFinish(self);
 }

@@ -41,6 +41,7 @@
 #include "UnityEngine/Time.hpp"
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "bsml/shared/BSML.hpp"
+#include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
 
 using namespace GlobalNamespace;
@@ -173,7 +174,7 @@ namespace Pause {
             parent->transform->localScale = Vector3::one();
             SetTransform(parent, {0, -15}, {110, 25});
 
-            float time = Manager::GetSongTime();
+            float time = MetaCore::Stats::GetSongTime();
             float startTime = scoreController->_audioTimeSyncController->_startSongTime;
             float endTime = scoreController->_audioTimeSyncController->songLength;
             auto& info = Manager::GetCurrentInfo();

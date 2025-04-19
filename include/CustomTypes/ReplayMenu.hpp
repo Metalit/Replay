@@ -63,6 +63,5 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
     HMUI::ModalView* confirmModal;
 
     std::vector<std::pair<std::string, ReplayInfo*>> replays;
-    DifficultyBeatmap beatmap;
     GlobalNamespace::IReadonlyBeatmapData* beatmapData;
 };

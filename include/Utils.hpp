@@ -28,21 +28,9 @@ std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* char
 
 std::string GetCharacteristicName(std::string serializedName);
 
-struct DifficultyBeatmap {
-    GlobalNamespace::BeatmapKey difficulty;
-    GlobalNamespace::BeatmapLevel* level;
+std::string GetMapString();
 
-    DifficultyBeatmap() = default;
-    DifficultyBeatmap(GlobalNamespace::BeatmapKey diff, GlobalNamespace::BeatmapLevel* lev) : difficulty(diff), level(lev) {};
-
-    bool operator==(DifficultyBeatmap const& rhs) const {
-        return level == rhs.level && GlobalNamespace::BeatmapKey::op_Equality(difficulty, rhs.difficulty);
-    };
-};
-
-std::string GetMapString(DifficultyBeatmap beatmap);
-
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(DifficultyBeatmap beatmap);
+std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 
 std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail);
 

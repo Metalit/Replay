@@ -7,7 +7,6 @@
 #include "GlobalNamespace/MenuLightsManager.hpp"
 #include "GlobalNamespace/MenuLightsPresetSO.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
-#include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/PlayerSpecificSettings.hpp"
 #include "GlobalNamespace/PracticeSettings.hpp"
 #include "GlobalNamespace/Saber.hpp"
@@ -26,7 +25,9 @@
 #include "UnityEngine/Transform.hpp"
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
+#include "metacore/shared/internals.hpp"
 
 using namespace GlobalNamespace;
 
@@ -105,7 +106,7 @@ MAKE_AUTO_HOOK_MATCH(
             zenMode,
             smallNotes
         );
-        f8 = static_cast<GameplayModifiers*>(modifierHolder);
+        f8 = (GameplayModifiers*) modifierHolder;
         playerSpecificSettings = f9;
         wasLeftHanded = f9->leftHanded;
         f9->_leftHanded = modifiers.leftHanded;
@@ -120,15 +121,6 @@ MAKE_AUTO_HOOK_MATCH(
             f10 = PracticeSettings::New_ctor(info.startTime, info.speed);
     }
     MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19);
-}
-
-// handle restarts
-MAKE_AUTO_HOOK_MATCH(PauseMenuManager_RestartButtonPressed, &PauseMenuManager::RestartButtonPressed, void, PauseMenuManager* self) {
-
-    if (Manager::replaying)
-        Manager::ReplayRestarted();
-
-    PauseMenuManager_RestartButtonPressed(self);
 }
 
 // set saber positions
@@ -185,9 +177,37 @@ MAKE_AUTO_HOOK_MATCH(
     if (!Manager::replaying)
         HapticFeedbackManager_PlayHapticFeedback(self, node, hapticPreset);
 }
-
-static bool cancelPresent = false;
 // watch for level ending
+
+ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
+    if (Manager::replaying) {
+        MetaCore::Game::SetCameraFadeOut(MOD_ID, true, 0);
+        if (playerSpecificSettings)
+            playerSpecificSettings->_leftHanded = wasLeftHanded;
+        playerSpecificSettings = nullptr;
+        if (roomAdjust) {
+            roomAdjust->_settingsManager->settings.room.center = Unity::Mathematics::float3::op_Implicit___Unity__Mathematics__float3(oldPosAdj);
+            roomAdjust->_settingsManager->settings.room.rotation = oldRotAdj;
+        }
+        roomAdjust = nullptr;
+        if (!MetaCore::Internals::mapWasQuit)
+            MetaCore::Game::GetMainFlowCoordinator()->_menuLightsManager->SetColorPreset(
+                MetaCore::Game::GetMainFlowCoordinator()->_defaultLightsPreset, false, 0
+            );
+        BSML::MainThreadScheduler::ScheduleUntil(
+            []() { return Manager::Camera::muxingFinished; },
+            []() {
+                MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
+                Manager::ReplayEnded(MetaCore::Internals::mapWasQuit);
+            }
+        );
+    } else if (!MetaCore::Internals::mapWasQuit && !recorderInstalled)
+        Menu::SetButtonUninteractable("Install BeatLeader or ScoreSaber to record replays!");
+}
+
+// disable results view controller for replays
+static bool cancelPresent = false;
+
 MAKE_AUTO_HOOK_MATCH(
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish,
     &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
@@ -202,30 +222,6 @@ MAKE_AUTO_HOOK_MATCH(
     SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
 
     cancelPresent = false;
-    bool quit = levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit;
-    if (Manager::replaying) {
-        MetaCore::Game::SetCameraFadeOut(MOD_ID, true, 0);
-        if (playerSpecificSettings)
-            playerSpecificSettings->_leftHanded = wasLeftHanded;
-        playerSpecificSettings = nullptr;
-        if (roomAdjust) {
-            roomAdjust->_settingsManager->settings.room.center = Unity::Mathematics::float3::op_Implicit___Unity__Mathematics__float3(oldPosAdj);
-            roomAdjust->_settingsManager->settings.room.rotation = oldRotAdj;
-        }
-        roomAdjust = nullptr;
-        if (!quit) {
-            auto lights = *il2cpp_utils::GetFieldValue<MenuLightsManager*>(self, "_menuLightsManager");
-            lights->SetColorPreset(*il2cpp_utils::GetFieldValue<MenuLightsPresetSO*>(self, "_defaultLightsPreset"), false, 0);
-        }
-        BSML::MainThreadScheduler::ScheduleUntil(
-            []() { return Manager::Camera::muxingFinished; },
-            [quit]() {
-                MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
-                Manager::ReplayEnded(quit);
-            }
-        );
-    } else if (!quit && !recorderInstalled)
-        Menu::SetButtonUninteractable("Install BeatLeader or ScoreSaber to record replays!");
 }
 
 MAKE_AUTO_HOOK_MATCH(

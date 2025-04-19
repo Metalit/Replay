@@ -66,8 +66,6 @@ namespace Manager {
         void RemoveNoteController(GlobalNamespace::NoteController* note);
     }
 
-    void SetLevel(DifficultyBeatmap level);
-
     void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external = false);
     void RefreshLevelReplays();
     bool AreReplaysLocal();
@@ -76,20 +74,15 @@ namespace Manager {
     void ReplayStarted(std::string const& path);
     void ReplayRestarted(bool full = true);
     void ReplayEnded(bool quit);
-    void ReplayPaused();
-    void ReplayUnpaused();
 
     extern bool replaying;
     extern bool paused;
     extern ReplayWrapper currentReplay;
-    extern DifficultyBeatmap beatmap;
 
     ReplayInfo const& GetCurrentInfo();
 
-    void UpdateTime(float songTime, float songLength = -1);
+    void UpdateTime(float time);
     void SetLastCutTime(float lastCutTime);
-    void CheckInputs();
-    float GetSongTime();
     float GetLength();
     Frame const& GetFrame();
     Frame const& GetNextFrame();

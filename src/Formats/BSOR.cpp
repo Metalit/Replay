@@ -234,7 +234,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     int framesCount;
     READ_TO(framesCount);
     bool rotation = info.mode.find("Degree") != std::string::npos;
-    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     // here we have yet another lecagy bug where multiplayer replays record all the avatars
     float firstTime = -1000;
     int skip = 0;

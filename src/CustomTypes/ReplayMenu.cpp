@@ -333,10 +333,6 @@ void Menu::ReplayViewController::SetReplays(std::vector<std::pair<std::string, R
     replays = replayInfos;
     if (getConfig().LastReplayIdx.GetValue() >= replayInfos.size())
         getConfig().LastReplayIdx.SetValue(replayInfos.size() - 1);
-    auto lastBeatmap = beatmap;
-    beatmap = {levelView->beatmapKey, levelView->_beatmapLevel};
-    if (lastBeatmap != beatmap)
-        beatmapData = nullptr;
     if (increment) {
         increment->maxValue = replayInfos.size();
         increment->set_Value(getConfig().LastReplayIdx.GetValue() + 1);
@@ -354,15 +350,16 @@ std::string& Menu::ReplayViewController::GetReplay() {
 }
 
 void Menu::ReplayViewController::UpdateUI(bool getData) {
+    auto beatmap = MetaCore::Songs::GetSelectedKey();
+    auto level = MetaCore::Songs::GetSelectedLevel();
+
     if (getData && !beatmapData) {
-        MetaCore::Songs::GetBeatmapData(beatmap.difficulty, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
+        MetaCore::Songs::GetBeatmapData(beatmap, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
             beatmapData = data;
-            if (beatmap == forMap && increment)
+            if (MetaCore::Songs::GetSelectedKey().Equals(forMap) && increment)
                 UpdateUI(false);
         });
     }
-    auto beatmap = levelView->beatmapKey;
-    auto level = levelView->_beatmapLevel;
     levelBar->Setup(level, beatmap.difficulty, beatmap.beatmapCharacteristic);
     float songLength = level->songDuration;
 

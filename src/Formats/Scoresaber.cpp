@@ -257,7 +257,7 @@ ReplayWrapper ReadScoresaber(std::string const& path) {
     info.jumpDistance = meta.NoteSpawnOffset;
 
     bool rotation = meta.Characteristic.find("Degree") != std::string::npos;
-    MetaCore::Unity::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
     input.seekg(beginnings.poseKeyframes);
     int count;
     READ_TO(count);

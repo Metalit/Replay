@@ -36,6 +36,9 @@
 #include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "hollywood/shared/hollywood.hpp"
+#include "metacore/shared/events.hpp"
+#include "metacore/shared/internals.hpp"
+#include "metacore/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
 
 using namespace GlobalNamespace;
@@ -92,12 +95,12 @@ MAKE_AUTO_HOOK_MATCH(PlayerTransforms_Update, &PlayerTransforms::Update, void, P
     PlayerTransforms_Update(self);
 }
 
-void Camera_Pause() {
+ON_EVENT(MetaCore::Events::MapPaused) {
     if (Manager::replaying && Manager::Camera::rendering && mainCamera && oldCullingMask != 0)
         mainCamera->cullingMask = oldCullingMask;
 }
 
-void Camera_Unpause() {
+ON_EVENT(MetaCore::Events::MapUnpaused) {
     if (Manager::replaying && Manager::Camera::rendering && mainCamera && oldCullingMask != 0)
         mainCamera->cullingMask = uiCullingMask;
 }
@@ -123,9 +126,158 @@ constexpr UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vector3 const& vec
     return result;
 }
 
+// apply wall quality without modifying the normal preset
+MAKE_AUTO_HOOK_MATCH(
+    ObstacleMaterialSetter_SetCoreMaterial,
+    &ObstacleMaterialSetter::SetCoreMaterial,
+    void,
+    ObstacleMaterialSetter* self,
+    UnityEngine::Renderer* renderer,
+    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality,
+    bool screenDisplacementEffects
+) {
+    if (Manager::replaying && Manager::Camera::rendering) {
+        switch (getConfig().Walls.GetValue()) {
+            case 1:
+                renderer->sharedMaterial = self->_texturedCoreMaterial;
+                break;
+            case 2:
+                renderer->sharedMaterial = self->_hwCoreMaterial;
+                break;
+            default:
+                renderer->sharedMaterial = self->_lwCoreMaterial;
+                break;
+        }
+    } else
+        ObstacleMaterialSetter_SetCoreMaterial(self, renderer, obstacleQuality, screenDisplacementEffects);
+}
+MAKE_AUTO_HOOK_MATCH(
+    ObstacleMaterialSetter_SetFakeGlowMaterial,
+    &ObstacleMaterialSetter::SetFakeGlowMaterial,
+    void,
+    ObstacleMaterialSetter* self,
+    UnityEngine::Renderer* renderer,
+    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality
+) {
+    if (Manager::replaying && Manager::Camera::rendering)
+        renderer->sharedMaterial = getConfig().Walls.GetValue() == 0 ? self->_fakeGlowLWMaterial : self->_fakeGlowTexturedMaterial;
+    else
+        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer, obstacleQuality);
+}
+
+// override shockwaves too
+MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_Start, &ShockwaveEffect::Start, void, ShockwaveEffect* self) {
+
+    ShockwaveEffect_Start(self);
+
+    if (Manager::replaying && Manager::Camera::rendering)
+        self->_shockwavePS->main.maxParticles = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
+}
+// I think graphics tweaks is what unnecessarily disables the component in addition to the game object
+MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_SpawnShockwave, &ShockwaveEffect::SpawnShockwave, void, ShockwaveEffect* self, UnityEngine::Vector3 pos) {
+
+    if (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0) {
+        self->gameObject->active = true;
+        self->enabled = true;
+    }
+    ShockwaveEffect_SpawnShockwave(self, pos);
+}
+
+// delay ending of renders (_songTime clamp is removed in shared hooks)
+MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
+
+    float ret = AudioTimeSyncController_get_songEndTime(self);
+
+    if (Manager::replaying && Manager::Camera::rendering)
+        return ret + 1;
+    return ret;
+}
+
+// prevent pauses during recording
+MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
+
+    if (Manager::replaying && Manager::Camera::rendering)
+        return getConfig().Pauses.GetValue();
+
+    return PauseController_get_canPause(self);
+}
+
+// fix distortions in renders
+MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversion, int passMode) {
+
+    int& programId = *(int*) drawQuad;
+    if (reinitDistortions != -1) {
+        glDeleteProgram(programId);
+        programId = 0;
+        passMode = reinitDistortions;
+    }
+    reinitDistortions = -1;
+
+    if (programId != 0)
+        return;
+
+    initialize_blit_fbo(drawQuad, conversion, passMode);
+}
+
+AUTO_HOOK_FUNCTION(blit_fbo) {
+    LOG_INFO("Installing blit init hook...");
+    uintptr_t libunity = baseAddr("libunity.so");
+    uintptr_t initialize_blit_fbo_addr =
+        findPattern(libunity, "fd 7b ba a9 fc 6f 01 a9 fa 67 02 a9 f8 5f 03 a9 f6 57 04 a9 f4 4f 05 a9 ff 83 0b d1 58 d0 3b d5 08", 0x2000000);
+    LOG_DEBUG("Found blit init address: {}", initialize_blit_fbo_addr);
+    INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
+    LOG_INFO("Installed blit init hook!");
+}
+
+void SetupText() {
+    auto levelData = MetaCore::Songs::GetSelectedLevel();
+    std::string songName = levelData->songName;
+    std::string songAuthor = levelData->songAuthorName;
+
+    auto player = Manager::GetCurrentInfo().playerName;
+    if (player.has_value() && (!Manager::GetCurrentInfo().playerOk || !getConfig().HideText.GetValue())) {
+        std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", songName, songAuthor, player.value());
+
+        auto canvas = BSML::Lite::CreateCanvas();
+        canvas->transform->position = {0, getConfig().TextHeight.GetValue(), 7};
+
+        BSML::Lite::CreateText(canvas, text, TMPro::FontStyles::Italic, 7, {}, {200, 10})->alignment = TMPro::TextAlignmentOptions::Center;
+    }
+}
+
+void SetupCamera() {
+    // set culling matrix for moved camera modes and for rendering
+    mainCamera = UnityEngine::Camera::get_main();
+    static auto set_cullingMatrix =
+        il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>("UnityEngine.Camera::set_cullingMatrix_Injected");
+
+    auto forwardMult = UnityEngine::Vector3::op_Multiply(UnityEngine::Vector3::get_forward(), -49999.5);
+    auto mat = UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001, 99999);
+    mat = UnityEngine::Matrix4x4::op_Multiply(mat, MatrixTranslate(forwardMult));
+    mat = UnityEngine::Matrix4x4::op_Multiply(mat, mainCamera->worldToCameraMatrix);
+    set_cullingMatrix(mainCamera, mat);
+
+    cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->transform);
+
+    auto showDebris = mainCamera->GetComponent<MainCameraCullingMask*>()->_initData->showDebris;
+
+    int mask = 2147483647;
+    // Existing except FirstPerson (6)
+    if (Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson)
+        mask = 2147483647 & ~(1 << 6);
+    // Existing except ThirdPerson (3)
+    else
+        mask = 2147483647 & ~(1 << 3);
+
+    if (!showDebris)
+        mask &= ~(1 << 9);
+
+    mainCamera->cullingMask = mask;
+}
+
 void SetupRecording() {
     LOG_INFO("Setting up recording");
-    fileName = MetaCore::Strings::SanitizedPath(GetMapString(Manager::beatmap));
+    fileName = MetaCore::Strings::SanitizedPath(GetMapString());
     LOG_INFO("Using filename: {}", fileName);
 
     LOG_INFO("Muting audio");
@@ -207,126 +359,18 @@ void SetupRecording() {
     reinitDistortions = 0;
 }
 
-// apply wall quality without modifying the normal preset
-MAKE_AUTO_HOOK_MATCH(
-    ObstacleMaterialSetter_SetCoreMaterial,
-    &ObstacleMaterialSetter::SetCoreMaterial,
-    void,
-    ObstacleMaterialSetter* self,
-    UnityEngine::Renderer* renderer,
-    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality,
-    bool screenDisplacementEffects
-) {
-    if (Manager::replaying && Manager::Camera::rendering) {
-        switch (getConfig().Walls.GetValue()) {
-            case 1:
-                renderer->sharedMaterial = self->_texturedCoreMaterial;
-                break;
-            case 2:
-                renderer->sharedMaterial = self->_hwCoreMaterial;
-                break;
-            default:
-                renderer->sharedMaterial = self->_lwCoreMaterial;
-                break;
-        }
-    } else
-        ObstacleMaterialSetter_SetCoreMaterial(self, renderer, obstacleQuality, screenDisplacementEffects);
-}
-MAKE_AUTO_HOOK_MATCH(
-    ObstacleMaterialSetter_SetFakeGlowMaterial,
-    &ObstacleMaterialSetter::SetFakeGlowMaterial,
-    void,
-    ObstacleMaterialSetter* self,
-    UnityEngine::Renderer* renderer,
-    BeatSaber::Settings::QualitySettings::ObstacleQuality obstacleQuality
-) {
-    if (Manager::replaying && Manager::Camera::rendering)
-        renderer->sharedMaterial = getConfig().Walls.GetValue() == 0 ? self->_fakeGlowLWMaterial : self->_fakeGlowTexturedMaterial;
-    else
-        ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer, obstacleQuality);
-}
+ON_EVENT(MetaCore::Events::MapStarted) {
+    if (!Manager::replaying)
+        return;
 
-// override shockwaves too
-MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_Start, &ShockwaveEffect::Start, void, ShockwaveEffect* self) {
+    SetupText();
+    SetupCamera();
 
-    ShockwaveEffect_Start(self);
-
-    if (Manager::replaying && Manager::Camera::rendering)
-        self->_shockwavePS->main.maxParticles = getConfig().ShockwavesOn.GetValue() ? getConfig().Shockwaves.GetValue() : 0;
-}
-// I think graphics tweaks is what unnecessarily disables the component in addition to the game object
-MAKE_AUTO_HOOK_MATCH(ShockwaveEffect_SpawnShockwave, &ShockwaveEffect::SpawnShockwave, void, ShockwaveEffect* self, UnityEngine::Vector3 pos) {
-
-    if (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0) {
-        self->gameObject->active = true;
-        self->enabled = true;
-    }
-    ShockwaveEffect_SpawnShockwave(self, pos);
-}
-
-MAKE_AUTO_HOOK_MATCH(
-    AudioTimeSyncController_StartSong, &AudioTimeSyncController::StartSong, void, AudioTimeSyncController* self, float startTimeOffset
-) {
-    AudioTimeSyncController_StartSong(self, startTimeOffset);
-
-    if (Manager::replaying) {
-        auto showDebris = mainCamera->GetComponent<MainCameraCullingMask*>()->_initData->showDebris;
-
-        int mask = 2147483647;
-        // Existing except FirstPerson (6)
-        if (Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson)
-            mask = 2147483647 & ~(1 << 6);
-        // Existing except ThirdPerson (3)
-        else
-            mask = 2147483647 & ~(1 << 3);
-
-        if (!showDebris)
-            mask &= ~(1 << 9);
-
-        mainCamera->cullingMask = mask;
-    }
-
-    if (Manager::replaying && Manager::Camera::rendering)
+    if (Manager::Camera::rendering)
         SetupRecording();
 }
 
-// setup some general camera stuff
-MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Start, &AudioTimeSyncController::Start, void, AudioTimeSyncController* self) {
-
-    AudioTimeSyncController_Start(self);
-
-    if (Manager::replaying) {
-        auto levelData = Manager::beatmap.level;
-        std::string songName = levelData->songName;
-        std::string songAuthor = levelData->songAuthorName;
-
-        // TODO: maybe move elsewhere
-        auto player = Manager::GetCurrentInfo().playerName;
-        if (player.has_value() && (!Manager::GetCurrentInfo().playerOk || !getConfig().HideText.GetValue())) {
-            std::string text = fmt::format("<color=red>REPLAY</color>    {} - {}    Player: {}", songName, songAuthor, player.value());
-
-            auto canvas = BSML::Lite::CreateCanvas();
-            canvas->transform->position = {0, getConfig().TextHeight.GetValue(), 7};
-
-            BSML::Lite::CreateText(canvas, text, TMPro::FontStyles::Italic, 7, {}, {200, 10})->alignment = TMPro::TextAlignmentOptions::Center;
-        }
-
-        // set culling matrix for moved camera modes and for rendering
-        mainCamera = UnityEngine::Camera::get_main();
-        static auto set_cullingMatrix =
-            il2cpp_utils::resolve_icall<void, UnityEngine::Camera*, UnityEngine::Matrix4x4>("UnityEngine.Camera::set_cullingMatrix_Injected");
-
-        auto forwardMult = UnityEngine::Vector3::op_Multiply(UnityEngine::Vector3::get_forward(), -49999.5);
-        auto mat = UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001, 99999);
-        mat = UnityEngine::Matrix4x4::op_Multiply(mat, MatrixTranslate(forwardMult));
-        mat = UnityEngine::Matrix4x4::op_Multiply(mat, mainCamera->worldToCameraMatrix);
-        set_cullingMatrix(mainCamera, mat);
-
-        cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->transform);
-    }
-}
-
-void FinishMux(bool quit) {
+void FinishMux() {
     if (getConfig().CleanFiles.GetValue()) {
         if (fileexists(TmpVidPath))
             std::filesystem::remove(TmpVidPath);
@@ -335,18 +379,18 @@ void FinishMux(bool quit) {
     }
 
     LOG_INFO("Removing screen on");
-    if (quit || getConfig().LevelsToSelect.GetValue().empty())
+    if (MetaCore::Internals::mapWasQuit || getConfig().LevelsToSelect.GetValue().empty())
         Hollywood::SetScreenOn(false);
 
     Manager::Camera::muxingFinished = true;
 }
 
-void WaitThenMux(bool quit) {
+void WaitThenMux() {
     bool vidExists = fileexists(TmpVidPath);
     bool audExists = fileexists(TmpAudPath);
 
     if (vidExists && audExists) {
-        BSML::MainThreadScheduler::ScheduleAfterTime(5, [quit]() {
+        BSML::MainThreadScheduler::ScheduleAfterTime(5, []() {
             std::string outputFile = fmt::format("{}/{}.mp4", RendersFolder, fileName);
             int num = 1;
             while (fileexists(outputFile))
@@ -367,22 +411,15 @@ void WaitThenMux(bool quit) {
                     }
                 }
             }
-            FinishMux(quit);
+            FinishMux();
         });
     } else {
         LOG_ERROR("Video exists: {} Audio exists: {}", vidExists, audExists);
-        FinishMux(quit);
+        FinishMux();
     }
 }
 
-// undo rendering changes when exiting a level
-MAKE_AUTO_HOOK_MATCH(
-    StandardLevelScenesTransitionSetupDataSO_Finish,
-    &StandardLevelScenesTransitionSetupDataSO::Finish,
-    void,
-    StandardLevelScenesTransitionSetupDataSO* self,
-    LevelCompletionResults* levelCompletionResults
-) {
+void FinishRecording() {
     Hollywood::SetSyncTimes(false);
 
     if (audioCapture)
@@ -393,9 +430,6 @@ MAKE_AUTO_HOOK_MATCH(
     customCamera = nullptr;
     if (cameraRig)
         UnityEngine::Object::DestroyImmediate(cameraRig);
-    cameraRig = nullptr;
-    oldCullingMask = 0;
-    mainCamera = nullptr;
 
     UnityEngine::Time::set_captureDeltaTime(0);
 
@@ -406,56 +440,20 @@ MAKE_AUTO_HOOK_MATCH(
 
     if (Manager::Camera::rendering) {
         // mux audio and video when done with both
-        WaitThenMux(levelCompletionResults->levelEndAction == LevelCompletionResults::LevelEndAction::Quit);
+        WaitThenMux();
         // make distortions work for the headset camera again
         reinitDistortions = 3;
     }
-
-    return StandardLevelScenesTransitionSetupDataSO_Finish(self, levelCompletionResults);
 }
 
-// delay ending of renders (_songTime clamp is removed in shared hooks)
-MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
-
-    float ret = AudioTimeSyncController_get_songEndTime(self);
-
-    if (Manager::replaying && Manager::Camera::rendering)
-        return ret + 1;
-    return ret;
-}
-
-// prevent pauses during recording
-MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPause, bool, PauseController* self) {
-
-    if (Manager::replaying && Manager::Camera::rendering)
-        return getConfig().Pauses.GetValue();
-
-    return PauseController_get_canPause(self);
-}
-
-// fix distortions in renders
-MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversion, int passMode) {
-
-    int& programId = *(int*) drawQuad;
-    if (reinitDistortions != -1) {
-        glDeleteProgram(programId);
-        programId = 0;
-        passMode = reinitDistortions;
-    }
-    reinitDistortions = -1;
-
-    if (programId != 0)
+ON_EVENT(MetaCore::Events::MapEnded) {
+    if (!Manager::replaying)
         return;
 
-    initialize_blit_fbo(drawQuad, conversion, passMode);
-}
+    cameraRig = nullptr;
+    mainCamera = nullptr;
+    oldCullingMask = 0;
 
-void InstallBlitHook() {
-    logger.info("Installing blit init hook...");
-    uintptr_t libunity = baseAddr("libunity.so");
-    uintptr_t initialize_blit_fbo_addr =
-        findPattern(libunity, "fd 7b ba a9 fc 6f 01 a9 fa 67 02 a9 f8 5f 03 a9 f6 57 04 a9 f4 4f 05 a9 ff 83 0b d1 58 d0 3b d5 08", 0x2000000);
-    logger.debug("Found blit init address: {}", initialize_blit_fbo_addr);
-    INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
-    logger.info("Installed blit init hook!");
+    if (Manager::Camera::rendering)
+        FinishRecording();
 }

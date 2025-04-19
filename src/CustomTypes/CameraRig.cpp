@@ -14,6 +14,7 @@
 #include "UnityEngine/XR/XRNode.hpp"
 #include "assets.hpp"
 #include "bsml/shared/Helpers/utilities.hpp"
+#include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
 
 DEFINE_TYPE(ReplayHelpers, CameraRig);
@@ -78,7 +79,7 @@ void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Qu
 }
 
 void CameraRig::UpdateProgress() {
-    std::string time = MetaCore::Strings::SecondsToString(Manager::GetSongTime());
+    std::string time = MetaCore::Strings::SecondsToString(MetaCore::Stats::GetSongTime());
     std::string tot = MetaCore::Strings::SecondsToString(Manager::GetLength());
     std::string queue = "";
     int len = getConfig().LevelsToSelect.GetValue().size();
@@ -159,7 +160,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     cameraRig->progressText = text;
 
     cameraRig->pausedLastFrame = false;
-    cameraRig->mapString = GetMapString(Manager::beatmap);
+    cameraRig->mapString = GetMapString();
 
     return cameraRig;
 }

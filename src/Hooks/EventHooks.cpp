@@ -10,6 +10,8 @@
 #include "Main.hpp"
 #include "ReplayManager.hpp"
 #include "UnityEngine/Time.hpp"
+#include "metacore/shared/events.hpp"
+#include "metacore/shared/internals.hpp"
 
 using namespace GlobalNamespace;
 
@@ -107,10 +109,7 @@ MAKE_AUTO_HOOK_MATCH(
 }
 
 // recalculate notes based on map data if necessary
-MAKE_AUTO_HOOK_MATCH(GameplayCoreInstaller_InstallBindings, &GameplayCoreInstaller::InstallBindings, void, GameplayCoreInstaller* self) {
-
-    GameplayCoreInstaller_InstallBindings(self);
-
+ON_EVENT(MetaCore::Events::MapStarted) {
     if (Manager::replaying && Manager::currentReplay.type & ReplayType::Event)
-        RecalculateNotes(Manager::currentReplay, self->_sceneSetupData->transformedBeatmapData);
+        RecalculateNotes(Manager::currentReplay, MetaCore::Internals::currentState.beatmapData->i___GlobalNamespace__IReadonlyBeatmapData());
 }

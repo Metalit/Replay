@@ -203,14 +203,13 @@ void RenderCurrentLevel(bool currentReplay) {
         return;
     }
     auto map = levelSelection->selectedBeatmapKey;
-    auto level = levelSelection->selectedBeatmapLevel;
-    if (!level || !map.IsValid()) {
+    if (!map.IsValid()) {
         LOG_ERROR("Failed to get selected beatmap, not rendering");
         return;
     }
     Manager::Camera::rendering = true;
     if (!currentReplay) {
-        auto replays = GetReplays({map, level});
+        auto replays = GetReplays(map);
         if (replays.empty()) {
             LOG_ERROR("Failed to get beatmap replays, not rendering");
             return;

@@ -7,11 +7,11 @@
   "version": "${version}",
   "modloader": "Scotland2",
   "packageId": "com.beatgames.beatsaber",
-  "packageVersion": "1.40.3_4614",
+  "packageVersion": "1.40.4_5283",
   "description": "Watch back your best scores!",
   "coverImage": "cover.png",
   "dependencies": [],
-  "modFiles": [
+  "lateModFiles": [
     "${binary}"
   ],
   "libraryFiles": [],

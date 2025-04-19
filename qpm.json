@@ -60,7 +60,7 @@
     },
     {
       "id": "bs-cordl",
-      "versionRange": "^4030.0.0",
+      "versionRange": "^4004.0.0",
       "additionalData": {}
     },
     {
@@ -85,7 +85,7 @@
     },
     {
       "id": "hollywood",
-      "versionRange": "^1.0.2",
+      "versionRange": "^1.1.0",
       "additionalData": {}
     },
     {
@@ -105,7 +105,7 @@
     },
     {
       "id": "songcore",
-      "versionRange": "^1.1.19",
+      "versionRange": "^1.1.20",
       "additionalData": {}
     }
   ]
