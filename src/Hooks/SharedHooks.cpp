@@ -8,6 +8,7 @@
 #include "Main.hpp"
 #include "Replay.hpp"
 #include "ReplayManager.hpp"
+#include "UnityEngine/AudioClip.hpp"
 #include "UnityEngine/AudioSettings.hpp"
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Camera.hpp"
@@ -77,31 +78,46 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
 
     // copy default time sync logic because it probably works
     if (customTiming && state == AudioTimeSyncController::State::Playing) {
-        self->_lastFrameDeltaSongTime = UnityEngine::Time::get_deltaTime() * self->_timeScale;
+        float estimatedTimeIncrease = UnityEngine::Time::get_deltaTime() * self->_timeScale;
+
+        int timeSamples = self->_audioSource->timeSamples;
+        if (self->_prevAudioSamplePos > timeSamples)
+            self->_playbackLoopIndex++;
+        if (self->_prevAudioSamplePos == timeSamples)
+            self->_inBetweenDSPBufferingTimeEstimate += estimatedTimeIncrease;
+        else
+            self->_inBetweenDSPBufferingTimeEstimate = 0;
+        self->_prevAudioSamplePos = timeSamples;
+
         // add regular delta time after audio ends
-        float time = self->_audioSource->isPlaying ? self->_audioSource->time : self->_songTime + UnityEngine::Time::get_deltaTime();
-        float newSongTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
-        self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - time / self->_timeScale;
-        float num3 = std::abs(newSongTime - time);
-        if (num3 > self->_forcedSyncDeltaTime) {
-            self->_audioStartTimeOffsetSinceStart = self->timeSinceStart - time;
-            newSongTime = time;
+        float audioSourceTime = self->_songTime + estimatedTimeIncrease;
+        if (self->_audioSource->isPlaying)
+            audioSourceTime =
+                self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length + self->_inBetweenDSPBufferingTimeEstimate;
+        float unityClockTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
+
+        self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - audioSourceTime / self->_timeScale;
+        float timeDifference = std::abs(unityClockTime - audioSourceTime);
+        if (timeDifference > self->_forcedSyncDeltaTime) {
+            self->_audioStartTimeOffsetSinceStart = self->timeSinceStart - audioSourceTime;
+            unityClockTime = audioSourceTime;
         } else {
             if (self->_fixingAudioSyncError) {
-                if (num3 < self->_stopSyncDeltaTime)
+                if (timeDifference < self->_stopSyncDeltaTime)
                     self->_fixingAudioSyncError = false;
-            } else if (num3 > self->_startSyncDeltaTime)
+            } else if (timeDifference > self->_startSyncDeltaTime)
                 self->_fixingAudioSyncError = true;
 
-            if (self->_fixingAudioSyncError) {
+            if (self->_fixingAudioSyncError)
                 self->_audioStartTimeOffsetSinceStart = std::lerp(
-                    self->_audioStartTimeOffsetSinceStart, self->timeSinceStart - time, self->_lastFrameDeltaSongTime * self->_audioSyncLerpSpeed
+                    self->_audioStartTimeOffsetSinceStart, self->timeSinceStart - audioSourceTime, estimatedTimeIncrease * self->_audioSyncLerpSpeed
                 );
-            }
         }
-        newSongTime = std::max(self->_songTime, newSongTime);
-        self->_lastFrameDeltaSongTime = newSongTime - self->_songTime;
-        self->_songTime = newSongTime;
+
+        // ignore songTimeOffset and audioLatency
+        float time = std::max(self->_songTime, unityClockTime);
+        self->_lastFrameDeltaSongTime = time - self->_songTime;
+        self->_songTime = time;
         self->_isReady = true;
     }
 

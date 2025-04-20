@@ -35,11 +35,13 @@
 #include "System/Action.hpp"
 #include "System/Action_1.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
+#include "UnityEngine/Application.hpp"
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/QualitySettings.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "UnityEngine/XR/XRSettings.hpp"
 #include "Utils.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
@@ -194,6 +196,12 @@ namespace Manager {
             auto settings = BeatSaber::Settings::Settings();
             settings.quality.vrResolutionScale = 0.8;
 
+            // unchanged
+            settings.quality.renderViewportScale = 1;
+            settings.quality.maxQueuedFrames = -1;
+            settings.quality.vSyncCount = 0;
+            settings.quality.targetFramerate = UnityEngine::Application::get_targetFrameRate();
+
             // shockwaves and walls unused in ApplyPerformancePreset
 
             int antiAlias = 0;
@@ -216,6 +224,7 @@ namespace Manager {
             }
             settings.quality.antiAliasingLevel = antiAlias;
 
+            settings.quality.bloom = BeatSaber::Settings::QualitySettings::BloomQuality::Game;
             settings.quality.mainEffect = getConfig().Bloom.GetValue() ? BeatSaber::Settings::QualitySettings::MainEffectOption::Game
                                                                        : BeatSaber::Settings::QualitySettings::MainEffectOption::Off;
             settings.quality.mirror = getConfig().Mirrors.GetValue();
