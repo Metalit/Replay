@@ -41,10 +41,7 @@ float oldRotAdj;
 // set modifiers on replay start
 MAKE_AUTO_HOOK_MATCH(
     MenuTransitionsHelper_StartStandardLevel,
-    static_cast<
-        void (MenuTransitionsHelper::*)(StringW, ByRef<BeatmapKey>, BeatmapLevel*, OverrideEnvironmentSettings*, ColorScheme*, bool, ColorScheme*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, EnvironmentsListModel*, StringW, bool, bool, System::Action*, System::Action_1<Zenject::DiContainer*>*, System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>*, System::Nullable_1<RecordingToolManager::SetupData>)>(
-        &MenuTransitionsHelper::StartStandardLevel
-    ),
+    &MenuTransitionsHelper::StartStandardLevel,
     void,
     MenuTransitionsHelper* self,
     StringW f1,

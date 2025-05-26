@@ -96,11 +96,7 @@ MAKE_AUTO_HOOK_MATCH(
 }
 
 MAKE_AUTO_HOOK_MATCH(
-    BeatmapObjectManager_DespawnNoteController,
-    static_cast<void (BeatmapObjectManager::*)(NoteController*)>(&BeatmapObjectManager::Despawn),
-    void,
-    BeatmapObjectManager* self,
-    NoteController* noteController
+    BeatmapObjectManager_DespawnNoteController, &BeatmapObjectManager::Despawn, void, BeatmapObjectManager* self, NoteController* noteController
 ) {
     BeatmapObjectManager_DespawnNoteController(self, noteController);
 
