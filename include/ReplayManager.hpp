@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "GlobalNamespace/BeatmapKey.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
@@ -27,6 +29,8 @@ namespace GlobalNamespace {
 }
 
 namespace Manager {
+    using CustomDataCallbackType = std::function<void(char const*, size_t)>;
+    extern std::map<std::string, std::vector<CustomDataCallbackType>> customDataCallbacks;
 
     namespace Objects {
         extern GlobalNamespace::Saber *leftSaber, *rightSaber;

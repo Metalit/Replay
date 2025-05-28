@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "Replay.hpp"
 
 struct ReplayNoteCutInfo {
@@ -71,6 +73,14 @@ struct EventCompare {
     }
 };
 
+struct ReplayOffset {
+    Vector3 leftSaberPos;
+    Quaternion leftSaberRot;
+    Vector3 rightSaberPos;
+    Quaternion rightSaberRot;
+};
+static_assert(sizeof(ReplayOffset) == sizeof(float) * (3 + 4 + 3 + 4));
+
 struct EventReplay : public virtual Replay {
     std::vector<NoteEvent> notes;
     std::vector<WallEvent> walls;
@@ -79,6 +89,8 @@ struct EventReplay : public virtual Replay {
     std::set<EventRef, EventCompare> events;
     bool needsRecalculation;
     bool cutInfoMissingOKs;
+    std::optional<ReplayOffset> offsets;
+    std::map<std::string, std::vector<char> > customDatas;
 };
 
 ReplayWrapper ReadBSOR(std::string const& path);
