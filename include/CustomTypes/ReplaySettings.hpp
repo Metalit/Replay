@@ -3,6 +3,7 @@
 #include "GlobalNamespace/BeatmapLevel.hpp"
 #include "HMUI/FlowCoordinator.hpp"
 #include "HMUI/InputFieldView.hpp"
+#include "HMUI/ModalView.hpp"
 #include "HMUI/ViewController.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "bsml/shared/BSML/Components/CustomListTableData.hpp"
@@ -47,8 +48,8 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController) {
     DECLARE_INSTANCE_METHOD(void, OnDisable);
 
    private:
-    std::array<BSML::IncrementSetting*, 3> positionSettings{};
-    std::array<BSML::IncrementSetting*, 3> rotationSettings{};
+    std::array<BSML::IncrementSetting*, 3> positionSettings;
+    std::array<BSML::IncrementSetting*, 3> rotationSettings;
     BSML::DropdownListSetting* presetDropdown;
     UnityEngine::UI::Button* removePresetButton;
     HMUI::ModalView* nameModal;

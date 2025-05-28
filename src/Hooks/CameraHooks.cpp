@@ -280,8 +280,6 @@ void SetupRecording() {
     fileName = MetaCore::Strings::SanitizedPath(GetMapString());
     LOG_INFO("Using filename: {}", fileName);
 
-    LOG_INFO("Muting audio");
-    Hollywood::SetMuteSpeakers(true);
     LOG_INFO("Keeping screen on");
     Hollywood::SetScreenOn(true);
 
@@ -333,7 +331,7 @@ void SetupRecording() {
     video->onOutputUnit = [](uint8_t* data, size_t len) {
         videoOutput.write((char*) data, len);
     };
-    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue(), true);
+    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue(), false);
 
     UnityEngine::Time::set_captureDeltaTime(1 / (float) getConfig().FPS.GetValue());
 
@@ -345,12 +343,15 @@ void SetupRecording() {
     audioCapture = audioListener->gameObject->AddComponent<Hollywood::AudioCapture*>();
     audioCapture->OpenFile(TmpAudPath);
 
+    // make sure other audio listeners are disabled
+    for (auto listener : UnityEngine::Object::FindObjectsOfType<UnityEngine::AudioListener*>())
+        listener->enabled = listener == audioListener;
+
     customCamera->gameObject->active = true;
 
     // prevent bloom from applying to the main camera
     if (auto comp = mainCamera->GetComponent<MainEffectController*>())
         UnityEngine::Object::DestroyImmediate(comp);
-    mainCamera->GetComponentInChildren<UnityEngine::AudioListener*>()->enabled = false;
 
     // mask everything but ui
     oldCullingMask = mainCamera->cullingMask;
@@ -434,9 +435,6 @@ void FinishRecording() {
     UnityEngine::Time::set_captureDeltaTime(0);
 
     videoOutput.close();
-
-    LOG_INFO("Unmuting audio");
-    Hollywood::SetMuteSpeakers(false);
 
     if (Manager::Camera::rendering) {
         // mux audio and video when done with both

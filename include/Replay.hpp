@@ -25,6 +25,7 @@ struct ReplayModifiers {
 };
 
 enum struct ReplayType { Frame = 1, Event = 2 };
+
 inline ReplayType operator|(ReplayType a, ReplayType b) {
     return (ReplayType) (static_cast<int>(a) | static_cast<int>(b));
 }
@@ -85,6 +86,7 @@ struct Frame {
 struct Replay {
     ReplayInfo info;
     std::vector<Frame> frames;
+
     virtual ~Replay() = default;
 };
 

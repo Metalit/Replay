@@ -20,6 +20,7 @@
 #include "bsml/shared/Helpers/getters.hpp"
 #include "metacore/shared/delegates.hpp"
 #include "metacore/shared/game.hpp"
+#include "metacore/shared/songs.hpp"
 
 using namespace GlobalNamespace;
 using namespace HMUI;
@@ -52,26 +53,6 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
     auto levelToSelect = levelsVec[idx];
 
     auto mainCoordinator = BSML::Helpers::GetMainFlowCoordinator();
-    auto flowCoordinator = mainCoordinator->YoungestChildFlowCoordinatorOrSelf().ptr();
-
-    if (flowCoordinator != mainCoordinator) {
-        if (!il2cpp_utils::try_cast<SinglePlayerLevelSelectionFlowCoordinator>(flowCoordinator)) {
-            LOG_DEBUG("Flow coordinator is {}, running soft restart", il2cpp_utils::ClassStandardName(flowCoordinator->klass));
-            SelectLevelOnNextSongRefresh(render, idx);
-            UnityEngine::Resources::FindObjectsOfTypeAll<MenuTransitionsHelper*>()->First()->RestartGame(
-                MetaCore::Delegates::MakeSystemAction([](Zenject::DiContainer*) { MetaCore::Game::SetCameraFadeOut(MOD_ID, true, 0); })
-            );
-            return;
-        } else {
-            LOG_DEBUG("Dismissing single player flow coordinator view controllers");
-            auto views = flowCoordinator->_mainScreenViewControllers;
-            while (views->get_Count() > 1)
-                flowCoordinator->DismissViewController(
-                    views->get_Item(views->get_Count() - 1), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true
-                );
-            mainCoordinator->DismissFlowCoordinator(flowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
-        }
-    }
 
     if (remove) {
         levelsVec.erase(levelsVec.begin() + idx);
@@ -84,7 +65,7 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
     auto level = mainCoordinator->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
 
     LOG_DEBUG("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
-    LOG_DEBUG("found level {} in pack {} ({})", fmt::ptr(level), fmt::ptr(pack), pack ? pack->packName : "");
+    LOG_DEBUG("found level {} ({}) in pack {} ({})", fmt::ptr(level), level ? level->songName : "", fmt::ptr(pack), pack ? pack->packName : "");
 
     if (!level) {
         // if we removed the level (at the moment means we're going through the queue), go ahead and try to do the next one
@@ -92,19 +73,8 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
             SelectRenderHelper(render, idx, remove);
         return;
     }
-    auto characteristic = GetCharacteristic(levelToSelect.Characteristic);
 
-    mainCoordinator->_playerDataModel->playerData->SetLastSelectedBeatmapCharacteristic(characteristic);
-    mainCoordinator->_playerDataModel->playerData->SetLastSelectedBeatmapDifficulty(levelToSelect.Difficulty);
-
-    auto state = LevelSelectionFlowCoordinator::State::New_ctor(pack, level);
-    state->levelCategory.value = levelToSelect.Category;
-    state->levelCategory.hasValue = true;
-
-    mainCoordinator->_soloFreePlayFlowCoordinator->Setup(state);
-    mainCoordinator->PresentFlowCoordinator(
-        mainCoordinator->_soloFreePlayFlowCoordinator, nullptr, ViewController::AnimationDirection::Horizontal, true, false
-    );
+    MetaCore::Songs::SelectLevel(BeatmapKey(GetCharacteristic(levelToSelect.Characteristic), levelToSelect.Difficulty, levelToSelect.ID), pack);
 
     getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
     if (render)

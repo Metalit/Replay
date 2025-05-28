@@ -107,9 +107,6 @@ extern "C" void late_load() {
     il2cpp_functions::Init();
     custom_types::Register::AutoRegister();
 
-    // in case it crashed during a render, unmute
-    // the quest only adjusts volume and doesn't have a mute button so this shouldn't mess with anyone
-    Hollywood::SetMuteSpeakers(false);
     // fix proximity sensor state too
     Hollywood::SetScreenOn(false);
 
