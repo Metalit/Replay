@@ -11,10 +11,10 @@ class Hooks {
     static inline void AddInstallFunc(void (*installFunc)()) { installFuncs.push_back(installFunc); }
 
     static inline void Install() {
-        LOG_INFO("Installing hooks...");
+        logger.info("Installing hooks...");
         for (auto& func : installFuncs)
             func();
-        LOG_INFO("Installed all hooks!");
+        logger.info("Installed all hooks!");
     }
 };
 

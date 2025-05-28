@@ -161,23 +161,23 @@ bool ReadCustomDataItem(std::ifstream& input, struct EventReplay* replay) {
     int length;
     READ_STRING(key);
     if (input.eof()) {
-        LOG_DEBUG("ReadCustomDataItem: Can't read input key.");
+        logger.debug("ReadCustomDataItem: Can't read input key.");
         return false;
     }
     READ_TO(length);
     if (input.eof()) {
-        LOG_DEBUG("ReadCustomDataItem: Can't read input length.");
+        logger.debug("ReadCustomDataItem: Can't read input length.");
         return false;
     }
     std::vector<char> content;
     if (length < 0) {
-        LOG_DEBUG("ReadCustomDataItem: Invalid custom data length {}.", length);
+        logger.debug("ReadCustomDataItem: Invalid custom data length {}.", length);
         return false;
     }
     content.resize(length);
     input.read(content.data(), length);
     if (input.eof()) {
-        LOG_DEBUG("ReadCustomDataItem: Can't read custom data content.");
+        logger.debug("ReadCustomDataItem: Can't read custom data content.");
         return false;
     }
     replay->customDatas.insert(std::make_pair(key, std::move(content)));
@@ -190,10 +190,10 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     static auto getPlayerId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerId");
     static auto getPlayerQuestId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerQuestId");
 
-    LOG_DEBUG("found beatleader functions {} {}", getPlayerId.has_value(), getPlayerQuestId.has_value());
+    logger.debug("found beatleader functions {} {}", getPlayerId.has_value(), getPlayerQuestId.has_value());
 
     if (!input.is_open()) {
-        LOG_ERROR("Failure opening file {}", path);
+        logger.error("Failure opening file {}", path);
         return {};
     }
 
@@ -204,15 +204,15 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     READ_TO(version);
     READ_TO(section);
     if (header != 0x442d3d69) {
-        LOG_ERROR("Invalid header bytes in bsor file {}", path);
+        logger.error("Invalid header bytes in bsor file {}", path);
         return {};
     }
     if (version > 1) {
-        LOG_ERROR("Unsupported version in bsor file {}", path);
+        logger.error("Unsupported version in bsor file {}", path);
         return {};
     }
     if (section != 0) {
-        LOG_ERROR("Invalid beginning section in bsor file {}", path);
+        logger.error("Invalid beginning section in bsor file {}", path);
         return {};
     }
 
@@ -228,7 +228,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     replay->info.positionsAreLocal = true;
     replay->info.playerName.emplace(info.playerName);
 
-    LOG_DEBUG(
+    logger.debug(
         "player id {}, bl ids {} {}",
         info.playerID,
         getPlayerId ? getPlayerId.value()().value_or("no player") : "no bl",
@@ -241,7 +241,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     else if (getPlayerQuestId && getPlayerQuestId.value()() == info.playerID)
         replay->info.playerOk = true;
 
-    LOG_DEBUG("player logged in {}", replay->info.playerOk);
+    logger.debug("player logged in {}", replay->info.playerOk);
 
     // infer reached 0 energy because no fail is only listed if it did
     replay->info.reached0Energy = replay->info.modifiers.noFail;
@@ -256,7 +256,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
 
     READ_TO(section);
     if (section != 1) {
-        LOG_ERROR("Invalid section 1 header in bsor file {}", path);
+        logger.error("Invalid section 1 header in bsor file {}", path);
         return {};
     }
     int framesCount;
@@ -292,7 +292,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
 
     READ_TO(section);
     if (section != 2) {
-        LOG_ERROR("Invalid section 2 header in bsor file {}", path);
+        logger.error("Invalid section 2 header in bsor file {}", path);
         return {};
     }
     int notesCount;
@@ -340,7 +340,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
             if (note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
                 // either fail to load the replay or force set the data (since most fields don't matter for chain links)
                 if (false) {
-                    LOG_ERROR("BSOR had garbage NoteCutInfo data in bsor file {}", path);
+                    logger.error("BSOR had garbage NoteCutInfo data in bsor file {}", path);
                     return {};
                 } else {
                     note.noteCutInfo = {0};
@@ -363,7 +363,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
 
     READ_TO(section);
     if (section != 3) {
-        LOG_ERROR("Invalid section 3 header in bsor file {}", path);
+        logger.error("Invalid section 3 header in bsor file {}", path);
         return {};
     }
     int wallsCount;
@@ -418,7 +418,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
     if (latestWallTime > -1) {
         for (auto& wall : replay->walls) {
             if (wall.endTime < wall.time || wall.endTime > latestWallTime * 1000) {
-                LOG_ERROR("Replay had broken wall event {}", path);
+                logger.error("Replay had broken wall event {}", path);
                 return {};
             }
         }
@@ -426,7 +426,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
 
     READ_TO(section);
     if (section != 4) {
-        LOG_ERROR("Invalid section 4 header in bsor file {}", path);
+        logger.error("Invalid section 4 header in bsor file {}", path);
         return {};
     }
     int heightCount;
@@ -440,7 +440,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
 
     READ_TO(section);
     if (section != 5) {
-        LOG_ERROR("Invalid section 5 header in bsor file {}", path);
+        logger.error("Invalid section 5 header in bsor file {}", path);
         return {};
     }
     int pauseCount;
@@ -457,14 +457,14 @@ ReplayWrapper ReadBSOR(std::string const& path) {
             if (section == 6) {
                 ReplayOffset offset;
                 if (READ_TO(offset), input.eof()) {
-                    LOG_DEBUG("Can't read section 6 in replay file.");
+                    logger.debug("Can't read section 6 in replay file.");
                     break;
                 }
                 replay->offsets = offset;
             } else if (section == 7) {
                 int length;
                 if (READ_TO(length), input.eof()) {
-                    LOG_DEBUG("Can't read section 7: Invalid length.");
+                    logger.debug("Can't read section 7: Invalid length.");
                     break;
                 }
                 bool all_success = true;
@@ -474,12 +474,12 @@ ReplayWrapper ReadBSOR(std::string const& path) {
                 if (!all_success)
                     break;
             } else {
-                LOG_DEBUG("Ignore the unknown section {}.", section);
+                logger.debug("Ignore the unknown section {}.", section);
                 break;
             }
         }
     } catch (std::bad_alloc const& e) {
-        LOG_DEBUG("Allocation failed while reading optional sections: {}", e.what());
+        logger.debug("Allocation failed while reading optional sections: {}", e.what());
     }
 
     return ret;

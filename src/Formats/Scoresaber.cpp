@@ -204,7 +204,7 @@ ReplayModifiers ParseModifiers(std::vector<std::string> const& modifiers) {
 
 bool DecompressReplay(std::vector<char> const& replay, std::vector<char>& decompressed) {
     if (replay[0] == (char) 93 && replay[1] == 0 && replay[2] == 0 && replay[3] == (char) 128) {
-        LOG_ERROR("Scoresaber replay had legacy magic bytes");
+        logger.error("Scoresaber replay had legacy magic bytes");
         return false;
     }
     std::vector<char> compressedReplayBytes(replay.begin() + 28, replay.end());
@@ -216,13 +216,13 @@ ReplayWrapper ReadScoresaber(std::string const& path) {
     std::ifstream inputCompressed(path, std::ios::binary);
 
     if (!inputCompressed.is_open()) {
-        LOG_ERROR("Failure opening file {}", path);
+        logger.error("Failure opening file {}", path);
         return {};
     }
     std::vector<char> compressed(std::istreambuf_iterator<char>{inputCompressed}, std::istreambuf_iterator<char>{});
     std::vector<char> decompressed = {};
     if (!DecompressReplay(compressed, decompressed)) {
-        LOG_ERROR("Failure decompressing file {}", path);
+        logger.error("Failure decompressing file {}", path);
         return {};
     }
     std::stringstream input;
@@ -244,7 +244,7 @@ ReplayWrapper ReadScoresaber(std::string const& path) {
     if (meta.Version == "3.0.0")
         v3 = true;
     else if (meta.Version != "2.0.0") {
-        LOG_ERROR("Unsupported version! Found version {} in file {}", meta.Version, path);
+        logger.error("Unsupported version! Found version {} in file {}", meta.Version, path);
         return {};
     }
 

@@ -74,7 +74,7 @@ static int nonRenderIdx = 0;
 void OnSongsLoaded(std::span<SongCore::SongLoader::CustomBeatmapLevel* const>) {
     if (!selectedAlready) {
         BSML::MainThreadScheduler::ScheduleNextFrame([]() {
-            LOG_DEBUG("Selecting level {} {}", doRender, nonRenderIdx);
+            logger.debug("Selecting level {} {}", doRender, nonRenderIdx);
             selectedAlready = true;
             if (doRender)
                 RenderLevelInConfig();
@@ -100,7 +100,7 @@ extern "C" void setup(CModInfo* info) {
     if (!direxists(RendersFolder))
         mkpath(RendersFolder);
 
-    LOG_INFO("Completed setup!");
+    logger.info("Completed setup!");
 }
 
 extern "C" void late_load() {
@@ -120,7 +120,7 @@ extern "C" void late_load() {
     getConfig().RenderLaunch.SetValue(false);
 
     if (getConfig().Version.GetValue() == 1) {
-        LOG_INFO("Migrating config from v1 to v2");
+        logger.info("Migrating config from v1 to v2");
         getConfig().TextHeight.SetValue(getConfig().TextHeight.GetValue() / 2);
         getConfig().Bitrate.SetValue(getConfig().Bitrate.GetValue() / 2);
         getConfig().Version.SetValue(2);
@@ -149,5 +149,5 @@ extern "C" void late_load() {
     else if (modloader_require_mod(&scoresaber, CMatchType::MatchType_IdOnly) == CLoadResultEnum::MatchType_Loaded)
         recorderInstalled = true;
 
-    LOG_INFO("Recording mod installed: {}", recorderInstalled);
+    logger.info("Recording mod installed: {}", recorderInstalled);
 }

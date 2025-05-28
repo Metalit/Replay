@@ -72,7 +72,7 @@ void OnDeleteButtonClick() {
     try {
         std::filesystem::remove(viewController->GetReplay());
     } catch (std::filesystem::filesystem_error const& e) {
-        LOG_ERROR("Failed to delete replay: {}", e.what());
+        logger.error("Failed to delete replay: {}", e.what());
     }
     Manager::RefreshLevelReplays();
 }
@@ -103,7 +103,7 @@ namespace Menu {
         auto canvasTransform = (UnityEngine::RectTransform*) parent->Find(canvasName).unsafePtr();
 
         if (!canvasTransform) {
-            LOG_INFO("Making button canvas");
+            logger.info("Making button canvas");
             canvas = BSML::Lite::CreateCanvas();
             canvasTransform = canvas->GetComponent<UnityEngine::RectTransform*>();
             canvasTransform->SetParent(parent, false);
@@ -141,7 +141,7 @@ namespace Menu {
     }
 
     void SetButtonEnabled(bool enabled) {
-        LOG_DEBUG("enabling button {}", enabled);
+        logger.debug("enabling button {}", enabled);
         canvas->active = enabled;
         canvas->GetComponentInChildren<UnityEngine::UI::Button*>()->interactable = true;
         float xpos = enabled ? 5.2 : -1.8;

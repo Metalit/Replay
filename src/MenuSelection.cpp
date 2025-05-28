@@ -46,7 +46,7 @@ void RenderAfterLoaded() {
 }
 
 void SelectRenderHelper(bool render, int idx, bool remove) {
-    LOG_DEBUG("Selecting level, render: {}, idx: {}", render, idx);
+    logger.debug("Selecting level, render: {}, idx: {}", render, idx);
     auto levelsVec = getConfig().LevelsToSelect.GetValue();
     if (levelsVec.size() <= idx || idx < 0)
         return;
@@ -64,8 +64,8 @@ void SelectRenderHelper(bool render, int idx, bool remove) {
         pack = mainCoordinator->_beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
     auto level = mainCoordinator->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
 
-    LOG_DEBUG("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
-    LOG_DEBUG("found level {} ({}) in pack {} ({})", fmt::ptr(level), level ? level->songName : "", fmt::ptr(pack), pack ? pack->packName : "");
+    logger.debug("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
+    logger.debug("found level {} ({}) in pack {} ({})", fmt::ptr(level), level ? level->songName : "", fmt::ptr(pack), pack ? pack->packName : "");
 
     if (!level) {
         // if we removed the level (at the moment means we're going through the queue), go ahead and try to do the next one
@@ -169,19 +169,19 @@ bool IsCurrentLevelInConfig() {
 void RenderCurrentLevel(bool currentReplay) {
     auto levelSelection = GetLevelSelectionFlowCoordinator();
     if (!levelSelection) {
-        LOG_ERROR("Failed to get LevelSelectionFlowCoordinator, not rendering");
+        logger.error("Failed to get LevelSelectionFlowCoordinator, not rendering");
         return;
     }
     auto map = levelSelection->selectedBeatmapKey;
     if (!map.IsValid()) {
-        LOG_ERROR("Failed to get selected beatmap, not rendering");
+        logger.error("Failed to get selected beatmap, not rendering");
         return;
     }
     Manager::Camera::rendering = true;
     if (!currentReplay) {
         auto replays = GetReplays(map);
         if (replays.empty()) {
-            LOG_ERROR("Failed to get beatmap replays, not rendering");
+            logger.error("Failed to get beatmap replays, not rendering");
             return;
         }
         int idx = getConfig().LastReplayIdx.GetValue();
@@ -194,5 +194,5 @@ void RenderCurrentLevel(bool currentReplay) {
 }
 
 void RestartGame() {
-    LOG_ERROR("Not implemented :(");
+    logger.error("Not implemented :(");
 }

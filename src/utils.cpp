@@ -94,13 +94,13 @@ void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::
     std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
     tests.emplace_back(reqlayName + reqlaySuffix1);
     tests.emplace_back(reqlayName + reqlaySuffix2);
-    LOG_DEBUG("searching for reqlays with name {}", reqlayName);
+    logger.debug("searching for reqlays with name {}", reqlayName);
     for (auto& path : tests) {
         if (fileexists(path)) {
             auto replay = ReadReqlay(path);
             if (replay.IsValid()) {
                 replays.emplace_back(path, replay);
-                LOG_INFO("Read reqlay from {}", path);
+                logger.info("Read reqlay from {}", path);
             }
         }
     }
@@ -115,7 +115,7 @@ void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::st
     std::string bsorHash = regex_replace((std::string) beatmap.levelId, std::basic_regex("custom_level_"), "");
     // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
     std::string search = fmt::format("{}-{}-{}", diffName, characteristic, bsorHash);
-    LOG_DEBUG("searching for bl replays with string {}", search);
+    logger.debug("searching for bl replays with string {}", search);
 
     for (auto const& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         if (!entry.is_directory()) {
@@ -124,7 +124,7 @@ void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::st
                 auto replay = ReadBSOR(path.string());
                 if (replay.IsValid()) {
                     replays.emplace_back(path.string(), replay);
-                    LOG_INFO("Read bsor from {}", path.string());
+                    logger.info("Read bsor from {}", path.string());
                 }
             }
         }
@@ -143,7 +143,7 @@ void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std
         levelHash = levelHash.substr(13);
 
     std::string ending = fmt::format("-{}-{}-{}-{}", songName, diffName, characteristic, levelHash);
-    LOG_DEBUG("searching for ss replays with string {}", ending);
+    logger.debug("searching for ss replays with string {}", ending);
 
     for (auto const& entry : std::filesystem::directory_iterator(GetSSReplaysPath())) {
         if (!entry.is_directory()) {
@@ -152,7 +152,7 @@ void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std
                 auto replay = ReadScoresaber(path.string());
                 if (replay.IsValid()) {
                     replays.emplace_back(path.string(), replay);
-                    LOG_INFO("Read scoresaber replay from {}", path.string());
+                    logger.info("Read scoresaber replay from {}", path.string());
                 }
             }
         }
@@ -160,7 +160,7 @@ void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std
 }
 
 std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::BeatmapKey beatmap) {
-    LOG_DEBUG("search replays {} {}", beatmap.levelId, beatmap.IsValid());
+    logger.debug("search replays {} {}", beatmap.levelId, beatmap.IsValid());
     if (!beatmap.IsValid())
         return {};
 

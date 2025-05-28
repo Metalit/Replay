@@ -165,7 +165,7 @@ namespace Pause {
     void EnsureSetup(PauseMenuManager* pauseMenu) {
         static ConstString menuName("ReplayPauseMenu");
         if (lastPauseMenu != pauseMenu && !pauseMenu->_pauseContainerTransform->Find(menuName)) {
-            LOG_INFO("Creating pause UI");
+            logger.info("Creating pause UI");
 
             parent = BSML::Lite::CreateCanvas();
             parent->AddComponent<HMUI::Screen*>();
@@ -421,7 +421,7 @@ namespace Pause {
             time = startTime;
         if (time > endTime)
             time = endTime;
-        LOG_INFO("Time set to {}", time);
+        logger.info("Time set to {}", time);
         DespawnObjects();
         ResetControllers();
         callbackController->_startFilterTime = time;

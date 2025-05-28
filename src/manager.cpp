@@ -128,7 +128,7 @@ namespace Manager {
 
         void UpdateTime() {
             if (rendering && UnityEngine::Time::get_unscaledTime() - lastProgressUpdate >= 15) {
-                LOG_INFO("Current song time: {:.2f}", MetaCore::Stats::GetSongTime());
+                logger.info("Current song time: {:.2f}", MetaCore::Stats::GetSongTime());
                 lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
             }
             if (GetMode() == (int) CameraMode::Smooth) {
@@ -230,12 +230,12 @@ namespace Manager {
             settings.quality.mirror = getConfig().Mirrors.GetValue();
 
             applicator->ApplyGraphicSettings(settings, GlobalNamespace::SceneType::Game);
-            LOG_INFO("applied custom graphics settings");
+            logger.info("applied custom graphics settings");
         }
         void UnsetGraphicsSettings() {
             auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<VRRenderingParamsSetup*>()->First();
             renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
-            LOG_INFO("reset graphics settings");
+            logger.info("reset graphics settings");
         }
 
         void ReplayStarted() {
@@ -401,7 +401,7 @@ namespace Manager {
             if (!found) {
                 int bsorID = (event.info.scoringType + 2) * 10000 + event.info.lineIndex * 1000 + event.info.lineLayer * 100 +
                              event.info.colorType * 10 + event.info.cutDirection;
-                LOG_ERROR("Could not find note for event! time: {}, bsor id: {}", event.time, bsorID);
+                logger.error("Could not find note for event! time: {}, bsor id: {}", event.time, bsorID);
             }
         }
 
@@ -448,7 +448,7 @@ namespace Manager {
     }
 
     void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external) {
-        LOG_DEBUG("setting {} replays {}", replays.size(), external);
+        logger.debug("setting {} replays {}", replays.size(), external);
         currentReplays = replays;
         if (currentReplays.size() > 0) {
             if (!external)
@@ -468,12 +468,12 @@ namespace Manager {
     }
 
     void RefreshLevelReplays() {
-        LOG_DEBUG("Refresh replays");
+        logger.debug("Refresh replays");
         SetReplays(GetReplays(MetaCore::Songs::GetSelectedKey()));
     }
 
     void ReplayStarted(ReplayWrapper& wrapper) {
-        LOG_INFO("Replay started");
+        logger.info("Replay started");
         currentReplay = wrapper;
         frameCount = currentReplay.replay->frames.size();
         MetaCore::Game::SetScoreSubmission(MOD_ID, false);
@@ -518,7 +518,7 @@ namespace Manager {
     }
 
     void ReplayRestarted(bool full) {
-        LOG_INFO("Replay restarted {}", full);
+        logger.info("Replay restarted {}", full);
         if (full) {
             paused = false;
             Objects::hasObjects = false;
@@ -540,7 +540,7 @@ namespace Manager {
     }
 
     void ReplayEnded(bool quit) {
-        LOG_INFO("Replay ended");
+        logger.info("Replay ended");
         Camera::ReplayEnded();
         MetaCore::Game::SetScoreSubmission(MOD_ID, true);
         replaying = false;

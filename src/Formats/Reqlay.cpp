@@ -274,7 +274,7 @@ ReplayWrapper _ReadReqlay(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
 
     if (!input.is_open()) {
-        LOG_ERROR("Failure opening file {}", path);
+        logger.error("Failure opening file {}", path);
         return {};
     }
 
@@ -283,14 +283,14 @@ ReplayWrapper _ReadReqlay(std::string const& path) {
         READ_TO(headerBytes[i]);
         if (headerBytes[i] != fileHeader[i]) {
             input.seekg(0);
-            LOG_INFO("Reading reqlay file with version 1");
+            logger.info("Reading reqlay file with version 1");
             return ReadFromV1(input);
         }
     }
 
     int version;
     READ_TO(version);
-    LOG_INFO("Reading reqlay file with version {}", version);
+    logger.info("Reading reqlay file with version {}", version);
     switch (version) {
         case 2:
             return ReadFromV2(input);
@@ -303,7 +303,7 @@ ReplayWrapper _ReadReqlay(std::string const& path) {
         case 6:
             return ReadFromV6(input);
         default:
-            LOG_ERROR("Unsupported version! Found version {} in file {}", version, path);
+            logger.error("Unsupported version! Found version {} in file {}", version, path);
             return {};
     }
 }

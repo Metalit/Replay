@@ -220,13 +220,13 @@ MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversio
 }
 
 AUTO_HOOK_FUNCTION(blit_fbo) {
-    LOG_INFO("Installing blit init hook...");
+    logger.info("Installing blit init hook...");
     uintptr_t libunity = baseAddr("libunity.so");
     uintptr_t initialize_blit_fbo_addr =
         findPattern(libunity, "fd 7b ba a9 fc 6f 01 a9 fa 67 02 a9 f8 5f 03 a9 f6 57 04 a9 f4 4f 05 a9 ff 83 0b d1 58 d0 3b d5 08", 0x2000000);
-    LOG_DEBUG("Found blit init address: {}", initialize_blit_fbo_addr);
+    logger.debug("Found blit init address: {}", initialize_blit_fbo_addr);
     INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
-    LOG_INFO("Installed blit init hook!");
+    logger.info("Installed blit init hook!");
 }
 
 void SetupText() {
@@ -276,14 +276,14 @@ void SetupCamera() {
 }
 
 void SetupRecording() {
-    LOG_INFO("Setting up recording");
+    logger.info("Setting up recording");
     fileName = MetaCore::Strings::SanitizedPath(GetMapString());
-    LOG_INFO("Using filename: {}", fileName);
+    logger.info("Using filename: {}", fileName);
 
-    LOG_INFO("Keeping screen on");
+    logger.info("Keeping screen on");
     Hollywood::SetScreenOn(true);
 
-    LOG_INFO("Beginning video capture");
+    logger.info("Beginning video capture");
     customCamera = UnityEngine::Object::Instantiate(mainCamera);
     customCamera->tag = "Untagged";
     customCamera->gameObject->active = false;
@@ -337,7 +337,7 @@ void SetupRecording() {
 
     Hollywood::SetSyncTimes(true);
 
-    LOG_INFO("Beginning audio capture");
+    logger.info("Beginning audio capture");
 
     auto audioListener = customCamera->GetComponentInChildren<UnityEngine::AudioListener*>();
     audioCapture = audioListener->gameObject->AddComponent<Hollywood::AudioCapture*>();
@@ -379,7 +379,7 @@ void FinishMux() {
             std::filesystem::remove(TmpAudPath);
     }
 
-    LOG_INFO("Removing screen on");
+    logger.info("Removing screen on");
     if (MetaCore::Internals::mapWasQuit || getConfig().LevelsToSelect.GetValue().empty())
         Hollywood::SetScreenOn(false);
 
@@ -407,7 +407,7 @@ void WaitThenMux() {
                         std::filesystem::rename(TmpOutPath, outputFile);
                         break;
                     } catch (std::filesystem::filesystem_error const& err) {
-                        LOG_ERROR("filesystem error renaming file {} -> {}: {}", TmpOutPath, outputFile, err.what());
+                        logger.error("filesystem error renaming file {} -> {}: {}", TmpOutPath, outputFile, err.what());
                         std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     }
                 }
@@ -415,7 +415,7 @@ void WaitThenMux() {
             FinishMux();
         });
     } else {
-        LOG_ERROR("Video exists: {} Audio exists: {}", vidExists, audExists);
+        logger.error("Video exists: {} Audio exists: {}", vidExists, audExists);
         FinishMux();
     }
 }
