@@ -1,6 +1,5 @@
-#include "PauseMenu.hpp"
+#include "pause.hpp"
 
-#include "Config.hpp"
 #include "CustomTypes/Grabbable.hpp"
 #include "CustomTypes/ScoringElement.hpp"
 #include "Formats/EventReplay.hpp"
@@ -25,8 +24,6 @@
 #include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/SliderController.hpp"
-#include "Main.hpp"
-#include "ReplayManager.hpp"
 #include "System/Action.hpp"
 #include "System/Action_1.hpp"
 #include "System/Action_2.hpp"
@@ -41,6 +38,9 @@
 #include "UnityEngine/Time.hpp"
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "bsml/shared/BSML.hpp"
+#include "config.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
 

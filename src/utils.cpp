@@ -1,9 +1,8 @@
-#include "Utils.hpp"
+#include "utils.hpp"
 
 #include <regex>
 
 #include "BGLib/Polyglot/Localization.hpp"
-#include "Config.hpp"
 #include "CustomTypes/MovementData.hpp"
 #include "Formats/EventFrame.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
@@ -17,7 +16,6 @@
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/OVRInput.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
-#include "Main.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
 #include "UnityEngine/AudioClip.hpp"
 #include "UnityEngine/AudioSource.hpp"
@@ -25,6 +23,8 @@
 #include "UnityEngine/Resources.hpp"
 #include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "config.hpp"
+#include "main.hpp"
 #include "metacore/shared/songs.hpp"
 
 using namespace GlobalNamespace;

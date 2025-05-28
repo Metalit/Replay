@@ -1,7 +1,6 @@
-#include "ReplayManager.hpp"
+#include "manager.hpp"
 
 #include "BeatSaber/Settings/Settings.hpp"
-#include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "Formats/EventReplay.hpp"
 #include "Formats/FrameReplay.hpp"
@@ -28,10 +27,7 @@
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/StandardLevelDetailViewController.hpp"
 #include "GlobalNamespace/VRRenderingParamsSetup.hpp"
-#include "Main.hpp"
-#include "MathUtils.hpp"
 #include "MenuSelection.hpp"
-#include "PauseMenu.hpp"
 #include "System/Action.hpp"
 #include "System/Action_1.hpp"
 #include "System/Collections/Generic/HashSet_1.hpp"
@@ -42,11 +38,15 @@
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/XR/XRSettings.hpp"
-#include "Utils.hpp"
+#include "config.hpp"
+#include "main.hpp"
+#include "math.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
 #include "metacore/shared/songs.hpp"
 #include "metacore/shared/stats.hpp"
+#include "pause.hpp"
+#include "utils.hpp"
 
 using namespace GlobalNamespace;
 

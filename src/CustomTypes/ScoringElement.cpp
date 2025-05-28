@@ -2,8 +2,8 @@
 
 #include "Formats/EventReplay.hpp"
 #include "GlobalNamespace/NoteData.hpp"
-#include "Main.hpp"
-#include "Utils.hpp"
+#include "main.hpp"
+#include "utils.hpp"
 
 DEFINE_TYPE(ReplayHelpers, ScoringElement);
 

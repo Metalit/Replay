@@ -5,7 +5,7 @@
 #include "GlobalNamespace/BeatmapKey.hpp"
 #include "GlobalNamespace/NoteController.hpp"
 #include "GlobalNamespace/ObstacleController.hpp"
-#include "Utils.hpp"
+#include "utils.hpp"
 
 struct ScoreFrame;
 struct NoteEvent;

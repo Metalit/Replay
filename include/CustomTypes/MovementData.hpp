@@ -24,8 +24,10 @@ DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, Glob
     DECLARE_OVERRIDE_METHOD_MATCH(void, RemoveDataProcessor, &IData::RemoveDataProcessor, IDataProcessor* dataProcessor);
     DECLARE_OVERRIDE_METHOD_MATCH(void, RequestLastDataProcessing, &IData::RequestLastDataProcessing, IDataProcessor* dataProcessor);
 
-    DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRating, static_cast<float(IData::*)(float)>(&IData::ComputeSwingRating), float overrideSegmentAngle);
-    DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRatingOverload, static_cast<float(IData::*)()>(&IData::ComputeSwingRating));
+    DECLARE_OVERRIDE_METHOD_MATCH(
+        float, ComputeSwingRating, static_cast<float (IData::*)(float)>(&IData::ComputeSwingRating), float overrideSegmentAngle
+    );
+    DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRatingOverload, static_cast<float (IData::*)()>(&IData::ComputeSwingRating));
 
     DECLARE_OVERRIDE_METHOD_MATCH(
         void, ProcessNewData, &IDataProcessor::ProcessNewData, DataElement newData, DataElement prevData, bool prevDataAreValid

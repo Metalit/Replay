@@ -9,10 +9,10 @@
 #include "HMUI/ViewController.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
-#include "Utils.hpp"
 #include "bsml/shared/BSML/Components/Settings/DropdownListSetting.hpp"
 #include "bsml/shared/BSML/Components/Settings/IncrementSetting.hpp"
 #include "custom-types/shared/macros.hpp"
+#include "utils.hpp"
 
 struct ReplayInfo;
 

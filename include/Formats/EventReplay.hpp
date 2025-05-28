@@ -1,8 +1,6 @@
 #pragma once
 
-#include <map>
-
-#include "Replay.hpp"
+#include "replay.hpp"
 
 struct ReplayNoteCutInfo {
     bool speedOK;

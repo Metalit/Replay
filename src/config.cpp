@@ -1,11 +1,10 @@
-#include "Config.hpp"
+#include "config.hpp"
 
 #include "CustomTypes/ReplaySettings.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/IPreviewMediaData.hpp"
 #include "HMUI/TextSegmentedControl.hpp"
 #include "HMUI/Touchable.hpp"
-#include "Main.hpp"
 #include "MenuSelection.hpp"
 #include "System/Action.hpp"
 #include "System/Action_2.hpp"
@@ -17,12 +16,13 @@
 #include "UnityEngine/UI/ContentSizeFitter.hpp"
 #include "UnityEngine/UI/LayoutRebuilder.hpp"
 #include "UnityEngine/WaitForSeconds.hpp"
-#include "Utils.hpp"
 #include "bsml/shared/BSML-Lite.hpp"
 #include "bsml/shared/Helpers/creation.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
+#include "main.hpp"
 #include "metacore/shared/delegates.hpp"
 #include "metacore/shared/ui.hpp"
+#include "utils.hpp"
 
 DEFINE_TYPE(ReplaySettings, MainSettings)
 DEFINE_TYPE(ReplaySettings, RenderSettings)

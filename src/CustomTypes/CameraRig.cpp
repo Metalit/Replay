@@ -3,19 +3,19 @@
 #include "BeatSaber/BeatAvatarSDK/AvatarData.hpp"
 #include "BeatSaber/BeatAvatarSDK/AvatarDataModel.hpp"
 #include "BeatSaber/BeatAvatarSDK/BeatAvatarVisualController.hpp"
-#include "Config.hpp"
 #include "GlobalNamespace/BeatAvatarEditorFlowCoordinator.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
-#include "Main.hpp"
-#include "Replay.hpp"
-#include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/XR/XRNode.hpp"
 #include "assets.hpp"
 #include "bsml/shared/Helpers/utilities.hpp"
+#include "config.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
+#include "replay.hpp"
 
 DEFINE_TYPE(ReplayHelpers, CameraRig);
 

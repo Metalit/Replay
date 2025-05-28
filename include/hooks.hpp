@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Main.hpp"
 #include "beatsaber-hook/shared/utils/hooking.hpp"
+#include "main.hpp"
 
 class Hooks {
    private:

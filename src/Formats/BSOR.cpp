@@ -2,11 +2,11 @@
 #include <sstream>
 
 #include "Formats/EventReplay.hpp"
-#include "Main.hpp"
-#include "MathUtils.hpp"
-#include "Utils.hpp"
 #include "conditional-dependencies/shared/main.hpp"
+#include "main.hpp"
+#include "math.hpp"
 #include "metacore/shared/unity.hpp"
+#include "utils.hpp"
 
 // loading code for beatleader's replay format: https://github.com/BeatLeader/BS-Open-Replay
 

@@ -9,8 +9,8 @@
 #include "GlobalNamespace/NoteCutInfo.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/Saber.hpp"
-#include "Replay.hpp"
 #include "UnityEngine/Sprite.hpp"
+#include "replay.hpp"
 
 std::string GetReqlaysPath();
 

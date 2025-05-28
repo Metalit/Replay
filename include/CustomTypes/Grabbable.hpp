@@ -1,11 +1,11 @@
 #pragma once
 
 #include "GlobalNamespace/VRController.hpp"
-#include "MathUtils.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "VRUIControls/VRInputModule.hpp"
 #include "VRUIControls/VRPointer.hpp"
 #include "custom-types/shared/macros.hpp"
+#include "math.hpp"
 
 DECLARE_CLASS_CODEGEN(ReplayHelpers, Grabbable, UnityEngine::MonoBehaviour) {
     DECLARE_DEFAULT_CTOR();

@@ -1,19 +1,19 @@
-#include "Main.hpp"
+#include "main.hpp"
 
-#include "Config.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
 #include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
-#include "Hooks.hpp"
 #include "MenuSelection.hpp"
-#include "ReplayManager.hpp"
-#include "Utils.hpp"
 #include "bsml/shared/BSML.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "config.hpp"
 #include "custom-types/shared/register.hpp"
 #include "hollywood/shared/hollywood.hpp"
+#include "hooks.hpp"
+#include "manager.hpp"
 #include "songcore/shared/SongCore.hpp"
+#include "utils.hpp"
 
 using namespace GlobalNamespace;
 

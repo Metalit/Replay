@@ -1,10 +1,10 @@
 #include "CustomTypes/ReplayMenu.hpp"
 #include "Formats/EventReplay.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
-#include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "conditional-dependencies/shared/main.hpp"
+#include "manager.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"

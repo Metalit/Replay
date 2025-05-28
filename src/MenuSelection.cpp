@@ -1,6 +1,5 @@
 #include "MenuSelection.hpp"
 
-#include "Config.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/BeatmapLevel.hpp"
@@ -12,15 +11,16 @@
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "HMUI/ViewController.hpp"
-#include "Main.hpp"
-#include "ReplayManager.hpp"
 #include "UnityEngine/Resources.hpp"
-#include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
+#include "config.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/delegates.hpp"
 #include "metacore/shared/game.hpp"
 #include "metacore/shared/songs.hpp"
+#include "utils.hpp"
 
 using namespace GlobalNamespace;
 using namespace HMUI;

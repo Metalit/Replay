@@ -6,11 +6,11 @@
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
-#include "Hooks.hpp"
-#include "Main.hpp"
-#include "ReplayManager.hpp"
 #include "System/Action_1.hpp"
 #include "System/Action_2.hpp"
+#include "hooks.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 
 using namespace GlobalNamespace;
 

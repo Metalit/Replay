@@ -4,8 +4,8 @@
 #include "GlobalNamespace/ISaberSwingRatingCounterDidChangeReceiver.hpp"
 #include "GlobalNamespace/LazyCopyHashSet_1.hpp"
 #include "GlobalNamespace/SaberSwingRatingCounter.hpp"
-#include "Main.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "main.hpp"
 
 DEFINE_TYPE(ReplayHelpers, MovementData);
 

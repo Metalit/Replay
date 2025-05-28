@@ -1,6 +1,5 @@
 #include <GLES3/gl3.h>
 
-#include "Config.hpp"
 #include "CustomTypes/CameraRig.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/GraphicSettingsConditionalActivator.hpp"
@@ -16,10 +15,6 @@
 #include "GlobalNamespace/StandardLevelScenesTransitionSetupDataSO.hpp"
 #include "GlobalNamespace/TransformExtensions.hpp"
 #include "GlobalNamespace/VRRenderingParamsSetup.hpp"
-#include "Hooks.hpp"
-#include "Main.hpp"
-#include "Replay.hpp"
-#include "ReplayManager.hpp"
 #include "UnityEngine/AudioListener.hpp"
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/Camera.hpp"
@@ -33,13 +28,18 @@
 #include "UnityEngine/StereoTargetEyeMask.hpp"
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
-#include "Utils.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "config.hpp"
 #include "hollywood/shared/hollywood.hpp"
+#include "hooks.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/internals.hpp"
 #include "metacore/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
+#include "replay.hpp"
+#include "utils.hpp"
 
 using namespace GlobalNamespace;
 

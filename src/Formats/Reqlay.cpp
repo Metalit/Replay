@@ -1,8 +1,8 @@
 #include <fstream>
 
 #include "Formats/FrameReplay.hpp"
-#include "Main.hpp"
-#include "MathUtils.hpp"
+#include "main.hpp"
+#include "math.hpp"
 #include "metacore/shared/unity.hpp"
 
 // loading code for henwill's old replay versions

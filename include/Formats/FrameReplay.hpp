@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Replay.hpp"
+#include "replay.hpp"
 
 struct ScoreFrame {
     float time;

@@ -6,10 +6,10 @@
 #include "GlobalNamespace/GameplayCoreInstaller.hpp"
 #include "GlobalNamespace/GameplayCoreSceneSetupData.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
-#include "Hooks.hpp"
-#include "Main.hpp"
-#include "ReplayManager.hpp"
 #include "UnityEngine/Time.hpp"
+#include "hooks.hpp"
+#include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/internals.hpp"
 

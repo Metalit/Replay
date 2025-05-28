@@ -3,9 +3,9 @@
 #include <sstream>
 
 #include "Formats/EventFrame.hpp"
-#include "Main.hpp"
-#include "MathUtils.hpp"
 #include "lzma/lzma.hpp"
+#include "main.hpp"
+#include "math.hpp"
 #include "metacore/shared/unity.hpp"
 
 struct SSPointers {
