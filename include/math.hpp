@@ -1,12 +1,8 @@
 #pragma once
 
-#include "sombrero/shared/FastQuaternion.hpp"
-#include "sombrero/shared/FastVector3.hpp"
-
-using Vector3 = Sombrero::FastVector3;
-using Quaternion = Sombrero::FastQuaternion;
-
 #include <cmath>
+
+#include "main.hpp"
 
 // all credit to @fern [https://github.com/Fernthedev/]
 

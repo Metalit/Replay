@@ -1,14 +1,10 @@
 #include "utils.hpp"
 
-#include <regex>
-
 #include "BGLib/Polyglot/Localization.hpp"
 #include "CustomTypes/MovementData.hpp"
-#include "Formats/EventFrame.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicCollectionSO.hpp"
 #include "GlobalNamespace/BeatmapDataLoader.hpp"
 #include "GlobalNamespace/BeatmapDifficultyMethods.hpp"
-#include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/FadeInOutController.hpp"
 #include "GlobalNamespace/FloatSO.hpp"
@@ -80,105 +76,7 @@ std::string GetMapString() {
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
 
-static std::string const reqlaySuffix1 = ".reqlay";
-static std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
-static std::string const bsorSuffix = ".bsor";
-static std::string const ssSuffix = ".dat";
-
-void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
-    std::vector<std::string> tests;
-
-    std::string hash = MetaCore::Songs::GetHash(beatmap);
-    std::string diff = std::to_string((int) beatmap.difficulty);
-    std::string mode = beatmap.beatmapCharacteristic->compoundIdPartName;
-    std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
-    tests.emplace_back(reqlayName + reqlaySuffix1);
-    tests.emplace_back(reqlayName + reqlaySuffix2);
-    logger.debug("searching for reqlays with name {}", reqlayName);
-    for (auto& path : tests) {
-        if (fileexists(path)) {
-            auto replay = ReadReqlay(path);
-            if (replay.IsValid()) {
-                replays.emplace_back(path, replay);
-                logger.info("Read reqlay from {}", path);
-            }
-        }
-    }
-}
-
-void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
-    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
-    if (diffName == "Unknown")
-        diffName = "Error";
-    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
-
-    std::string bsorHash = regex_replace((std::string) beatmap.levelId, std::basic_regex("custom_level_"), "");
-    // sadly, because of beatleader's naming scheme, it's impossible to come up with a reasonably sized set of candidates
-    std::string search = fmt::format("{}-{}-{}", diffName, characteristic, bsorHash);
-    logger.debug("searching for bl replays with string {}", search);
-
-    for (auto const& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
-        if (!entry.is_directory()) {
-            auto path = entry.path();
-            if (path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
-                auto replay = ReadBSOR(path.string());
-                if (replay.IsValid()) {
-                    replays.emplace_back(path.string(), replay);
-                    logger.info("Read bsor from {}", path.string());
-                }
-            }
-        }
-    }
-}
-
-void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, ReplayWrapper>>& replays) {
-    std::string diffName = BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
-    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
-    std::string levelHash = beatmap.levelId;
-    std::string songName = MetaCore::Songs::FindLevel(beatmap)->songName;
-
-    if (levelHash.find("custom_level_") == std::string::npos)
-        levelHash = "ost_" + levelHash;
-    else
-        levelHash = levelHash.substr(13);
-
-    std::string ending = fmt::format("-{}-{}-{}-{}", songName, diffName, characteristic, levelHash);
-    logger.debug("searching for ss replays with string {}", ending);
-
-    for (auto const& entry : std::filesystem::directory_iterator(GetSSReplaysPath())) {
-        if (!entry.is_directory()) {
-            auto path = entry.path();
-            if (path.extension() == ssSuffix && path.stem().string().ends_with(ending)) {
-                auto replay = ReadScoresaber(path.string());
-                if (replay.IsValid()) {
-                    replays.emplace_back(path.string(), replay);
-                    logger.info("Read scoresaber replay from {}", path.string());
-                }
-            }
-        }
-    }
-}
-
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::BeatmapKey beatmap) {
-    logger.debug("search replays {} {}", beatmap.levelId, beatmap.IsValid());
-    if (!beatmap.IsValid())
-        return {};
-
-    std::vector<std::pair<std::string, ReplayWrapper>> replays;
-
-    if (std::filesystem::exists(GetReqlaysPath()))
-        GetReqlays(beatmap, replays);
-
-    if (std::filesystem::exists(GetBSORsPath()))
-        GetBSORs(beatmap, replays);
-
-    if (std::filesystem::exists(GetSSReplaysPath()))
-        GetSSReplays(beatmap, replays);
-
-    return replays;
-}
-
-std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail) {
+std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail) {
     std::stringstream s;
     if (modifiers.disappearingArrows)
         s << "DA, ";
@@ -213,7 +111,7 @@ std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFa
     return str;
 }
 
-NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, ReplayNoteCutInfo const& info) {
+NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, Replay::Events::CutInfo const& info) {
     return NoteCutInfo(
         note ? note->noteData : nullptr,
         info.speedOK,
@@ -261,8 +159,8 @@ NoteCutInfo GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-float ModifierMultiplier(ReplayWrapper const& replay, bool failed) {
-    auto mods = replay.replay->info.modifiers;
+float ModifierMultiplier(Replay::Replay const& replay, bool failed) {
+    auto& mods = replay.info.modifiers;
     float mult = 1;
     if (mods.disappearingArrows)
         mult += 0.07;
@@ -285,11 +183,11 @@ float ModifierMultiplier(ReplayWrapper const& replay, bool failed) {
     return mult;
 }
 
-float EnergyForNote(NoteEventInfo const& noteEvent) {
-    if (noteEvent.eventType == NoteEventInfo::Type::BOMB)
+float EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
+    if (noteEvent.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return -0.15;
-    bool goodCut = noteEvent.eventType == NoteEventInfo::Type::GOOD;
-    bool miss = noteEvent.eventType == NoteEventInfo::Type::MISS;
+    bool goodCut = noteEvent.eventType == Replay::Events::NoteInfo::Type::GOOD;
+    bool miss = noteEvent.eventType == Replay::Events::NoteInfo::Type::MISS;
     switch (noteEvent.scoringType) {
         case -2:
         case (int) NoteData::ScoringType::Normal:
@@ -304,7 +202,7 @@ float EnergyForNote(NoteEventInfo const& noteEvent) {
     }
 }
 
-int ScoreForNote(NoteEvent const& note, bool max) {
+int ScoreForNote(Replay::Events::Note const& note, bool max) {
     ScoreModel::NoteScoreDefinition* scoreDefinition;
     if (note.info.scoringType == -2)
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
@@ -333,7 +231,7 @@ int BSORNoteID(GlobalNamespace::NoteData* note) {
            (int) note->cutDirection;
 }
 
-int BSORNoteID(NoteEventInfo note) {
+int BSORNoteID(Replay::Events::NoteInfo note) {
     int colorType = note.colorType;
     if (colorType < 0)
         colorType = 3;
@@ -355,7 +253,7 @@ void UpdateMultiplier(int& multiplier, int& progress, bool good) {
     }
 }
 
-void AddEnergy(float& energy, float addition, ReplayModifiers const& modifiers) {
+void AddEnergy(float& energy, float addition, Replay::Modifiers const& modifiers) {
     if (modifiers.oneLife) {
         if (addition < 0)
             energy = 0;
@@ -370,7 +268,7 @@ void AddEnergy(float& energy, float addition, ReplayModifiers const& modifiers) 
         energy = 0;
 }
 
-MapPreview MapAtTime(ReplayWrapper const& replay, float time) {
+MapPreview MapAtTime(Replay::Replay const& replay, float time) {
     MapPreview ret{};
     float recentNoteTime = -1;
     if (replay.type & ReplayType::Event) {
@@ -402,11 +300,11 @@ MapPreview MapAtTime(ReplayWrapper const& replay, float time) {
                 case EventRef::Note: {
                     recentNoteTime = event.time;
                     auto& note = eventReplay->notes[event.index];
-                    if (note.info.eventType != NoteEventInfo::Type::BOMB) {
+                    if (note.info.eventType != Replay::Events::NoteInfo::Type::BOMB) {
                         UpdateMultiplier(maxMultiplier, maxMultiProg, true);
                         maxScore += ScoreForNote(note, true) * maxMultiplier;
                     }
-                    if (note.info.eventType == NoteEventInfo::Type::GOOD) {
+                    if (note.info.eventType == Replay::Events::NoteInfo::Type::GOOD) {
                         UpdateMultiplier(multiplier, multiProg, true);
                         score += ScoreForNote(note) * multiplier;
                         combo += 1;

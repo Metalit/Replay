@@ -1,61 +1,59 @@
-#include <fstream>
-#include <sstream>
-
-#include "Formats/EventReplay.hpp"
 #include "conditional-dependencies/shared/main.hpp"
-#include "main.hpp"
 #include "math.hpp"
 #include "metacore/shared/unity.hpp"
+#include "parsing.hpp"
 #include "utils.hpp"
 
 // loading code for beatleader's replay format: https://github.com/BeatLeader/BS-Open-Replay
 
-struct BSORInfo {
-    std::string version;
-    std::string gameVersion;
-    std::string timestamp;
+namespace BSOR {
+    struct Info {
+        std::string version;
+        std::string gameVersion;
+        std::string timestamp;
 
-    std::string playerID;
-    std::string playerName;
-    std::string platform;
+        std::string playerID;
+        std::string playerName;
+        std::string platform;
 
-    std::string trackingSytem;
-    std::string hmd;
-    std::string controller;
+        std::string trackingSytem;
+        std::string hmd;
+        std::string controller;
 
-    std::string hash;
-    std::string songName;
-    std::string mapper;
-    std::string difficulty;
+        std::string hash;
+        std::string songName;
+        std::string mapper;
+        std::string difficulty;
 
-    int score;
-    std::string mode;
-    std::string environment;
-    std::string modifiers;
-    float jumpDistance = 0;
-    bool leftHanded = false;
-    float height = 0;
+        int score;
+        std::string mode;
+        std::string environment;
+        std::string modifiers;
+        float jumpDistance = 0;
+        bool leftHanded = false;
+        float height = 0;
 
-    float startTime = 0;
-    float failTime = 0;
-    float speed = 0;
-};
+        float startTime = 0;
+        float failTime = 0;
+        float speed = 0;
+    };
 
-struct BSORNoteEventInfo {
-    int noteID;
-    float eventTime;
-    float spawnTime;
-    NoteEventInfo::Type eventType = NoteEventInfo::Type::GOOD;
-};
+    struct NoteEventInfo {
+        int noteID;
+        float eventTime;
+        float spawnTime;
+        Replay::Events::NoteInfo::Type eventType = Replay::Events::NoteInfo::Type::GOOD;
+    };
 
-struct BSORWallEvent {
-    int wallID;
-    float energy;
-    float time;
-    float spawnTime;
-};
+    struct WallEvent {
+        int wallID;
+        float energy;
+        float time;
+        float spawnTime;
+    };
+}
 
-bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
+static bool IsLikelyValidCutInfo(Replay::Events::CutInfo& info) {
     if (abs(info.saberType) > 1)
         return false;
     if (info.saberSpeed < -1 || info.saberSpeed >= 1000)
@@ -65,49 +63,8 @@ bool IsLikelyValidCutInfo(ReplayNoteCutInfo& info) {
     return true;
 }
 
-#define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
-#define READ_STRING(name) name = ReadString(input)
-#define READ_UTF16(name) name = ReadPotentialUTF16(input)
-
-std::string ReadString(std::ifstream& input) {
-    int length;
-    READ_TO(length);
-    std::string str;
-    str.resize(length);
-    input.read(str.data(), length);
-    return str;
-}
-
-// Some strings like name, mapper or song name
-// may contain incorrectly encoded UTF16 symbols.
-std::string ReadPotentialUTF16(std::ifstream& input) {
-    int length;
-    READ_TO(length);
-
-    if (length > 0) {
-        input.seekg(length, input.cur);
-        int nextLength;
-        READ_TO(nextLength);
-
-        // This code will search for the next valid string length
-        while (nextLength < 0 || nextLength > 100) {
-            input.seekg(-3, input.cur);
-
-            length++;
-            READ_TO(nextLength);
-        }
-        input.seekg(-length - 4, input.cur);
-    }
-
-    std::string str;
-    str.resize(length);
-    input.read(str.data(), length);
-
-    return str;
-}
-
-ReplayModifiers ParseModifierString(std::string const& modifiers) {
-    ReplayModifiers ret;
+static Replay::Modifiers ParseModifierString(std::string const& modifiers) {
+    Replay::Modifiers ret;
     ret.disappearingArrows = modifiers.find("DA") != std::string::npos;
     ret.fasterSong = modifiers.find("FS") != std::string::npos;
     ret.slowerSong = modifiers.find("SS") != std::string::npos;
@@ -123,8 +80,8 @@ ReplayModifiers ParseModifierString(std::string const& modifiers) {
     return ret;
 }
 
-BSORInfo ReadInfo(std::ifstream& input) {
-    BSORInfo info;
+static BSOR::Info ReadInfo(std::ifstream& input) {
+    BSOR::Info info;
     READ_STRING(info.version);
     READ_STRING(info.gameVersion);
     READ_STRING(info.timestamp);
@@ -156,77 +113,45 @@ BSORInfo ReadInfo(std::ifstream& input) {
     return info;
 }
 
-bool ReadCustomDataItem(std::ifstream& input, struct EventReplay* replay) {
-    std::string key;
-    int length;
-    READ_STRING(key);
-    if (input.eof()) {
-        logger.debug("ReadCustomDataItem: Can't read input key.");
+static bool ParseMetadata(std::ifstream& input, std::string const& path) {
+    int header;
+    READ_TO(header);
+    if (header != 0x442d3d69) {
+        logger.error("Invalid header bytes in bsor file {}", path);
         return false;
     }
-    READ_TO(length);
-    if (input.eof()) {
-        logger.debug("ReadCustomDataItem: Can't read input length.");
+
+    int8_t version;
+    READ_TO(version);
+    if (version > 1) {
+        logger.error("Unsupported version in bsor file {}", path);
         return false;
     }
-    std::vector<char> content;
-    if (length < 0) {
-        logger.debug("ReadCustomDataItem: Invalid custom data length {}.", length);
+
+    int8_t section;
+    READ_TO(section);
+    if (section != 0) {
+        logger.error("Invalid beginning section in bsor file {}", path);
         return false;
     }
-    content.resize(length);
-    input.read(content.data(), length);
-    if (input.eof()) {
-        logger.debug("ReadCustomDataItem: Can't read custom data content.");
-        return false;
-    }
-    replay->customDatas.insert(std::make_pair(key, std::move(content)));
+
     return true;
 }
 
-ReplayWrapper ReadBSOR(std::string const& path) {
-    std::ifstream input(path, std::ios::binary);
+static BSOR::Info ParseInfo(std::ifstream& input, Replay::Replay& replay) {
+    auto info = ReadInfo(input);
+    replay.info.modifiers = ParseModifierString(info.modifiers);
+    replay.info.modifiers.leftHanded = info.leftHanded;
+    replay.info.timestamp = std::stol(info.timestamp);
+    replay.info.score = info.score;
+    replay.info.source = "BeatLeader";
+    replay.info.positionsAreLocal = true;
+    replay.info.playerName.emplace(info.playerName);
 
     static auto getPlayerId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerId");
     static auto getPlayerQuestId = CondDeps::Find<std::optional<std::string>>("bl", "LoggedInPlayerQuestId");
 
     logger.debug("found beatleader functions {} {}", getPlayerId.has_value(), getPlayerQuestId.has_value());
-
-    if (!input.is_open()) {
-        logger.error("Failure opening file {}", path);
-        return {};
-    }
-
-    int header;
-    char version;
-    char section;
-    READ_TO(header);
-    READ_TO(version);
-    READ_TO(section);
-    if (header != 0x442d3d69) {
-        logger.error("Invalid header bytes in bsor file {}", path);
-        return {};
-    }
-    if (version > 1) {
-        logger.error("Unsupported version in bsor file {}", path);
-        return {};
-    }
-    if (section != 0) {
-        logger.error("Invalid beginning section in bsor file {}", path);
-        return {};
-    }
-
-    auto replay = new EventReplay();
-    ReplayWrapper ret(ReplayType::Event, replay);
-
-    auto info = ReadInfo(input);
-    replay->info.modifiers = ParseModifierString(info.modifiers);
-    replay->info.modifiers.leftHanded = info.leftHanded;
-    replay->info.timestamp = std::stol(info.timestamp);
-    replay->info.score = info.score;
-    replay->info.source = "BeatLeader";
-    replay->info.positionsAreLocal = true;
-    replay->info.playerName.emplace(info.playerName);
 
     logger.debug(
         "player id {}, bl ids {} {}",
@@ -235,77 +160,86 @@ ReplayWrapper ReadBSOR(std::string const& path) {
         getPlayerQuestId ? getPlayerQuestId.value()().value_or("no player") : "no bl"
     );
 
-    replay->info.playerOk = false;
+    replay.info.playerOk = false;
     if (getPlayerId && getPlayerId.value()() == info.playerID)
-        replay->info.playerOk = true;
+        replay.info.playerOk = true;
     else if (getPlayerQuestId && getPlayerQuestId.value()() == info.playerID)
-        replay->info.playerOk = true;
+        replay.info.playerOk = true;
 
-    logger.debug("player logged in {}", replay->info.playerOk);
+    logger.debug("player logged in {}", replay.info.playerOk);
 
     // infer reached 0 energy because no fail is only listed if it did
-    replay->info.reached0Energy = replay->info.modifiers.noFail;
-    replay->info.jumpDistance = info.jumpDistance;
+    replay.info.reached0Energy = replay.info.modifiers.noFail;
+    replay.info.jumpDistance = info.jumpDistance;
     // infer practice because these values are only non 0 (defaults) when it is
-    replay->info.practice = info.speed > 0.001 && info.startTime > 0.001;
-    replay->info.startTime = info.startTime;
-    replay->info.speed = info.speed;
+    replay.info.practice = info.speed > 0.001 && info.startTime > 0.001;
+    replay.info.startTime = info.startTime;
+    replay.info.speed = info.speed;
     // infer whether or not the player failed
-    replay->info.failed = info.failTime > 0.001;
-    replay->info.failTime = info.failTime;
+    replay.info.failed = info.failTime > 0.001;
+    replay.info.failTime = info.failTime;
 
-    READ_TO(section);
-    if (section != 1) {
-        logger.error("Invalid section 1 header in bsor file {}", path);
-        return {};
-    }
-    int framesCount;
-    READ_TO(framesCount);
-    bool rotation = info.mode.find("Degree") != std::string::npos;
-    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
+    return info;
+}
+
+static void ParsePoses(std::ifstream& input, Replay::Replay& replay, bool hasRotation) {
+    int count;
+    READ_TO(count);
+
+    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), hasRotation);
+
     // here we have yet another lecagy bug where multiplayer replays record all the avatars
+    // we can check for it by checking if multiple frames are recorded at the same time,
+    // and fix it by skipping more than one frame each increment, since the duplicates are consistent and ordered
     float firstTime = -1000;
-    int skip = 0;
-    bool checkDone = false;
-    for (int i = 0; i < framesCount; i++) {
-        auto& frame = replay->frames.emplace_back();
+    int duplicates = 0;
+    bool finishedDuplicatesCheck = false;
+
+    for (int i = 0; i < count; i++) {
+        auto& frame = replay.poses.emplace_back();
         READ_TO(frame);
+
         if (firstTime == -1000 && frame.time != 0)
             firstTime = frame.time;
         else if (firstTime == frame.time) {
-            skip++;
+            duplicates++;
             continue;
         }
-        averageCalc.AddRotation(frame.head.rotation);
-        if (skip > 0) {
-            if (!checkDone) {
-                replay->frames.erase(replay->frames.begin() + 1, replay->frames.end() - 1);
-                checkDone = true;
-            }
-            if (i + skip >= framesCount)
-                skip = framesCount - i - 1;
-            input.seekg(sizeof(Frame) * skip, std::ios::cur);
-            i += skip;
-        }
-    }
-    replay->info.averageOffset = Quaternion::Inverse(averageCalc.GetAverage());
 
-    READ_TO(section);
-    if (section != 2) {
-        logger.error("Invalid section 2 header in bsor file {}", path);
-        return {};
+        if (duplicates > 0) {
+            if (!finishedDuplicatesCheck) {
+                replay.poses.erase(replay.poses.begin() + 1, replay.poses.end() - 1);
+                finishedDuplicatesCheck = true;
+            }
+            // make sure we don't overseek
+            if (i + duplicates >= count)
+                duplicates = count - i - 1;
+            input.seekg(sizeof(Replay::Pose) * duplicates, std::ios::cur);
+            i += duplicates;
+        }
+
+        averageCalc.AddRotation(frame.head.rotation);
     }
-    int notesCount;
-    READ_TO(notesCount);
-    BSORNoteEventInfo noteInfo;
-    for (int i = 0; i < notesCount; i++) {
-        auto& note = replay->notes.emplace_back();
+
+    replay.info.averageOffset = Quaternion::Inverse(averageCalc.GetAverage());
+}
+
+static void ParseNotes(std::ifstream& input, Replay::Replay& replay) {
+    int count;
+    READ_TO(count);
+
+    auto& notes = replay.events->notes;
+    auto& events = replay.events->events;
+
+    BSOR::NoteEventInfo noteInfo;
+
+    for (int i = 0; i < count; i++) {
+        auto& note = notes.emplace_back();
         READ_TO(noteInfo);
 
-        // Mapping extensions replays require map data
-        // for parsing because of the lost data. Blame NSGolova
+        // Mapping extensions replays require map data for parsing because of the lost data. Blame NSGolova
         if (noteInfo.noteID >= 1000000 || noteInfo.noteID <= -1000)
-            replay->needsRecalculation = true;
+            replay.events->needsRecalculation = true;
 
         note.info.scoringType = noteInfo.noteID / 10000;
         noteInfo.noteID -= note.info.scoringType * 10000;
@@ -327,7 +261,7 @@ ReplayWrapper ReadBSOR(std::string const& path) {
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
 
-        if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
+        if (note.info.HasCut()) {
             READ_TO(note.noteCutInfo);
 
             // encoding bug in the beatleader qmod made this value be messed with
@@ -339,42 +273,41 @@ ReplayWrapper ReadBSOR(std::string const& path) {
             // so we catch replays with garbage note cut info (to limit failures to maps with the problem) and missing scoring type info
             if (note.info.scoringType == -2 && !IsLikelyValidCutInfo(note.noteCutInfo)) {
                 // either fail to load the replay or force set the data (since most fields don't matter for chain links)
-                if (false) {
-                    logger.error("BSOR had garbage NoteCutInfo data in bsor file {}", path);
-                    return {};
+                note.noteCutInfo = {0};
+                if (note.info.eventType == Replay::Events::NoteInfo::Type::GOOD) {
+                    note.noteCutInfo.speedOK = true;
+                    note.noteCutInfo.directionOK = true;
+                    note.noteCutInfo.saberTypeOK = true;
+                    note.noteCutInfo.wasCutTooSoon = false;
                 } else {
-                    note.noteCutInfo = {0};
-                    if (note.info.eventType == NoteEventInfo::Type::GOOD) {
-                        note.noteCutInfo.speedOK = true;
-                        note.noteCutInfo.directionOK = true;
-                        note.noteCutInfo.saberTypeOK = true;
-                        note.noteCutInfo.wasCutTooSoon = false;
-                    } else {
-                        note.noteCutInfo.speedOK = true;
-                        note.noteCutInfo.directionOK = true;
-                        note.noteCutInfo.saberTypeOK = false;
-                        note.noteCutInfo.wasCutTooSoon = false;
-                    }
+                    note.noteCutInfo.speedOK = true;
+                    note.noteCutInfo.directionOK = true;
+                    note.noteCutInfo.saberTypeOK = false;
+                    note.noteCutInfo.wasCutTooSoon = false;
                 }
             }
         }
-        replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
+        events.emplace(note.time, Replay::Events::Reference::Note, notes.size() - 1);
     }
+}
 
-    READ_TO(section);
-    if (section != 3) {
-        logger.error("Invalid section 3 header in bsor file {}", path);
-        return {};
-    }
-    int wallsCount;
-    READ_TO(wallsCount);
-    BSORWallEvent wallEvent;
+static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info const& info) {
+    int count;
+    READ_TO(count);
+
+    auto& notes = replay.events->notes;
+    auto& walls = replay.events->walls;
+    auto& events = replay.events->events;
+
+    BSOR::WallEvent wallEvent;
+
     // oh boy, I get to calculate the end time of wall events based on energy, it's not like anything better could have been done in the recording phase
     float energy = 0.5;
     float latestWallTime = -1;
-    auto notesIter = replay->notes.begin();
-    for (int i = 0; i < wallsCount; i++) {
-        auto& wall = replay->walls.emplace_back();
+    auto note = notes.begin();
+
+    for (int i = 0; i < count; i++) {
+        auto& wall = walls.emplace_back();
         READ_TO(wallEvent);
         wall.lineIndex = wallEvent.wallID / 100;
         wallEvent.wallID -= wall.lineIndex * 100;
@@ -385,18 +318,20 @@ ReplayWrapper ReadBSOR(std::string const& path) {
         wall.width = wallEvent.wallID;
 
         wall.time = wallEvent.time;
-        if (info.platform == "oculus" || version > 1) {
+
+        // "oculus" means standalone - PC is either "steam" or "oculuspc"
+        if (info.platform == "oculus") {
             wall.endTime = wallEvent.energy;
             // should be in order, but doesn't hurt to check
             if (wall.time > latestWallTime)
                 latestWallTime = wall.time;
         } else {
             // process all note events up to event time
-            while (notesIter != replay->notes.end() && notesIter->time < wallEvent.time) {
-                energy += EnergyForNote(notesIter->info);
+            while (note != notes.end() && note->time < wallEvent.time) {
+                energy += EnergyForNote(note->info);
                 if (energy > 1)
                     energy = 1;
-                notesIter++;
+                note++;
             }
             float diff = energy - wallEvent.energy;
             // only realistic case for this happening (assuming the recorder is correct)
@@ -405,126 +340,127 @@ ReplayWrapper ReadBSOR(std::string const& path) {
                 continue;
             float seconds = diff / 1.3;
             wall.endTime = wallEvent.time + seconds;
-            // now we also correct for any misses that happen during the wall...
-            while (notesIter != replay->notes.end() && notesIter->time < wall.endTime) {
-                wall.endTime -= EnergyForNote(notesIter->info) / 1.3;
-                notesIter++;
+            // now we also correct for any cuts that happen during the wall...
+            while (note != notes.end() && note->time < wall.endTime) {
+                wall.endTime -= EnergyForNote(note->info) / 1.3;
+                note++;
             }
             energy = wallEvent.energy;
         }
-        replay->events.emplace(wall.time, EventRef::Wall, replay->walls.size() - 1);
+        events.emplace(wall.time, Replay::Events::Reference::Wall, walls.size() - 1);
     }
+
     // replays on yet another BL version just forgot to record wall event end times
     if (latestWallTime > -1) {
-        for (auto& wall : replay->walls) {
-            if (wall.endTime < wall.time || wall.endTime > latestWallTime * 1000) {
-                logger.error("Replay had broken wall event {}", path);
-                return {};
-            }
+        for (auto& wall : walls) {
+            if (wall.endTime < wall.time || wall.endTime > latestWallTime * 1000)
+                throw Parsing::Exception("Broken wall event");
         }
     }
-
-    READ_TO(section);
-    if (section != 4) {
-        logger.error("Invalid section 4 header in bsor file {}", path);
-        return {};
-    }
-    int heightCount;
-    READ_TO(heightCount);
-    for (int i = 0; i < heightCount; i++) {
-        auto& height = replay->heights.emplace_back();
-        READ_TO(height);
-        replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
-    }
-    replay->info.hasYOffset = true;
-
-    READ_TO(section);
-    if (section != 5) {
-        logger.error("Invalid section 5 header in bsor file {}", path);
-        return {};
-    }
-    int pauseCount;
-    READ_TO(pauseCount);
-    for (int i = 0; i < pauseCount; i++) {
-        auto& pause = replay->pauses.emplace_back();
-        READ_TO(pause);
-        replay->events.emplace(pause.time, EventRef::Height, replay->pauses.size() - 1);
-    }
-
-    // the section 6 or 7 is optional, we will read them and hide errors carefully.
-    try {
-        while (READ_TO(section), !input.eof()) {
-            if (section == 6) {
-                ReplayOffset offset;
-                if (READ_TO(offset), input.eof()) {
-                    logger.debug("Can't read section 6 in replay file.");
-                    break;
-                }
-                replay->offsets = offset;
-            } else if (section == 7) {
-                int length;
-                if (READ_TO(length), input.eof()) {
-                    logger.debug("Can't read section 7: Invalid length.");
-                    break;
-                }
-                bool all_success = true;
-                for (int i = 0; all_success && i < length; i++) {
-                    all_success &= ReadCustomDataItem(input, replay);
-                }
-                if (!all_success)
-                    break;
-            } else {
-                logger.debug("Ignore the unknown section {}.", section);
-                break;
-            }
-        }
-    } catch (std::bad_alloc const& e) {
-        logger.debug("Allocation failed while reading optional sections: {}", e.what());
-    }
-
-    return ret;
 }
 
-#include <list>
+static void ParseHeights(std::ifstream& input, Replay::Replay& replay) {
+    int count;
+    READ_TO(count);
 
-#include "GlobalNamespace/BeatmapData.hpp"
-#include "System/Collections/Generic/LinkedListNode_1.hpp"
-#include "System/Collections/Generic/LinkedList_1.hpp"
+    auto& heights = replay.events->heights;
+    auto& events = replay.events->events;
 
-using namespace GlobalNamespace;
-
-void RecalculateNotes(ReplayWrapper& replay, IReadonlyBeatmapData* beatmapData) {
-    if (replay.type != ReplayType::Event)
-        return;
-    auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
-    if (!eventReplay->needsRecalculation)
-        return;
-
-    std::list<NoteEvent*> notes{};
-    for (auto& note : eventReplay->notes)
-        notes.emplace_back(&note);
-
-    auto list = beatmapData->get_allBeatmapDataItems();
-    for (auto i = list->head; i->next != list->head; i = i->next) {
-        auto dataOpt = il2cpp_utils::try_cast<NoteData>(i->item);
-        if (!dataOpt.has_value())
-            continue;
-        auto noteData = dataOpt.value();
-        int mapNoteId = BSORNoteID(noteData);
-
-        for (auto iter = notes.begin(); iter != notes.end(); iter++) {
-            auto& info = (*iter)->info;
-            int eventNoteId = BSORNoteID(info);
-            if (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000)) {
-                info.scoringType = (int) noteData->scoringType;
-                info.lineIndex = noteData->lineIndex;
-                info.lineLayer = (int) noteData->noteLineLayer;
-                info.colorType = (int) noteData->colorType;
-                info.cutDirection = (int) noteData->cutDirection;
-                notes.erase(iter);
-                break;
-            }
-        }
+    for (int i = 0; i < count; i++) {
+        auto& height = heights.emplace_back();
+        READ_TO(height);
+        events.emplace(height.time, Replay::Events::Reference::Height, heights.size() - 1);
     }
-    eventReplay->needsRecalculation = false;
+
+    replay.info.hasYOffset = true;
+}
+
+static void ParsePauses(std::ifstream& input, Replay::Replay& replay) {
+    int count;
+    READ_TO(count);
+
+    auto& pauses = replay.events->pauses;
+    auto& events = replay.events->events;
+
+    for (int i = 0; i < count; i++) {
+        auto& pause = pauses.emplace_back();
+        READ_TO(pause);
+        events.emplace(pause.time, Replay::Events::Reference::Height, pauses.size() - 1);
+    }
+}
+
+static void ParseOffsets(std::ifstream& input, Replay::Replay& replay) {
+    READ_TO(replay.offsets.emplace());
+}
+
+static void ParseCustomData(std::ifstream& input, Replay::Replay& replay) {
+    int count;
+    READ_TO(count);
+
+    for (int i = 0; i < count; i++) {
+        std::string key;
+        int length;
+
+        READ_STRING(key);
+        READ_TO(length);
+        if (length < 0)
+            length = 0;
+
+        std::vector<char> content;
+        content.resize(length);
+        input.read(content.data(), length);
+
+        replay.customData.emplace(key, std::move(content));
+    }
+}
+
+static void ParseOptionalSection(std::ifstream& input, Replay::Replay& replay) {}
+
+Replay::Replay Parsing::ReadBSOR(std::string const& path) {
+    std::ifstream input(path, std::ios::binary);
+    input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
+
+    if (!input.is_open())
+        throw Exception("Failure opening file");
+
+    if (!ParseMetadata(input, path))
+        return {};
+
+    int8_t section;
+    Replay::Replay replay;
+    replay.events.emplace();
+
+    auto info = ParseInfo(input, replay);
+
+    READ_TO(section);
+    if (section != 1)
+        throw Exception("Invalid section 1 header");
+    ParsePoses(input, replay, info.mode.find("Degree") != std::string::npos);
+
+    READ_TO(section);
+    if (section != 2)
+        throw Exception("Invalid section 2 header");
+    ParseNotes(input, replay);
+
+    READ_TO(section);
+    if (section != 3)
+        throw Exception("Invalid section 3 header");
+    ParseWalls(input, replay, info);
+
+    READ_TO(section);
+    if (section != 4)
+        throw Exception("Invalid section 4 header");
+
+    READ_TO(section);
+    if (section != 5)
+        throw Exception("Invalid section 5 header");
+
+    try {
+        while (true)
+            ParseOptionalSection(input, replay);
+    } catch (std::ios::failure const& e) {
+        // ignore
+    }
+
+    return replay;
 }

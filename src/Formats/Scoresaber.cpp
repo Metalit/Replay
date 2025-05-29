@@ -1,144 +1,116 @@
-#include <fstream>
-#include <map>
-#include <sstream>
-
-#include "Formats/EventFrame.hpp"
 #include "lzma/lzma.hpp"
-#include "main.hpp"
 #include "math.hpp"
 #include "metacore/shared/unity.hpp"
+#include "parsing.hpp"
 
-struct SSPointers {
-    int metadata;
-    int poseKeyframes;
-    int heightKeyframes;
-    int noteKeyframes;
-    int scoreKeyframes;
-    int comboKeyframes;
-    int multiplierKeyframes;
-    int energyKeyframes;
-    int fpsKeyframes;
-};
+namespace SS {
+    struct Pointers {
+        int metadata;
+        int poseKeyframes;
+        int heightKeyframes;
+        int noteKeyframes;
+        int scoreKeyframes;
+        int comboKeyframes;
+        int multiplierKeyframes;
+        int energyKeyframes;
+        int fpsKeyframes;
+    };
 
-enum SSNoteEventType { None, GoodCut, BadCut, Miss, Bomb };
+    enum NoteEventType { None, GoodCut, BadCut, Miss, Bomb };
 
-struct SSNoteID {
-    float Time;
-    int LineLayer;
-    int LineIndex;
-    int ColorType;
-    int CutDirection;
-};
+    struct NoteID {
+        float Time;
+        int LineLayer;
+        int LineIndex;
+        int ColorType;
+        int CutDirection;
+    };
 
-// scoresaber serializes field by field instead of whole structs at a time
-struct __attribute__((packed)) SSNoteEvent {
-    SSNoteID NoteID;
-    SSNoteEventType EventType;
-    Vector3 CutPoint;
-    Vector3 CutNormal;
-    Vector3 SaberDirection;
-    int SaberType;
-    bool DirectionOK;
-    float SaberSpeed;
-    float CutAngle;
-    float CutDistanceToCenter;
-    float CutDirectionDeviation;
-    float BeforeCutRating;
-    float AfterCutRating;
-    float Time;
-    float UnityTimescale;
-    float TimeSyncTimescale;
-};
+    // scoresaber serializes field by field instead of whole structs at a time
+    struct __attribute__((packed)) NoteEvent {
+        NoteEventType EventType;
+        Vector3 CutPoint;
+        Vector3 CutNormal;
+        Vector3 SaberDirection;
+        int SaberType;
+        bool DirectionOK;
+        float SaberSpeed;
+        float CutAngle;
+        float CutDistanceToCenter;
+        float CutDirectionDeviation;
+        float BeforeCutRating;
+        float AfterCutRating;
+        float Time;
+        float UnityTimescale;
+        float TimeSyncTimescale;
+    };
 
-struct SSScoreEvent {
-    int Score;
-    float Time;
-};
+    struct ScoreEvent {
+        int Score;
+        float Time;
+    };
 
-struct SSComboEvent {
-    int Combo;
-    float Time;
-};
+    struct ComboEvent {
+        int Combo;
+        float Time;
+    };
 
-struct SSEnergyEvent {
-    float Energy;
-    float Time;
-};
+    struct EnergyEvent {
+        float Energy;
+        float Time;
+    };
 
-// struct SSMultiplierEvent {
-//     int Multiplier;
-//     float NextMultiplierProgress;
-//     float Time;
-// };
+    // struct MultiplierEvent {
+    //     int Multiplier;
+    //     float NextMultiplierProgress;
+    //     float Time;
+    // };
 
-struct VRPoseGroup {
-    Transform Head;
-    Transform Left;
-    Transform Right;
-    int FPS;
-    float Time;
-};
+    struct VRPoseGroup {
+        Replay::Transform Head;
+        Replay::Transform Left;
+        Replay::Transform Right;
+        int FPS;
+        float Time;
+    };
 
-struct SSMetadata {
-    std::string Version;
-    std::string LevelID;
-    int Difficulty;
-    std::string Characteristic;
-    std::string Environment;
-    std::vector<std::string> Modifiers;
-    float NoteSpawnOffset;
-    bool LeftHanded;
-    float InitialHeight;
-    float RoomRotation;
-    Vector3 RoomCenter;
-    float FailTime;
-};
+    struct Metadata {
+        std::string Version;
+        std::string LevelID;
+        int Difficulty;
+        std::string Characteristic;
+        std::string Environment;
+        std::vector<std::string> Modifiers;
+        float NoteSpawnOffset;
+        bool LeftHanded;
+        float InitialHeight;
+        float RoomRotation;
+        Vector3 RoomCenter;
+        float FailTime;
+    };
 
-struct V3SSNoteID {
-    float Time;
-    int LineLayer;
-    int LineIndex;
-    int ColorType;
-    int CutDirection;
-    int GameplayType;
-    int ScoringType;
-    float CutDirectionAngleOffset;
-};
+    namespace V3 {
+        struct NoteID : SS::NoteID {
+            int GameplayType;
+            int ScoringType;
+            float CutDirectionAngleOffset;
+        };
 
-struct __attribute__((packed)) V3SSNoteEvent {
-    V3SSNoteID NoteID;
-    SSNoteEventType EventType;
-    Vector3 CutPoint;
-    Vector3 CutNormal;
-    Vector3 SaberDirection;
-    int SaberType;
-    bool DirectionOK;
-    float SaberSpeed;
-    float CutAngle;
-    float CutDistanceToCenter;
-    float CutDirectionDeviation;
-    float BeforeCutRating;
-    float AfterCutRating;
-    float Time;
-    float UnityTimescale;
-    float TimeSyncTimescale;
-    float TimeDeviation;
-    Quaternion WorldRotation;
-    Quaternion InverseWorldRotation;
-    Quaternion NoteRotation;
-    Vector3 NotePosition;
-};
+        struct __attribute__((packed)) NoteEvent : SS::NoteEvent {
+            float TimeDeviation;
+            Quaternion WorldRotation;
+            Quaternion InverseWorldRotation;
+            Quaternion NoteRotation;
+            Vector3 NotePosition;
+        };
 
-struct V3SSScoreEvent {
-    int Score;
-    float Time;
-    int MaxScore;
-};
+        struct ScoreEvent : SS::ScoreEvent {
+            int MaxScore;
+        };
+    }
+}
 
-#define READ_TO(name) input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
-#define READ_STRING(name) name = ReadString(input)
-
-std::string ReadString(std::stringstream& input) {
+static std::string ReadString(std::stringstream& input) {
     int length;
     READ_TO(length);
     std::string str;
@@ -147,8 +119,8 @@ std::string ReadString(std::stringstream& input) {
     return str;
 }
 
-SSMetadata ReadMetadata(std::stringstream& input) {
-    SSMetadata ret;
+static SS::Metadata ReadMetadata(std::stringstream& input) {
+    SS::Metadata ret;
     READ_STRING(ret.Version);
     READ_STRING(ret.LevelID);
     READ_TO(ret.Difficulty);
@@ -167,8 +139,8 @@ SSMetadata ReadMetadata(std::stringstream& input) {
     return ret;
 }
 
-ReplayModifiers ParseModifiers(std::vector<std::string> const& modifiers) {
-    ReplayModifiers ret = {0};
+static Replay::Modifiers ParseModifiers(std::vector<std::string> const& modifiers) {
+    Replay::Modifiers ret = {0};
     for (auto& s : modifiers) {
         if (s == "BE")
             ret.fourLives = true;
@@ -186,7 +158,7 @@ ReplayModifiers ParseModifiers(std::vector<std::string> const& modifiers) {
             ret.disappearingArrows = true;
         else if (s == "GN")
             ret.ghostNotes = true;
-        else if (s == "SS")
+        else if (s == "")
             ret.slowerSong = true;
         else if (s == "FS")
             ret.fasterSong = true;
@@ -202,51 +174,19 @@ ReplayModifiers ParseModifiers(std::vector<std::string> const& modifiers) {
     return ret;
 }
 
-bool DecompressReplay(std::vector<char> const& replay, std::vector<char>& decompressed) {
-    if (replay[0] == (char) 93 && replay[1] == 0 && replay[2] == 0 && replay[3] == (char) 128) {
-        logger.error("Scoresaber replay had legacy magic bytes");
-        return false;
-    }
+static void DecompressReplay(std::vector<char> const& replay, std::vector<char>& decompressed) {
+    if (replay[0] == (char) 93 && replay[1] == 0 && replay[2] == 0 && replay[3] == (char) 128)
+        throw Parsing::Exception("Legacy ScoreSaber magic bytes");
+
     std::vector<char> compressedReplayBytes(replay.begin() + 28, replay.end());
 
-    return LZMA::lzmaDecompress(compressedReplayBytes, decompressed);
+    if (!LZMA::lzmaDecompress(compressedReplayBytes, decompressed))
+        throw Parsing::Exception("Error decompressing replay");
 }
 
-ReplayWrapper ReadScoresaber(std::string const& path) {
-    std::ifstream inputCompressed(path, std::ios::binary);
-
-    if (!inputCompressed.is_open()) {
-        logger.error("Failure opening file {}", path);
-        return {};
-    }
-    std::vector<char> compressed(std::istreambuf_iterator<char>{inputCompressed}, std::istreambuf_iterator<char>{});
-    std::vector<char> decompressed = {};
-    if (!DecompressReplay(compressed, decompressed)) {
-        logger.error("Failure decompressing file {}", path);
-        return {};
-    }
-    std::stringstream input;
-    input.write(decompressed.data(), decompressed.size());
-
-    auto replay = new EventFrame();
-    // only scoresaber frame replays crash on "self->scoreDidChangeEvent->Invoke" in ScoreController_LateUpdate ?? why
-    // ReplayWrapper ret(ReplayType::Event | ReplayType::Frame, replay);
-    ReplayWrapper ret(ReplayType::Event, replay);
-    auto& info = replay->info;
-
-    SSPointers beginnings;
-    READ_TO(beginnings);
-
-    input.seekg(beginnings.metadata);
+static SS::Metadata ParseMetadata(std::stringstream& input, Replay::Replay& replay) {
+    auto& info = replay.info;
     auto meta = ReadMetadata(input);
-
-    bool v3 = false;
-    if (meta.Version == "3.0.0")
-        v3 = true;
-    else if (meta.Version != "2.0.0") {
-        logger.error("Unsupported version! Found version {} in file {}", meta.Version, path);
-        return {};
-    }
 
     info.modifiers = ParseModifiers(meta.Modifiers);
     info.modifiers.leftHanded = meta.LeftHanded;
@@ -256,155 +196,215 @@ ReplayWrapper ReadScoresaber(std::string const& path) {
     info.reached0Energy = info.modifiers.noFail;
     info.jumpDistance = meta.NoteSpawnOffset;
 
-    bool rotation = meta.Characteristic.find("Degree") != std::string::npos;
-    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), rotation);
-    input.seekg(beginnings.poseKeyframes);
+    return meta;
+}
+
+static void ParsePoses(std::stringstream& input, Replay::Replay& replay, bool hasRotations) {
+    MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), hasRotations);
+
     int count;
     READ_TO(count);
-    VRPoseGroup posFrame;
-    for (int i = 0; i < count; i++) {
-        READ_TO(posFrame);
-        replay->frames.emplace_back(posFrame.Time, posFrame.FPS, posFrame.Head, posFrame.Left, posFrame.Right);
-        averageCalc.AddRotation(posFrame.Head.rotation);
-    }
-    info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
 
-    input.seekg(beginnings.heightKeyframes);
-    READ_TO(count);
+    SS::VRPoseGroup pose;
     for (int i = 0; i < count; i++) {
-        auto& height = replay->heights.emplace_back(HeightEvent());
+        READ_TO(pose);
+        replay.poses.emplace_back(pose.Time, pose.FPS, pose.Head, pose.Left, pose.Right);
+        averageCalc.AddRotation(pose.Head.rotation);
+    }
+
+    replay.info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
+}
+
+static void ParseHeights(std::stringstream& input, Replay::Replay& replay) {
+    int count;
+    READ_TO(count);
+
+    auto& heights = replay.events->heights;
+    auto& events = replay.events->events;
+
+    for (int i = 0; i < count; i++) {
+        auto& height = heights.emplace_back();
         READ_TO(height);
-        replay->events.emplace(height.time, EventRef::Height, replay->heights.size() - 1);
+        events.emplace(height.time, Replay::Events::Reference::Height, heights.size() - 1);
+    }
+}
+
+template <int V>
+static void ParseNote(std::stringstream& input, Replay::Events::Note& note) {
+    std::conditional_t<V == 2, SS::NoteID, SS::V3::NoteID> ssNoteID;
+    std::conditional_t<V == 2, SS::NoteEvent, SS::V3::NoteEvent> ssNote;
+    READ_TO(ssNoteID);
+    READ_TO(ssNote);
+
+    note.time = ssNote.Time;
+    note.info.scoringType = -2;
+    note.info.lineIndex = ssNoteID.LineIndex;
+    note.info.lineLayer = ssNoteID.LineLayer;
+    note.info.colorType = ssNoteID.ColorType;
+    note.info.cutDirection = ssNoteID.CutDirection;
+    note.info.eventType = (Replay::Events::NoteInfo::Type)(((int) ssNote.EventType) - 1);
+
+    if (note.info.HasCut()) {
+        note.noteCutInfo.directionOK = ssNote.DirectionOK;
+        note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
+        note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
+        note.noteCutInfo.saberDir = ssNote.SaberDirection;
+        note.noteCutInfo.saberType = ssNote.SaberType;
+        note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
+        note.noteCutInfo.cutPoint = ssNote.CutPoint;
+        note.noteCutInfo.cutNormal = ssNote.CutNormal;
+        note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
+        note.noteCutInfo.cutAngle = ssNote.CutAngle;
+        note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
+        note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
     }
 
-    input.seekg(beginnings.noteKeyframes);
+    if constexpr (V == 3)
+        note.info.scoringType = ssNoteID.ScoringType;
+}
+
+template <int V>
+static void ParseNotes(std::stringstream& input, Replay::Replay& replay) {
+    int count;
     READ_TO(count);
-    if (v3) {
-        V3SSNoteEvent ssNote;
-        for (int i = 0; i < count; i++) {
-            auto& note = replay->notes.emplace_back(NoteEvent());
-            READ_TO(ssNote);
 
-            note.time = ssNote.Time;
-            note.info.scoringType = ssNote.NoteID.ScoringType;
-            note.info.lineIndex = ssNote.NoteID.LineIndex;
-            note.info.lineLayer = ssNote.NoteID.LineLayer;
-            note.info.colorType = ssNote.NoteID.ColorType;
-            note.info.cutDirection = ssNote.NoteID.CutDirection;
-            note.info.eventType = (NoteEventInfo::Type)(((int) ssNote.EventType) - 1);
+    auto& notes = replay.events->notes;
+    auto& events = replay.events->events;
 
-            if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
-                note.noteCutInfo.directionOK = ssNote.DirectionOK;
-                note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
-                note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
-                note.noteCutInfo.saberDir = ssNote.SaberDirection;
-                note.noteCutInfo.saberType = ssNote.SaberType;
-                note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
-                note.noteCutInfo.cutPoint = ssNote.CutPoint;
-                note.noteCutInfo.cutNormal = ssNote.CutNormal;
-                note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
-                note.noteCutInfo.cutAngle = ssNote.CutAngle;
-                note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
-                note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
-            }
-            replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
-        }
-    } else {
-        SSNoteEvent ssNote;
-        for (int i = 0; i < count; i++) {
-            auto& note = replay->notes.emplace_back(NoteEvent());
-            READ_TO(ssNote);
+    for (int i = 0; i < count; i++) {
+        auto& note = notes.emplace_back();
+        ParseNote<V>(input, note);
+        events.emplace(note.time, Replay::Events::Reference::Note, notes.size() - 1);
+    }
+}
 
-            note.time = ssNote.Time;
-            note.info.scoringType = -2;  // not present but v3 replays don't exist anyway
-            note.info.lineIndex = ssNote.NoteID.LineIndex;
-            note.info.lineLayer = ssNote.NoteID.LineLayer;
-            note.info.colorType = ssNote.NoteID.ColorType;
-            note.info.cutDirection = ssNote.NoteID.CutDirection;
-            note.info.eventType = (NoteEventInfo::Type)(((int) ssNote.EventType) - 1);
+template <int V>
+static int ParseScores(std::stringstream& input, std::map<float, Replay::Frames::Score>& frames) {
+    int count;
+    READ_TO(count);
 
-            if (note.info.eventType == NoteEventInfo::Type::GOOD || note.info.eventType == NoteEventInfo::Type::BAD) {
-                note.noteCutInfo.directionOK = ssNote.DirectionOK;
-                note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
-                note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
-                note.noteCutInfo.saberDir = ssNote.SaberDirection;
-                note.noteCutInfo.saberType = ssNote.SaberType;
-                note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
-                note.noteCutInfo.cutPoint = ssNote.CutPoint;
-                note.noteCutInfo.cutNormal = ssNote.CutNormal;
-                note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
-                note.noteCutInfo.cutAngle = ssNote.CutAngle;
-                note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
-                note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
-            }
-            replay->events.emplace(note.time, EventRef::Note, replay->notes.size() - 1);
-        }
+    std::conditional_t<V == 2, SS::ScoreEvent, SS::V3::ScoreEvent> ssScore;
+
+    for (int i = 0; i < count; i++) {
+        READ_TO(ssScore);
+
+        float percent = -1;
+        if constexpr (V == 3)
+            percent = ssScore.Score / (float) ssScore.MaxScore;
+
+        auto existing = frames.find(ssScore.Time);
+        if (existing != frames.end()) {
+            existing->second.score = ssScore.Score;
+            existing->second.percent = percent;
+        } else
+            frames.emplace(ssScore.Time, Replay::Frames::Score{ssScore.Time, ssScore.Score, percent, -1, -1, 0});
     }
 
-    std::map<float, ScoreFrame> framesMap = {};
+    return ssScore.Score;
+}
 
-    input.seekg(beginnings.scoreKeyframes);
+static void ParseCombo(std::stringstream& input, std::map<float, Replay::Frames::Score>& frames) {
+    int count;
     READ_TO(count);
-    if (v3) {
-        V3SSScoreEvent ssScore;
-        for (int i = 0; i < count; i++) {
-            READ_TO(ssScore);
-            auto existing = framesMap.find(ssScore.Time);
-            if (existing == framesMap.end())
-                framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, ssScore.Score / (float) ssScore.MaxScore, -1, -1, 0});
-            else {
-                existing->second.score = ssScore.Score;
-                existing->second.percent = ssScore.Score / (float) ssScore.MaxScore;
-            }
-        }
-        info.score = ssScore.Score;
-    } else {
-        SSScoreEvent ssScore;
-        for (int i = 0; i < count; i++) {
-            READ_TO(ssScore);
-            auto existing = framesMap.find(ssScore.Time);
-            if (existing == framesMap.end())
-                framesMap.emplace(ssScore.Time, ScoreFrame{ssScore.Time, ssScore.Score, -1, -1, -1, 0});
-            else
-                existing->second.score = ssScore.Score;
-        }
-        info.score = ssScore.Score;
-    }
-    input.seekg(beginnings.comboKeyframes);
-    READ_TO(count);
-    SSComboEvent ssCombo;
+
+    SS::ComboEvent ssCombo;
+
     for (int i = 0; i < count; i++) {
         READ_TO(ssCombo);
-        auto existing = framesMap.find(ssCombo.Time);
-        if (existing == framesMap.end())
-            framesMap.emplace(ssCombo.Time, ScoreFrame{ssCombo.Time, -1, -1, ssCombo.Combo, -1, 0});
+
+        auto existing = frames.find(ssCombo.Time);
+        if (existing == frames.end())
+            frames.emplace(ssCombo.Time, Replay::Frames::Score{ssCombo.Time, -1, -1, ssCombo.Combo, -1, 0});
         else
             existing->second.combo = ssCombo.Combo;
     }
-    // input.seekg(beginnings.multiplierKeyframes);
-    // READ_TO(count);
-    // for(int i = 0; i < count; i++) {
+}
 
-    // }
-    input.seekg(beginnings.energyKeyframes);
+static void ParseEnergy(std::stringstream& input, std::map<float, Replay::Frames::Score>& frames) {
+    int count;
     READ_TO(count);
-    SSEnergyEvent ssEnergy;
+
+    SS::EnergyEvent ssEnergy;
+
     for (int i = 0; i < count; i++) {
         READ_TO(ssEnergy);
-        auto existing = framesMap.find(ssEnergy.Time);
-        if (existing == framesMap.end())
-            framesMap.emplace(ssEnergy.Time, ScoreFrame{ssEnergy.Time, -1, -1, -1, ssEnergy.Energy, 0});
+
+        auto existing = frames.find(ssEnergy.Time);
+        if (existing == frames.end())
+            frames.emplace(ssEnergy.Time, Replay::Frames::Score{ssEnergy.Time, -1, -1, -1, ssEnergy.Energy, 0});
         else
             existing->second.energy = ssEnergy.Energy;
     }
-    for (auto& [_, frame] : framesMap)
-        replay->scoreFrames.emplace_back(std::move(frame));
+}
+
+Replay::Replay Parsing::ReadScoresaber(std::string const& path) {
+    std::ifstream inputCompressed(path, std::ios::binary);
+
+    if (!inputCompressed.is_open())
+        throw Exception("Failure opening file");
+
+    std::vector<char> compressed(std::istreambuf_iterator<char>{inputCompressed}, std::istreambuf_iterator<char>{});
+    std::vector<char> decompressed = {};
+    DecompressReplay(compressed, decompressed);
+
+    std::stringstream input;
+    input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
+    input.write(decompressed.data(), decompressed.size());
+
+    Replay::Replay replay;
+    auto& info = replay.info;
+
+    replay.events.emplace();
+    replay.frames.emplace();
+
+    SS::Pointers pointers;
+    READ_TO(pointers);
+
+    input.seekg(pointers.metadata);
+    auto meta = ParseMetadata(input, replay);
+
+    bool v3 = false;
+    if (meta.Version == "3.0.0")
+        v3 = true;
+    else if (meta.Version != "2.0.0")
+        throw Exception(fmt::format("Unsupported version {}", meta.Version));
+
+    input.seekg(pointers.poseKeyframes);
+    ParsePoses(input, replay, meta.Characteristic.find("Degree") != std::string::npos);
+
+    input.seekg(pointers.heightKeyframes);
+    ParseHeights(input, replay);
+
+    input.seekg(pointers.noteKeyframes);
+    if (v3)
+        ParseNotes<3>(input, replay);
+    else
+        ParseNotes<2>(input, replay);
+
+    // use map to sort and merge frames as possible
+    std::map<float, Replay::Frames::Score> frames = {};
+
+    input.seekg(pointers.scoreKeyframes);
+    if (v3)
+        info.score = ParseScores<3>(input, frames);
+    else
+        info.score = ParseScores<2>(input, frames);
+
+    input.seekg(pointers.comboKeyframes);
+    ParseCombo(input, frames);
+
+    // multipliers unused
+
+    input.seekg(pointers.energyKeyframes);
+    ParseEnergy(input, frames);
+
+    for (auto& [_, frame] : frames)
+        replay.frames->scores.emplace_back(std::move(frame));
 
     auto modified = std::filesystem::last_write_time(path);
     info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
     info.source = "ScoreSaber";
     info.positionsAreLocal = false;
-    replay->cutInfoMissingOKs = true;
-    // get player name somehow, player id seems to be in file name
-    return ret;
+    replay.events->cutInfoMissingOKs = true;
+    return replay;
 }

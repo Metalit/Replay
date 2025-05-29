@@ -30,23 +30,21 @@ std::string GetCharacteristicName(std::string serializedName);
 
 std::string GetMapString();
 
-std::vector<std::pair<std::string, ReplayWrapper>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
-
-std::string GetModifierString(ReplayModifiers const& modifiers, bool includeNoFail);
+std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail);
 
 GlobalNamespace::NoteCutInfo
 GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
 
 GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-float ModifierMultiplier(ReplayWrapper const& replay, bool failed);
+float ModifierMultiplier(Replay::Replay const& replay, bool failed);
 
-float EnergyForNote(const class NoteEventInfo& noteEvent);
+float EnergyForNote(Replay::Events::NoteInfo const& noteEvent);
 
-int ScoreForNote(const class NoteEvent& note, bool max = false);
+int ScoreForNote(Replay::Events::Note const& note, bool max = false);
 
 int BSORNoteID(GlobalNamespace::NoteData* note);
-int BSORNoteID(NoteEventInfo note);
+int BSORNoteID(Replay::Events::NoteInfo const& note);
 
 struct MapPreview {
     float energy;
@@ -55,7 +53,7 @@ struct MapPreview {
     int maxScore;
 };
 
-MapPreview MapAtTime(ReplayWrapper const& replay, float time);
+MapPreview MapAtTime(Replay::Replay const& replay, float time);
 
 bool IsButtonDown(const class Button& button);
 
