@@ -89,7 +89,7 @@ namespace Replay {
             Type eventType;
             int index;
 
-            Reference(float time, Type eventType, int index) : time(time), eventType(eventType), index(index) {}
+            constexpr Reference(float time, Type eventType, int index) : time(time), eventType(eventType), index(index) {}
 
             struct Comparer {
                 constexpr bool operator()(Reference const& lhs, Reference const& rhs) const {
