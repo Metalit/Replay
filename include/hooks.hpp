@@ -85,10 +85,15 @@ struct FunctionToMethod<C, R (*)(T, Ts...)> {
     AUTO_INSTALL_ORIG(name_)                                                                                                                     \
     retval Hook_##name_::hook_##name_(__VA_ARGS__)
 
-void Camera_Pause();
-void Camera_Unpause();
-
-namespace UnityEngine {
-    class Camera;
-}
-extern UnityEngine::Camera* mainCamera;
+#define MAKE_AUTO_HOOK_FIND(name_, mInfo, retval, ...)                                                    \
+    struct Hook_##name_ {                                                                                 \
+        using funcType = retval (*)(__VA_ARGS__);                                                         \
+        constexpr static const char* name() { return #name_; }                                            \
+        static const MethodInfo* getInfo() { return mInfo; }                                              \
+        static funcType* trampoline() { return &name_; }                                                  \
+        static inline retval (*name_)(__VA_ARGS__) = nullptr;                                             \
+        static funcType hook() { return &::Hooking::HookCatchWrapper<&hook_##name_, funcType>::wrapper; } \
+        static retval hook_##name_(__VA_ARGS__);                                                          \
+    };                                                                                                    \
+    AUTO_INSTALL(name_)                                                                                   \
+    retval Hook_##name_::hook_##name_(__VA_ARGS__)

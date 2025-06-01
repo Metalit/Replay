@@ -296,7 +296,7 @@ Replay::Replay ReadVersionedReqlay(std::string const& path) {
     }
 }
 
-Replay::Replay ReadReqlay(std::string const& path) {
+Replay::Replay Parsing::ReadReqlay(std::string const& path) {
     auto replay = ReadVersionedReqlay(path);
 
     auto modified = std::filesystem::last_write_time(path);

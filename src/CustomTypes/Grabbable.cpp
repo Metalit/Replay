@@ -4,9 +4,8 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
+#include "VRUIControls/VRPointer.hpp"
 #include "main.hpp"
-#include "replay.hpp"
-#include "sombrero/shared/FastQuaternion.hpp"
 
 DEFINE_TYPE(ReplayHelpers, Grabbable);
 

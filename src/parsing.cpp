@@ -6,6 +6,7 @@
 #include "GlobalNamespace/BeatmapDifficultySerializedMethods.hpp"
 #include "System/Collections/Generic/LinkedListNode_1.hpp"
 #include "System/Collections/Generic/LinkedList_1.hpp"
+#include "config.hpp"
 #include "metacore/shared/songs.hpp"
 #include "utils.hpp"
 
@@ -58,6 +59,21 @@ static std::string const reqlaySuffix1 = ".reqlay";
 static std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
 static std::string const bsorSuffix = ".bsor";
 static std::string const ssSuffix = ".dat";
+
+static std::string GetReqlaysPath() {
+    static auto path = getDataDir("Replay") + "replays/";
+    return path;
+}
+
+static std::string GetBSORsPath() {
+    static auto path = getDataDir("bl") + "replays/";
+    return path;
+}
+
+static std::string GetSSReplaysPath() {
+    static auto path = getDataDir("ScoreSaber") + "replays/";
+    return path;
+}
 
 static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, Replay::Replay>>& replays) {
     std::vector<std::string> tests;
@@ -175,11 +191,11 @@ void Parsing::RecalculateNotes(Replay::Replay& replay, GlobalNamespace::IReadonl
         if (!cast)
             continue;
         auto noteData = *cast;
-        int mapNoteId = BSORNoteID(noteData);
+        int mapNoteId = Utils::BSORNoteID(noteData);
 
         for (auto iter = notes.begin(); iter != notes.end(); iter++) {
             auto& info = (*iter)->info;
-            int eventNoteId = BSORNoteID(info);
+            int eventNoteId = Utils::BSORNoteID(info);
             if (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000)) {
                 info.scoringType = (int) noteData->scoringType;
                 info.lineIndex = noteData->lineIndex;

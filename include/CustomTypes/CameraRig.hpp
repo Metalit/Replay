@@ -17,14 +17,15 @@ DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour) {
     DECLARE_INSTANCE_FIELD(UnityEngine::GameObject*, progress);
     DECLARE_INSTANCE_FIELD(TMPro::TextMeshProUGUI*, progressText);
 
-    DECLARE_INSTANCE_METHOD(void, Update);
     DECLARE_INSTANCE_METHOD(void, SetPositionAndRotation, UnityEngine::Vector3 pos, UnityEngine::Quaternion rot);
     DECLARE_INSTANCE_METHOD(void, UpdateProgress);
 
-   private:
-    bool pausedLastFrame;
-    std::string mapString;
+    DECLARE_INSTANCE_METHOD(void, SetTrackingEnabled, bool value);
+    DECLARE_INSTANCE_METHOD(UnityEngine::Vector3, GetCameraPosition);
+    DECLARE_INSTANCE_METHOD(UnityEngine::Quaternion, GetCameraRotation);
 
-   public:
-    static CameraRig* Create(UnityEngine::Transform * cameraTransform);
+    DECLARE_STATIC_METHOD(CameraRig*, Create, UnityEngine::Transform * cameraTransform);
+
+   private:
+    std::string mapString;
 };

@@ -2,20 +2,18 @@
 
 #include "config-utils/shared/config-utils.hpp"
 
-inline std::vector<std::pair<int, int>> resolutions = {{640, 480}, {1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}};
-
-inline std::vector<std::string_view> cameraModes = {"Normal", "Smooth Camera", "Third Person"};
+inline std::vector<std::pair<int, int>> Resolutions = {{640, 480}, {1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}};
+inline std::vector<std::string_view> CameraModes = {"Normal", "Smooth Camera", "Third Person"};
 
 enum struct CameraMode { Headset, Smooth, ThirdPerson };
-
 enum struct InputButton { None, SideTrigger, FrontTrigger, LowerButton, UpperButton, JoystickUp, JoystickDown, JoystickLeft, JoystickRight };
-
 enum struct InputController { None, Left, Right };
 
 DECLARE_JSON_STRUCT(Button) {
     VALUE(int, Button);
     VALUE(int, Controller);
 };
+
 DECLARE_JSON_STRUCT(ButtonPair) {
     VALUE(int, ForwardButton);
     VALUE(int, ForwardController);
@@ -40,7 +38,6 @@ DECLARE_JSON_STRUCT(ThirdPerPreset) {
 DECLARE_CONFIG(Config) {
     CONFIG_VALUE(Version, int, "Config Version", 1);
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0);
-    CONFIG_VALUE(RenderLaunch, bool, "Render On Next Launch", false);
     CONFIG_VALUE(LevelsToSelect, std::vector<LevelSelection>, "Select Level On Start", {});
     CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0);
     CONFIG_VALUE(OverrideWidth, int, "Override Resolution Width", -1);
@@ -67,7 +64,6 @@ DECLARE_CONFIG(Config) {
     CONFIG_VALUE(FPS, int, "FPS", 60, "Only applies during renders");
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering");
-    CONFIG_VALUE(Restart, bool, "Restart Game", false, "Restart game after finishing a render");
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished");
 
     CONFIG_VALUE(TimeButton, ButtonPair, "Skip Forward|Skip Backward", {}, "Skips around in the time while watching a replay");
@@ -83,7 +79,11 @@ DECLARE_CONFIG(Config) {
     CONFIG_VALUE(CurrentThirdPerPreset, std::string, "Third Person Preset", "Default");
 
     CONFIG_VALUE(
-        SimMode, bool, "Simulation Mode", false, "Disables score overriding when watching replays, basing the score only off of the movements you made"
+        Simulation,
+        bool,
+        "Simulation Mode",
+        false,
+        "Disables score overriding when watching replays, basing the score only off of the movements you made"
     );
     CONFIG_VALUE(CleanFiles, bool, "Remove Temp Files", true);
 };

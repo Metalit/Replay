@@ -11,52 +11,33 @@
 #include "GlobalNamespace/Saber.hpp"
 #include "UnityEngine/Sprite.hpp"
 #include "replay.hpp"
+#include "config.hpp"
 
-std::string GetReqlaysPath();
+namespace Utils {
+    std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
+    std::string GetDifficultyName(int difficulty);
 
-std::string GetBSORsPath();
+    GlobalNamespace::BeatmapCharacteristicSO* GetCharacteristic(std::string serializedName);
+    std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* characteristic);
+    std::string GetCharacteristicName(std::string serializedName);
 
-std::string GetSSReplaysPath();
+    std::string GetMapString();
 
-std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
+    std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail);
 
-std::string GetDifficultyName(int difficulty);
+    GlobalNamespace::NoteCutInfo
+    GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, Replay::Events::CutInfo const& info);
+    GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-GlobalNamespace::BeatmapCharacteristicSO* GetCharacteristic(std::string serializedName);
+    float ModifierMultiplier(Replay::Replay const& replay, bool failed);
+    float EnergyForNote(Replay::Events::NoteInfo const& noteEvent);
+    int ScoreForNote(Replay::Events::Note const& note, bool max = false);
 
-std::string GetCharacteristicName(GlobalNamespace::BeatmapCharacteristicSO* characteristic);
+    int BSORNoteID(GlobalNamespace::NoteData* note);
+    int BSORNoteID(Replay::Events::NoteInfo const& note);
 
-std::string GetCharacteristicName(std::string serializedName);
+    bool IsButtonDown(Button const& button);
+    int IsButtonDown(ButtonPair const& button);
 
-std::string GetMapString();
-
-std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail);
-
-GlobalNamespace::NoteCutInfo
-GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, const class ReplayNoteCutInfo& info);
-
-GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
-
-float ModifierMultiplier(Replay::Replay const& replay, bool failed);
-
-float EnergyForNote(Replay::Events::NoteInfo const& noteEvent);
-
-int ScoreForNote(Replay::Events::Note const& note, bool max = false);
-
-int BSORNoteID(GlobalNamespace::NoteData* note);
-int BSORNoteID(Replay::Events::NoteInfo const& note);
-
-struct MapPreview {
-    float energy;
-    int combo;
-    int score;
-    int maxScore;
-};
-
-MapPreview MapAtTime(Replay::Replay const& replay, float time);
-
-bool IsButtonDown(const class Button& button);
-
-int IsButtonDown(const class ButtonPair& button);
-
-void PlayDing();
+    void PlayDing();
+}

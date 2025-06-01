@@ -104,11 +104,6 @@
         "id": "metacore",
         "versionRange": "^1.2.2",
         "additionalData": {}
-      },
-      {
-        "id": "songcore",
-        "versionRange": "^1.1.20",
-        "additionalData": {}
       }
     ]
   },
@@ -191,21 +186,6 @@
         }
       },
       "version": "1.2.0"
-    },
-    {
-      "dependency": {
-        "id": "songcore",
-        "versionRange": "=1.1.21",
-        "additionalData": {
-          "soLink": "https://github.com/raineaeternal/Quest-SongCore/releases/download/v1.1.21/libsongcore.so",
-          "debugSoLink": "https://github.com/raineaeternal/Quest-SongCore/releases/download/v1.1.21/debug_libsongcore.so",
-          "overrideSoName": "libsongcore.so",
-          "modLink": "https://github.com/raineaeternal/Quest-SongCore/releases/download/v1.1.21/SongCore.qmod",
-          "branchName": "version/v1_1_21",
-          "cmake": true
-        }
-      },
-      "version": "1.1.21"
     },
     {
       "dependency": {

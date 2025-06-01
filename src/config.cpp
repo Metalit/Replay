@@ -5,7 +5,6 @@
 #include "GlobalNamespace/IPreviewMediaData.hpp"
 #include "HMUI/TextSegmentedControl.hpp"
 #include "HMUI/Touchable.hpp"
-#include "MenuSelection.hpp"
 #include "System/Action.hpp"
 #include "System/Action_2.hpp"
 #include "System/Collections/Generic/Dictionary_2.hpp"
@@ -20,6 +19,7 @@
 #include "bsml/shared/Helpers/creation.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
 #include "main.hpp"
+#include "manager.hpp"
 #include "metacore/shared/delegates.hpp"
 #include "metacore/shared/ui.hpp"
 #include "utils.hpp"
@@ -32,36 +32,43 @@ DEFINE_TYPE(ReplaySettings, ModSettings)
 using namespace GlobalNamespace;
 using namespace ReplaySettings;
 
-ModSettings* modSettingsInstance = nullptr;
+MainSettings* MainSettings::instance = nullptr;
+RenderSettings* RenderSettings::instance = nullptr;
+InputSettings* InputSettings::instance = nullptr;
 
-std::vector<std::string_view> buttonNames = {
+static std::vector<std::string_view> const ButtonNames = {
     "None", "Side Trigger", "Front Trigger", "A/X Button", "B/Y Button", "Joystick Up", "Joystick Down", "Joystick Left", "Joystick Right"
 };
-std::vector<std::string_view> controllerNames = {"Left", "Right", "Both"};
+static std::vector<std::string_view> const ControllerNames = {"Left", "Right", "Both"};
+static std::vector<std::string> const ResolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
+static std::vector<std::string> const WallStrings = {"Transparent", "Textured", "Distorted"};
+static std::vector<std::string> const MirrorStrings = {"Off", "Low", "Medium", "High"};
+static std::vector<std::string> const AAStrings = {"0", "2", "4", "8"};
 
-void CreateInputDropdowns(
+template <class T>
+static inline T* LazyCreate(T*& instance, char const* name) {
+    if (!instance) {
+        instance = BSML::Helpers::CreateViewController<T*>();
+        instance->name = name;
+    }
+    return instance;
+}
+
+static void CreateInputDropdowns(
     BSML::Lite::TransformWrapper parent,
-    std::string_view name,
-    std::string_view hint,
+    std::string name,
+    std::string hint,
     int buttonValue,
     int controllerValue,
-    auto buttonCallback,
-    auto controllerCallback
+    std::function<void(int)> buttonCallback,
+    std::function<void(int)> controllerCallback
 ) {
     static ConstString labelName("Label");
 
     auto layout = BSML::Lite::CreateHorizontalLayoutGroup(parent);
     layout->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredHeight = 7;
 
-    BSML::DropdownListSetting* dropdown =
-        BSML::Lite::CreateDropdown(layout, name, buttonNames[buttonValue], buttonNames, [callback = std::move(buttonCallback)](StringW value) {
-            for (int i = 0; i < buttonNames.size(); i++) {
-                if (value == buttonNames[i]) {
-                    callback(i);
-                    break;
-                }
-            }
-        });
+    BSML::DropdownListSetting* dropdown = MetaCore::UI::CreateDropdownEnum(layout, name, buttonValue, ButtonNames, buttonCallback);
     BSML::Lite::AddHoverHint(dropdown, hint);
     dropdown->GetComponent<UnityEngine::RectTransform*>()->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 30);
 
@@ -69,20 +76,7 @@ void CreateInputDropdowns(
     dropdownParent->Find(labelName)->GetComponent<UnityEngine::RectTransform*>()->anchorMax = {2, 1};
     dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 53;
 
-    dropdown = BSML::Lite::CreateDropdown(
-        layout,
-        "  Controller",
-        controllerNames[controllerValue],
-        controllerNames,
-        [callback = std::move(controllerCallback)](StringW value) {
-            for (int i = 0; i < controllerNames.size(); i++) {
-                if (value == controllerNames[i]) {
-                    callback(i);
-                    break;
-                }
-            }
-        }
-    );
+    dropdown = MetaCore::UI::CreateDropdownEnum(layout, "  Controller", controllerValue, ControllerNames, controllerCallback);
     BSML::Lite::AddHoverHint(dropdown, hint);
     dropdown->GetComponent<UnityEngine::RectTransform*>()->SetSizeWithCurrentAnchors(UnityEngine::RectTransform::Axis::Horizontal, 22);
 
@@ -91,7 +85,7 @@ void CreateInputDropdowns(
     dropdownParent->GetComponent<UnityEngine::UI::LayoutElement*>()->preferredWidth = 38;
 }
 
-inline UnityEngine::UI::Button* CreateSmallButton(BSML::Lite::TransformWrapper parent, std::string text, auto callback) {
+static inline UnityEngine::UI::Button* CreateSmallButton(BSML::Lite::TransformWrapper parent, std::string text, auto callback) {
     auto button = BSML::Lite::CreateUIButton(parent, text, callback);
     auto fitter = button->gameObject->template AddComponent<UnityEngine::UI::ContentSizeFitter*>();
     fitter->horizontalFit = UnityEngine::UI::ContentSizeFitter::FitMode::PreferredSize;
@@ -99,12 +93,12 @@ inline UnityEngine::UI::Button* CreateSmallButton(BSML::Lite::TransformWrapper p
     return button;
 }
 
-std::pair<std::string, std::string> split(std::string const& str, auto delimiter) {
+static std::pair<std::string, std::string> split(std::string const& str, auto delimiter) {
     auto pos = str.find(delimiter);
     return std::make_pair(str.substr(0, pos), str.substr(pos + 1, std::string::npos));
 }
 
-inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
+static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
     auto strs = split(configValue.GetName(), "|");
     auto value = configValue.GetValue();
     CreateInputDropdowns(
@@ -143,7 +137,7 @@ inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUt
     );
 }
 
-inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<Button>& configValue) {
+static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<Button>& configValue) {
     auto value = configValue.GetValue();
     CreateInputDropdowns(
         parent,
@@ -164,23 +158,7 @@ inline void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUt
     );
 }
 
-inline UnityEngine::Transform* MakeVertical(BSML::Lite::TransformWrapper parent) {
-    auto vertical = BSML::Lite::CreateVerticalLayoutGroup(parent);
-    vertical->childControlHeight = false;
-    vertical->childForceExpandHeight = false;
-    vertical->spacing = 1;
-    return vertical->transform;
-}
-
-inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self, float verticalOffset = 0) {
-    self->gameObject->AddComponent<HMUI::Touchable*>();
-    auto ret = MakeVertical(self);
-    if (verticalOffset != 0)
-        self->rectTransform->sizeDelta = {0, verticalOffset * 2};
-    return ret;
-}
-
-inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+static BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
     auto object = BSML::Lite::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), [&configValue, callback](bool value) mutable {
         configValue.SetValue(value);
         callback(value);
@@ -191,10 +169,21 @@ inline BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper pa
     return object;
 }
 
-std::vector<std::string> const resolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
-std::vector<std::string> const wallStrings = {"Transparent", "Textured", "Distorted"};
-std::vector<std::string> const mirrorStrings = {"Off", "Low", "Medium", "High"};
-std::vector<std::string> const aaStrings = {"0", "2", "4", "8"};
+static inline UnityEngine::Transform* MakeVertical(BSML::Lite::TransformWrapper parent) {
+    auto vertical = BSML::Lite::CreateVerticalLayoutGroup(parent);
+    vertical->childControlHeight = false;
+    vertical->childForceExpandHeight = false;
+    vertical->spacing = 1;
+    return vertical->transform;
+}
+
+static inline UnityEngine::Transform* MakeLayout(HMUI::ViewController* self, float verticalOffset = 0) {
+    self->gameObject->AddComponent<HMUI::Touchable*>();
+    auto ret = MakeVertical(self);
+    if (verticalOffset != 0)
+        self->rectTransform->sizeDelta = {0, verticalOffset * 2};
+    return ret;
+}
 
 void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if (!firstActivation)
@@ -219,6 +208,14 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
 
+void MainSettings::OnDestroy() {
+    instance = nullptr;
+}
+
+MainSettings* MainSettings::GetInstance() {
+    return LazyCreate(instance, "ReplayMainSettings");
+}
+
 void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if (!firstActivation)
         return;
@@ -231,13 +228,13 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         rendering->gameObject->active = selected == 1;
     })->transform->SetAsFirstSibling();
 
-    AddConfigValueIncrementEnum(graphics, getConfig().Walls, wallStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Walls, WallStrings);
 
     AddConfigValueToggle(graphics, getConfig().Bloom);
 
-    AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, mirrorStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Mirrors, MirrorStrings);
 
-    AddConfigValueIncrementEnum(graphics, getConfig().AntiAlias, aaStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().AntiAlias, AAStrings);
 
     auto shockwaveIncrement = AddConfigValueIncrementInt(graphics, getConfig().Shockwaves, 1, 1, 20);
     auto incrementObject = shockwaveIncrement->transform->GetChild(1)->gameObject;
@@ -250,7 +247,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     shockwaveToggle->transform->SetParent(shockwaveIncrement->transform, false);
     UnityEngine::Object::Destroy(shockwaveToggle->text->gameObject);
 
-    AddConfigValueIncrementEnum(graphics, getConfig().Resolution, resolutionStrings);
+    AddConfigValueIncrementEnum(graphics, getConfig().Resolution, ResolutionStrings);
 
     auto bitrateSlider = AddConfigValueSliderIncrement(graphics, getConfig().Bitrate, 2500, 2500, 25000);
     bitrateSlider->isInt = true;
@@ -267,7 +264,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(rendering);
 
     beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", [this]() {
-        RenderLevelInConfig();
+        Manager::BeginQueue();
         OnEnable();
     });
 
@@ -278,13 +275,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     queueList = BSML::Lite::CreateScrollableList(rendering, {90, 51}, [this](int idx) {
         queueList->tableView->ClearSelection();
-        if (modSettingsInstance) {
-            auto delegate = custom_types::MakeDelegate<System::Action*>((std::function<void()>) [idx]() { SelectLevelInConfig(idx); });
-            modSettingsInstance->_parentFlowCoordinator->DismissFlowCoordinator(
-                modSettingsInstance, HMUI::ViewController::AnimationDirection::Horizontal, delegate, false
-            );
-        } else
-            SelectLevelInConfig(idx);
+        Manager::SelectLevelInConfig(idx);
     });
     queueList->listStyle = BSML::CustomListTableData::ListStyle::List;
     queueList->expandCell = true;
@@ -323,6 +314,19 @@ void RenderSettings::UpdateCover(BeatmapLevel* level, UnityEngine::Sprite* cover
     queueList->tableView->ReloadData();
 }
 
+static void AddCoverlessCell(BSML::CustomListTableData* list, LevelSelection const& level, BeatmapLevel* beatmap) {
+    std::string name = beatmap->songName;
+    std::string difficulty = Utils::GetDifficultyName(level.Difficulty);
+    std::string characteristic = Utils::GetCharacteristicName(level.Characteristic);
+    std::string toptext = "<voffset=0.1em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
+    std::string author = beatmap->songAuthorName;
+    std::string mapper = "";
+    if (!beatmap->allMappers.Empty())
+        mapper = fmt::format(" [{}]", beatmap->allMappers->First());
+    std::string subtext = fmt::format("{}{} - Replay Index {}", author, mapper, level.ReplayIndex + 1);
+    list->data->Add(BSML::CustomCellInfo::construct(toptext, subtext, nullptr));
+}
+
 void RenderSettings::OnEnable() {
     auto levels = getConfig().LevelsToSelect.GetValue();
     bool empty = levels.empty();
@@ -332,23 +336,14 @@ void RenderSettings::OnEnable() {
         clearQueueButton->interactable = !empty;
     if (queueList) {
         queueList->data->Clear();
-        for (auto& selection : levels) {
-            auto level = BSML::Helpers::GetMainFlowCoordinator()->_beatmapLevelsModel->GetBeatmapLevel(selection.ID);
-            if (!level) {
+        for (auto& level : levels) {
+            auto beatmap = BSML::Helpers::GetMainFlowCoordinator()->_beatmapLevelsModel->GetBeatmapLevel(level.ID);
+            if (!beatmap) {
                 queueList->data->Add(BSML::CustomCellInfo::construct("Couldn't load level", "Exit and reopen settings to try again", nullptr));
                 continue;
             }
-            std::string name = level->songName;
-            std::string difficulty = GetDifficultyName(selection.Difficulty);
-            std::string characteristic = GetCharacteristicName(selection.Characteristic);
-            std::string toptext = "<voffset=0.1em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
-            std::string author = level->songAuthorName;
-            std::string mapper = "";
-            if (!level->allMappers.Empty())
-                mapper = fmt::format(" [{}]", level->allMappers->First());
-            std::string subtext = fmt::format("{}{} - Replay Index {}", author, mapper, selection.ReplayIndex + 1);
-            queueList->data->Add(BSML::CustomCellInfo::construct(toptext, subtext, nullptr));
-            GetCover(level);
+            AddCoverlessCell(queueList, level, beatmap);
+            GetCover(beatmap);
         }
         queueList->tableView->ReloadData();
     }
@@ -356,6 +351,14 @@ void RenderSettings::OnEnable() {
 
 void RenderSettings::OnDisable() {
     StopAllCoroutines();
+}
+
+void RenderSettings::OnDestroy() {
+    instance = nullptr;
+}
+
+RenderSettings* RenderSettings::GetInstance() {
+    return LazyCreate(instance, "ReplayRenderSettings");
 }
 
 void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -476,7 +479,7 @@ void InputSettings::DidActivate(bool firstActivation, bool addedToHierarchy, boo
 }
 
 void InputSettings::OnEnable() {
-    if (!positionSettings[0] || !rotationSettings[0] || !removePresetButton)
+    if (!positionSettings[0] || !rotationSettings[0] || !removePresetButton || !presetDropdown)
         return;
     auto pos = getConfig().ThirdPerPos.GetValue();
     positionSettings[0]->set_Value(pos.x);
@@ -487,23 +490,13 @@ void InputSettings::OnEnable() {
     rotationSettings[1]->set_Value(rot.y);
     rotationSettings[2]->set_Value(rot.z);
     removePresetButton->interactable = getConfig().ThirdPerPresets.GetValue().size() > 1;
-    // all this to update a dropdown's values
+    // update presets dropdown
     auto presets = getConfig().ThirdPerPresets.GetValue();
     auto preset = getConfig().CurrentThirdPerPreset.GetValue();
-    std::vector<std::string_view> presetNames;
-    for (auto& [name, _] : presets)
-        presetNames.emplace_back(name);
-    auto texts = ListW<System::Object*>::New(presetNames.size());
-    int idx = 0;
-    for (int i = 0; i < presetNames.size(); i++) {
-        texts->Add((System::Object*) StringW(presetNames[i]).convert());
-        if (presetNames[i] == preset)
-            idx = i;
-    }
-    presetDropdown->values = texts;
-    presetDropdown->UpdateChoices();
-    if (!texts.empty())
-        presetDropdown->set_Value(texts[idx]);
+    std::vector<std::string> presetNames;
+    for (auto& entry : presets)
+        presetNames.emplace_back(entry.first);
+    MetaCore::UI::SetDropdownValues(presetDropdown, presetNames, preset);
 }
 
 void InputSettings::OnDisable() {
@@ -515,30 +508,25 @@ void InputSettings::OnDisable() {
     getConfig().ThirdPerPresets.SetValue(presets);
 }
 
-void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    modSettingsInstance = this;
+void InputSettings::OnDestroy() {
+    instance = nullptr;
+}
 
+InputSettings* InputSettings::GetInstance() {
+    return LazyCreate(instance, "ReplayInputSettings");
+}
+
+void ModSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if (!firstActivation)
         return;
-
-    static SafePtrUnity<MainSettings> mainSettings;
-    if (!mainSettings)
-        mainSettings = BSML::Helpers::CreateViewController<MainSettings*>();
-    static SafePtrUnity<RenderSettings> renderSettings;
-    if (!renderSettings)
-        renderSettings = BSML::Helpers::CreateViewController<RenderSettings*>();
-    static SafePtrUnity<InputSettings> inputSettings;
-    if (!inputSettings)
-        inputSettings = BSML::Helpers::CreateViewController<InputSettings*>();
 
     showBackButton = true;
     static ConstString title("Replay Settings");
     SetTitle(title, HMUI::ViewController::AnimationType::In);
 
-    ProvideInitialViewControllers(mainSettings.ptr(), renderSettings.ptr(), inputSettings.ptr(), nullptr, nullptr);
+    ProvideInitialViewControllers(MainSettings::GetInstance(), RenderSettings::GetInstance(), InputSettings::GetInstance(), nullptr, nullptr);
 }
 
 void ModSettings::BackButtonWasPressed(HMUI::ViewController* topViewController) {
     _parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
-    modSettingsInstance = nullptr;
 }

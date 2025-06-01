@@ -1,6 +1,5 @@
 #include "CustomTypes/ScoringElement.hpp"
 
-#include "Formats/EventReplay.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "main.hpp"
 #include "utils.hpp"
@@ -26,45 +25,49 @@ int Element::get_executionOrder() {
     return executionOrder;
 }
 
-ScoringElement* MakeFakeScoringElement(NoteEvent const& noteEvent) {
-    auto noteData = CRASH_UNLESS(il2cpp_utils::New<NoteData*>());
-    if (noteEvent.info.eventType == NoteEventInfo::Type::BOMB)
-        noteData->gameplayType = NoteData::GameplayType::Bomb;
+ScoringElement* MakeFakeScoringElement(Replay::Events::Note const& noteEvent) {
+    NoteData::GameplayType gameplayType;
+    if (noteEvent.info.eventType == Replay::Events::NoteInfo::Type::BOMB)
+        gameplayType = NoteData::GameplayType::Bomb;
     else {
         switch ((NoteData::ScoringType) noteEvent.info.scoringType) {
             case NoteData::ScoringType::ChainHead:
             case NoteData::ScoringType::ChainHeadArcTail:
-                noteData->gameplayType = NoteData::GameplayType::BurstSliderHead;
+                gameplayType = NoteData::GameplayType::BurstSliderHead;
                 break;
             case NoteData::ScoringType::ChainLink:
             case NoteData::ScoringType::ChainLinkArcHead:
-                noteData->gameplayType = NoteData::GameplayType::BurstSliderElement;
+                gameplayType = NoteData::GameplayType::BurstSliderElement;
                 break;
             default:
-                noteData->gameplayType = NoteData::GameplayType::Normal;
+                gameplayType = NoteData::GameplayType::Normal;
                 break;
         }
     }
-    noteData->scoringType = noteEvent.info.scoringType;
-    if ((int) noteData->scoringType == -2)
-        noteData->scoringType = NoteData::ScoringType::Normal;
-    noteData->lineIndex = noteEvent.info.lineIndex;
-    noteData->noteLineLayer = noteEvent.info.lineLayer;
-    noteData->colorType = noteEvent.info.colorType;
-    noteData->cutDirection = noteEvent.info.cutDirection;
-    noteData->_time_k__BackingField = noteEvent.time;
+    NoteData::ScoringType scoringType = noteEvent.info.scoringType;
+    if ((int) scoringType == -2)
+        scoringType = NoteData::ScoringType::Normal;
+    int lineIndex = noteEvent.info.lineIndex;
+    int noteLineLayer = noteEvent.info.lineLayer;
+    ColorType colorType = noteEvent.info.colorType;
+    NoteCutDirection cutDirection = noteEvent.info.cutDirection;
+    float time = noteEvent.time;
 
-    auto scoringElement = CRASH_UNLESS(il2cpp_utils::New<Element*>());
+    // hopefully nothing needs the uninitialized fields
+    auto noteData =
+        NoteData::New_ctor(time, 0, 0, lineIndex, noteLineLayer, noteLineLayer, gameplayType, scoringType, colorType, cutDirection, 0, 0, 0, 0, 0, 0);
+
+    auto scoringElement = il2cpp_utils::New<Element*>().value();
     scoringElement->noteData = noteData;
     scoringElement->isFinished = true;
     switch (noteEvent.info.eventType) {
-        case NoteEventInfo::Type::GOOD:
-            scoringElement->cutScore = ScoreForNote(noteEvent);
+        case Replay::Events::NoteInfo::Type::GOOD:
+            scoringElement->cutScore = Utils::ScoreForNote(noteEvent);
             scoringElement->executionOrder = scoringElement->maxPossibleCutScore;
             scoringElement->multiplierType = Element::MultiplierType::Positive;
             scoringElement->bestMultiplierType = Element::MultiplierType::Positive;
             break;
-        case NoteEventInfo::Type::BOMB:
+        case Replay::Events::NoteInfo::Type::BOMB:
             scoringElement->cutScore = 0;
             scoringElement->executionOrder = 100000;
             scoringElement->multiplierType = Element::MultiplierType::Negative;

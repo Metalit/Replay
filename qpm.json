@@ -103,11 +103,6 @@
       "id": "metacore",
       "versionRange": "^1.2.2",
       "additionalData": {}
-    },
-    {
-      "id": "songcore",
-      "versionRange": "^1.1.20",
-      "additionalData": {}
     }
   ]
 }

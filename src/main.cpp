@@ -1,94 +1,18 @@
 #include "main.hpp"
 
-#include "CustomTypes/ReplayMenu.hpp"
 #include "CustomTypes/ReplaySettings.hpp"
-#include "GlobalNamespace/SinglePlayerLevelSelectionFlowCoordinator.hpp"
-#include "HMUI/ViewController.hpp"
-#include "MenuSelection.hpp"
 #include "bsml/shared/BSML.hpp"
-#include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "config.hpp"
 #include "custom-types/shared/register.hpp"
 #include "hollywood/shared/hollywood.hpp"
 #include "hooks.hpp"
-#include "manager.hpp"
-#include "songcore/shared/SongCore.hpp"
-#include "utils.hpp"
+#include "config.hpp"
 
 using namespace GlobalNamespace;
 
 modloader::ModInfo modInfo = {MOD_ID, VERSION, 0};
 
 bool recorderInstalled = false;
-
-// MAKE_AUTO_HOOK_MATCH(StandardLevelDetailView_RefreshContent, &StandardLevelDetailView::RefreshContent, void, StandardLevelDetailView* self) {
-//     Menu::EnsureSetup(self);
-//     Manager::RefreshLevelReplays();
-//     Menu::CheckMultiplayer();
-
-//     StandardLevelDetailView_RefreshContent(self);
-// }
-
-MAKE_AUTO_HOOK_MATCH(
-    SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange,
-    &SinglePlayerLevelSelectionFlowCoordinator::LevelSelectionFlowCoordinatorTopViewControllerWillChange,
-    void,
-    SinglePlayerLevelSelectionFlowCoordinator* self,
-    HMUI::ViewController* oldViewController,
-    HMUI::ViewController* newViewController,
-    HMUI::ViewController::AnimationType animationType
-) {
-    if (newViewController->get_name() == "ReplayViewController") {
-        self->SetLeftScreenViewController(nullptr, animationType);
-        self->SetRightScreenViewController(nullptr, animationType);
-        self->SetBottomScreenViewController(nullptr, animationType);
-        self->SetTitle("REPLAY", animationType);
-        self->showBackButton = true;
-        return;
-    }
-
-    SinglePlayerLevelSelectionFlowCoordinator_LevelSelectionFlowCoordinatorTopViewControllerWillChange(
-        self, oldViewController, newViewController, animationType
-    );
-}
-
-MAKE_AUTO_HOOK_MATCH(
-    SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed,
-    &SinglePlayerLevelSelectionFlowCoordinator::BackButtonWasPressed,
-    void,
-    SinglePlayerLevelSelectionFlowCoordinator* self,
-    HMUI::ViewController* topViewController
-) {
-    if (topViewController->name == "ReplayViewController") {
-        self->DismissViewController(topViewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
-        return;
-    }
-
-    SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);
-}
-
-static bool selectedAlready = false;
-static bool doRender = true;
-static int nonRenderIdx = 0;
-
-void OnSongsLoaded(std::span<SongCore::SongLoader::CustomBeatmapLevel* const>) {
-    if (!selectedAlready) {
-        BSML::MainThreadScheduler::ScheduleNextFrame([]() {
-            logger.debug("Selecting level {} {}", doRender, nonRenderIdx);
-            selectedAlready = true;
-            if (doRender)
-                RenderLevelInConfig();
-            else
-                SelectLevelInConfig(nonRenderIdx);
-        });
-    }
-}
-
-void SelectLevelOnNextSongRefresh(bool render, int idx) {
-    selectedAlready = false;
-    doRender = render;
-    nonRenderIdx = idx;
-}
 
 extern "C" void setup(CModInfo* info) {
     *info = modInfo.to_c();
@@ -107,17 +31,13 @@ extern "C" void late_load() {
     il2cpp_functions::Init();
     custom_types::Register::AutoRegister();
 
-    // fix proximity sensor state too
+    // fix proximity sensor state just in case
+    // (there is an option to disable it non-indefinitely for this exact purpose but I can't be bothered)
     Hollywood::SetScreenOn(false);
 
     BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);
 
-    SongCore::API::Loading::GetSongsLoadedEvent().addCallback(OnSongsLoaded);
-
     Hooks::Install();
-
-    selectedAlready = !getConfig().RenderLaunch.GetValue();
-    getConfig().RenderLaunch.SetValue(false);
 
     if (getConfig().Version.GetValue() == 1) {
         logger.info("Migrating config from v1 to v2");

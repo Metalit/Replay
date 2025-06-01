@@ -1,659 +1,227 @@
 #include "manager.hpp"
 
-#include "BeatSaber/Settings/Settings.hpp"
 #include "CustomTypes/ReplayMenu.hpp"
-#include "Formats/EventReplay.hpp"
-#include "Formats/FrameReplay.hpp"
-#include "GlobalNamespace/AudioManagerSO.hpp"
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
-#include "GlobalNamespace/BeatmapCallbacksController.hpp"
-#include "GlobalNamespace/BeatmapObjectSpawnController.hpp"
-#include "GlobalNamespace/BoolSO.hpp"
-#include "GlobalNamespace/GameEnergyUIPanel.hpp"
-#include "GlobalNamespace/IRenderingParamsApplicator.hpp"
-#include "GlobalNamespace/LevelCollectionNavigationController.hpp"
-#include "GlobalNamespace/LevelSelectionNavigationController.hpp"
-#include "GlobalNamespace/NoteCutInfo.hpp"
-#include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
-#include "GlobalNamespace/NoteData.hpp"
-#include "GlobalNamespace/ObstacleData.hpp"
-#include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
-#include "GlobalNamespace/PlayerTransforms.hpp"
-#include "GlobalNamespace/PrepareLevelCompletionResults.hpp"
-#include "GlobalNamespace/Saber.hpp"
-#include "GlobalNamespace/SceneType.hpp"
-#include "GlobalNamespace/ScoreController.hpp"
-#include "GlobalNamespace/SettingsApplicatorSO.hpp"
+#include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "GlobalNamespace/MenuLightsManager.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
-#include "GlobalNamespace/StandardLevelDetailViewController.hpp"
-#include "GlobalNamespace/VRRenderingParamsSetup.hpp"
-#include "MenuSelection.hpp"
-#include "System/Action.hpp"
-#include "System/Action_1.hpp"
-#include "System/Collections/Generic/HashSet_1.hpp"
-#include "UnityEngine/Application.hpp"
-#include "UnityEngine/AudioSource.hpp"
-#include "UnityEngine/QualitySettings.hpp"
-#include "UnityEngine/Resources.hpp"
-#include "UnityEngine/Time.hpp"
-#include "UnityEngine/Transform.hpp"
-#include "UnityEngine/XR/XRSettings.hpp"
+#include "camera.hpp"
 #include "config.hpp"
-#include "main.hpp"
-#include "math.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
+#include "metacore/shared/internals.hpp"
 #include "metacore/shared/songs.hpp"
-#include "metacore/shared/stats.hpp"
-#include "pause.hpp"
+#include "parsing.hpp"
+#include "playback.hpp"
 #include "utils.hpp"
 
-using namespace GlobalNamespace;
+static bool replaying = false;
+static bool rendering = false;
+static bool paused = false;
 
-struct NoteCompare {
-    constexpr bool operator()(NoteController const* const& lhs, NoteController const* const& rhs) const {
-        if (lhs->_noteData->_time_k__BackingField == rhs->_noteData->_time_k__BackingField)
-            return lhs < rhs;
-        return lhs->_noteData->_time_k__BackingField < rhs->_noteData->_time_k__BackingField;
+static std::vector<std::pair<std::string, Replay::Replay>> replays;
+static bool local = true;
+
+std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Manager::customDataCallbacks;
+
+static void SelectFromConfig(int index, bool render) {
+    logger.debug("Selecting level, render: {}, idx: {}", render, index);
+
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    if (index >= levels.size() || index < 0)
+        return;
+    auto levelToSelect = levels[index];
+
+    if (render) {
+        levels.erase(levels.begin() + index);
+        getConfig().LevelsToSelect.SetValue(levels);
     }
-};
 
-std::vector<std::pair<std::string, ReplayWrapper>> currentReplays;
+    auto main = MetaCore::Game::GetMainFlowCoordinator();
+    auto pack = main->_beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
+    if (!pack)
+        pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
+    auto level = main->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
 
-Quaternion ApplyTilt(Quaternion const& rotation, float tilt) {
-    if (tilt == 0)
-        return rotation;
-    // rotate on local x axis
-    return Sombrero::QuaternionMultiply(rotation, Quaternion::Euler({tilt, 0, 0}));
+    logger.debug("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
+    logger.debug("found level {} ({}) in pack {} ({})", fmt::ptr(level), level ? level->songName : "", fmt::ptr(pack), pack ? pack->packName : "");
+
+    if (!level) {
+        // if we're going through the render queue, go ahead and try to do the next one
+        if (render)
+            SelectFromConfig(index, render);
+        return;
+    }
+
+    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(levelToSelect.Characteristic), levelToSelect.Difficulty, levelToSelect.ID}, pack);
+
+    getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
+    if (render) {
+        Manager::StartReplay(true);
+        main->_soloFreePlayFlowCoordinator->StartLevel(nullptr, false);
+    } else
+        Menu::ReplayViewController::Present();
 }
 
-namespace Manager {
+void Manager::SelectLevelInConfig(int index) {
+    SelectFromConfig(index, false);
+}
 
-    int currentFrame = 0;
-    int frameCount = 0;
-    float lerpAmount = 0;
-    float lastCutTime = -1;
+void Manager::BeginQueue() {
+    SelectFromConfig(0, true);
+}
 
-    std::map<std::string, std::vector<CustomDataCallbackType>> customDataCallbacks;
+void Manager::SaveCurrentLevelInConfig() {}
 
-    namespace Objects {
-        bool hasObjects = false;
-        Saber *leftSaber, *rightSaber;
-        PlayerHeadAndObstacleInteraction* obstacleChecker;
-        PlayerTransforms* playerTransforms;
-        PauseMenuManager* pauseManager;
-        ScoreController* scoreController;
-        ComboController* comboController;
-        GameEnergyCounter* gameEnergyCounter;
-        GameEnergyUIPanel* energyBar;
-        NoteCutSoundEffectManager* noteSoundManager;
-        AudioManagerSO* audioManager;
-        BeatmapObjectManager* beatmapObjectManager;
-        BeatmapCallbacksController* callbackController;
+void Manager::RemoveCurrentLevelFromConfig() {}
 
-        void GetObjects() {
-            auto sabers = UnityEngine::Resources::FindObjectsOfTypeAll<Saber*>();
-            leftSaber = sabers->First([](Saber* s) { return s->get_saberType() == SaberType::SaberA; });
-            rightSaber = sabers->First([](Saber* s) { return s->get_saberType() == SaberType::SaberB; });
-            obstacleChecker = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerHeadAndObstacleInteraction*>()->First();
-            playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>()->First();
-            pauseManager = UnityEngine::Resources::FindObjectsOfTypeAll<PauseMenuManager*>()->First();
-            auto hasOtherObjects = UnityEngine::Resources::FindObjectsOfTypeAll<PrepareLevelCompletionResults*>()->First();
-            scoreController = (ScoreController*) hasOtherObjects->_scoreController;
-            comboController = hasOtherObjects->_comboController;
-            gameEnergyCounter = hasOtherObjects->_gameEnergyCounter;
-            energyBar = UnityEngine::Resources::FindObjectsOfTypeAll<GameEnergyUIPanel*>()->First();
-            noteSoundManager = UnityEngine::Resources::FindObjectsOfTypeAll<NoteCutSoundEffectManager*>()->First();
-            audioManager = UnityEngine::Resources::FindObjectsOfTypeAll<AudioManagerSO*>()->First();
-            beatmapObjectManager = noteSoundManager->_beatmapObjectManager;
-            callbackController = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapObjectSpawnController*>()->First()->_beatmapCallbacksController;
-            hasObjects = true;
-        }
+bool Manager::IsCurrentLevelInConfig() {
+    auto selection = MetaCore::Songs::GetSelectedKey();
+    if (!selection.IsValid())
+        return false;
+    for (auto level : getConfig().LevelsToSelect.GetValue()) {
+        if (level.ID == selection.levelId && level.Characteristic == selection.beatmapCharacteristic->_serializedName &&
+            level.Difficulty == (int) selection.difficulty && level.ReplayIndex == getConfig().LastReplayIdx.GetValue())
+            return true;
     }
+    return false;
+}
 
-    namespace Camera {
-        bool rendering = false;
-        bool muxingFinished = true;
-        bool moving = false;
+void Manager::SetExternalReplay(std::string path, Replay::Replay replay) {
+    replays = {{path, replay}};
+    local = false;
+    Menu::ReplayViewController::GetInstance()->UpdateUI(false);
+}
 
-        long lastProgressUpdate = 0;
+bool Manager::AreReplaysLocal() {
+    return local;
+}
 
-        Vector3 smoothPosition;
-        Quaternion smoothRotation;
+std::vector<std::pair<std::string, Replay::Replay>>& Manager::GetReplays() {
+    return replays;
+}
 
-        void UpdateThirdPerson() {
-            smoothPosition = (Vector3) getConfig().ThirdPerPos.GetValue();
-            smoothRotation = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
-        }
+void Manager::StartReplay(bool render) {
+    if (replays.empty())
+        return;
+    auto& replay = GetCurrentReplay();
 
-        void UpdateTime() {
-            if (rendering && UnityEngine::Time::get_unscaledTime() - lastProgressUpdate >= 15) {
-                logger.info("Current song time: {:.2f}", MetaCore::Stats::GetSongTime());
-                lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
-            }
-            if (GetMode() == (int) CameraMode::Smooth) {
-                float deltaTime = UnityEngine::Time::get_deltaTime();
-                smoothPosition = EaseLerp(
-                    smoothPosition, GetFrame().head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue()
-                );
-                smoothRotation = Slerp(smoothRotation, GetFrame().head.rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
-            } else if (GetMode() == (int) CameraMode::ThirdPerson)
-                UpdateThirdPerson();
-        }
+    replaying = true;
+    rendering = render;
+    paused = false;
+    MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
 
-        void Move(int direction) {
-            if (direction == 0)
-                return;
-            static Vector3 const move = {0, 0, 1.5};
-            if (GetMode() == (int) CameraMode::ThirdPerson) {
-                float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
-                smoothPosition += Sombrero::QuaternionMultiply(smoothRotation, move * delta * direction);
-                getConfig().ThirdPerPos.SetValue(smoothPosition);
-            }
-        }
+    for (auto& pair : customDataCallbacks) {
+        std::string const& key = pair.first;
+        auto& callbacks = pair.second;
 
-        Vector3 GetHeadPosition() {
-            if (GetMode() == (int) CameraMode::Smooth) {
-                auto offset = getConfig().Offset.GetValue();
-                if (getConfig().Relative.GetValue())
-                    offset = Sombrero::QuaternionMultiply(GetHeadRotation(), offset);
-                return smoothPosition + offset;
-            }
-            return smoothPosition;
-        }
-        Quaternion GetHeadRotation() {
-            if (GetMode() == (int) CameraMode::Smooth) {
-                if (getConfig().Correction.GetValue())
-                    return ApplyTilt(
-                        Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset), getConfig().TargetTilt.GetValue()
-                    );
-            }
-            return smoothRotation;
-        }
+        auto found = replay.customData.find(key);
+        if (found == replay.customData.end())
+            continue;
 
-        int GetMode() {
-            CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
-            if (mode == CameraMode::Headset && rendering)
-                return (int) CameraMode::Smooth;
-            return (int) mode;
-        }
-
-        void SetMode(int value) {
-            CameraMode oldMode = (CameraMode) getConfig().CamMode.GetValue();
-            CameraMode mode = (CameraMode) value;
-            if (mode == oldMode)
-                return;
-            getConfig().CamMode.SetValue(value);
-            if (mode == CameraMode::Smooth) {
-                smoothPosition = GetFrame().head.position;
-                smoothRotation = GetFrame().head.rotation;
-            } else if (GetMode() == (int) CameraMode::ThirdPerson)
-                UpdateThirdPerson();
-        }
-
-        void SetGraphicsSettings() {
-            auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<SettingsApplicatorSO*>()->First();
-            auto settings = BeatSaber::Settings::Settings();
-            settings.quality.vrResolutionScale = 0.8;
-
-            // unchanged
-            settings.quality.renderViewportScale = 1;
-            settings.quality.maxQueuedFrames = -1;
-            settings.quality.vSyncCount = 0;
-            settings.quality.targetFramerate = UnityEngine::Application::get_targetFrameRate();
-
-            // shockwaves and walls unused in ApplyPerformancePreset
-
-            int antiAlias = 0;
-            bool distortions = (getConfig().Walls.GetValue() == 2) || (getConfig().ShockwavesOn.GetValue() && getConfig().Shockwaves.GetValue() > 0);
-            if (!distortions) {
-                switch (getConfig().AntiAlias.GetValue()) {
-                    case 0:
-                        antiAlias = 0;
-                        break;
-                    case 1:
-                        antiAlias = 2;
-                        break;
-                    case 2:
-                        antiAlias = 4;
-                        break;
-                    case 3:
-                        antiAlias = 8;
-                        break;
-                }
-            }
-            settings.quality.antiAliasingLevel = antiAlias;
-
-            settings.quality.bloom = BeatSaber::Settings::QualitySettings::BloomQuality::Game;
-            settings.quality.mainEffect = getConfig().Bloom.GetValue() ? BeatSaber::Settings::QualitySettings::MainEffectOption::Game
-                                                                       : BeatSaber::Settings::QualitySettings::MainEffectOption::Off;
-            settings.quality.mirror = getConfig().Mirrors.GetValue();
-
-            applicator->ApplyGraphicSettings(settings, GlobalNamespace::SceneType::Game);
-            logger.info("applied custom graphics settings");
-        }
-        void UnsetGraphicsSettings() {
-            auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<VRRenderingParamsSetup*>()->First();
-            renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
-            logger.info("reset graphics settings");
-        }
-
-        void ReplayStarted() {
-            if (rendering) {
-                SetGraphicsSettings();
-                lastProgressUpdate = UnityEngine::Time::get_unscaledTime();
-            }
-            // muxing only needs to be done after a render
-            muxingFinished = !rendering;
-            if (GetMode() == (int) CameraMode::Smooth) {
-                smoothRotation = GetFrame().head.rotation;
-                // undo rotation by average rotation offset
-                if (getConfig().Correction.GetValue()) {
-                    smoothRotation = Sombrero::QuaternionMultiply(smoothRotation, currentReplay.replay->info.averageOffset);
-                    smoothRotation = ApplyTilt(smoothRotation, getConfig().TargetTilt.GetValue());
-                }
-                // add position offset, potentially relative to rotation
-                auto offset = getConfig().Offset.GetValue();
-                if (getConfig().Relative.GetValue())
-                    offset = Sombrero::QuaternionMultiply(smoothRotation, offset);
-                smoothPosition = GetFrame().head.position + offset;
-            } else if (GetMode() == (int) CameraMode::ThirdPerson)
-                UpdateThirdPerson();
-        }
-
-        void ReplayEnded() {
-            if (rendering)
-                UnsetGraphicsSettings();
-        }
+        for (auto& callback : callbacks)
+            callback(found->second.data(), found->second.size());
     }
+}
 
-    namespace Frames {
-        decltype(FrameReplay::scoreFrames)::iterator scoreFrame;
-        ScoreFrame currentValues;
-        FrameReplay* replay;
+void Manager::CameraFinished() {
+    if (!rendering)
+        return;
+    if (getConfig().LevelsToSelect.GetValue().empty()) {
+        MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
+        Utils::PlayDing();
+    } else
+        SelectFromConfig(0, true);
+}
 
-        void Increment() {
-            currentValues.time = scoreFrame->time;
-            if (scoreFrame->score >= 0)
-                currentValues.score = scoreFrame->score;
-            if (scoreFrame->percent >= 0)
-                currentValues.percent = scoreFrame->percent;
-            if (scoreFrame->combo >= 0)
-                currentValues.combo = scoreFrame->combo;
-            if (scoreFrame->energy >= 0)
-                currentValues.energy = scoreFrame->energy;
-            if (scoreFrame->offset >= 0)
-                currentValues.offset = scoreFrame->offset;
-            scoreFrame++;
-        }
-
-        void ReplayStarted() {
-            replay = dynamic_cast<FrameReplay*>(currentReplay.replay.get());
-            scoreFrame = replay->scoreFrames.begin();
-            currentValues = {-1, -1, -1, -1, -1, -1};
-            while (currentValues.score < 0 || currentValues.combo < 0 || currentValues.energy < 0 || currentValues.offset < 0)
-                Increment();
-        }
-
-        void UpdateTime(float time) {
-            while (scoreFrame != replay->scoreFrames.end() && scoreFrame->time < time)
-                Increment();
-        }
-
-        ScoreFrame* GetScoreFrame() {
-            return &currentValues;
-        }
-
-        bool AllowComboDrop() {
-            static int frameSearchRadius = 1;
-            int combo = 1;
-            auto iter = scoreFrame;
-            iter -= frameSearchRadius + 1;
-            for (int i = 0; i < frameSearchRadius; i++) {
-                iter--;
-                if (iter->combo < 0)
-                    i--;
-                if (iter == replay->scoreFrames.begin())
-                    break;
-            }
-            for (int i = 0; i < frameSearchRadius * 2; i++) {
-                iter++;
-                if (iter == replay->scoreFrames.end())
-                    break;
-                if (iter->combo < 0) {
-                    i--;
-                    continue;
-                }
-                if (iter->combo < combo)
-                    return true;
-                combo = iter->combo;
-            }
-            return false;
-        }
-
-        bool AllowScoreOverride() {
-            if (currentValues.percent >= 0)
-                return true;
-            // fix scoresaber replays having incorrect max score before cut finishes
-            return MetaCore::Stats::GetSongTime() - lastCutTime > 0.4;
-        }
+static int GetCurrentIndex() {
+    // should never be called with empty replays vector
+    int idx = getConfig().LastReplayIdx.GetValue();
+    if (idx >= replays.size()) {
+        idx = replays.size() - 1;
+        if (local)
+            getConfig().LastReplayIdx.SetValue(idx);
     }
+    return idx;
+}
 
-    namespace Events {
-        std::set<NoteController*, NoteCompare> notes;
-        decltype(EventReplay::events)::iterator event;
-        EventReplay* replay;
-        float wallEndTime = 0;
-        float wallEnergyLoss = 0;
+Replay::Replay& Manager::GetCurrentReplay() {
+    return replays[GetCurrentIndex()].second;
+}
 
-        void ReplayStarted() {
-            notes.clear();
-            replay = dynamic_cast<EventReplay*>(currentReplay.replay.get());
-            event = replay->events.begin();
-            wallEndTime = 0;
-            wallEnergyLoss = 0;
-        }
-
-        void AddNoteController(NoteController* note) {
-            if (note->noteData->scoringType > NoteData::ScoringType::NoScore || note->noteData->gameplayType == NoteData::GameplayType::Bomb)
-                notes.insert(note);
-        }
-        void RemoveNoteController(NoteController* note) {
-            auto iter = notes.find(note);
-            if (iter != notes.end())
-                notes.erase(iter);
-        }
-
-        void ProcessNoteEvent(NoteEvent const& event) {
-            static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
-
-            auto& info = event.info;
-            bool found = false;
-            for (auto iter = notes.begin(); iter != notes.end(); iter++) {
-                auto controller = *iter;
-                auto noteData = controller->noteData;
-                if (((int) noteData->scoringType == info.scoringType || info.scoringType == -2) && (int) noteData->lineIndex == info.lineIndex &&
-                    (int) noteData->noteLineLayer == info.lineLayer && (int) noteData->colorType == info.colorType &&
-                    (int) noteData->cutDirection == info.cutDirection) {
-                    found = true;
-                    bool isLeftSaber = event.noteCutInfo.saberType == (int) SaberType::SaberA;
-                    Saber* saber = isLeftSaber ? Objects::leftSaber : Objects::rightSaber;
-                    if (info.eventType == NoteEventInfo::Type::GOOD || info.eventType == NoteEventInfo::Type::BAD) {
-                        auto cutInfo = GetNoteCutInfo(controller, saber, event.noteCutInfo);
-                        if (replay->cutInfoMissingOKs) {
-                            cutInfo.speedOK = cutInfo.saberSpeed > 2;
-                            bool isLeftColor = noteData->colorType == ColorType::ColorA;
-                            cutInfo.saberTypeOK = isLeftColor == isLeftSaber;
-                            cutInfo.timeDeviation = noteData->time - event.time;
-                        }
-                        SetLastCutTime(event.time);
-                        il2cpp_utils::RunMethod<void, false>(controller, sendCut, byref(cutInfo));
-                    } else if (info.eventType == NoteEventInfo::Type::MISS) {
-                        controller->SendNoteWasMissedEvent();
-                        notes.erase(iter);  // note will despawn and be removed in the other cases
-                    } else if (info.eventType == NoteEventInfo::Type::BOMB) {
-                        auto cutInfo = GetBombCutInfo(controller, saber);
-                        il2cpp_utils::RunMethod<void, false>(controller, sendCut, byref(cutInfo));
-                    }
-                    break;
-                }
-            }
-            if (!found) {
-                int bsorID = (event.info.scoringType + 2) * 10000 + event.info.lineIndex * 1000 + event.info.lineLayer * 100 +
-                             event.info.colorType * 10 + event.info.cutDirection;
-                logger.error("Could not find note for event! time: {}, bsor id: {}", event.time, bsorID);
-            }
-        }
-
-        void ProcessWallEvent(WallEvent const& event) {
-            Objects::obstacleChecker->headDidEnterObstacleEvent->Invoke(nullptr);
-            Objects::obstacleChecker->headDidEnterObstaclesEvent->Invoke();
-            float diffStartTime = std::max(wallEndTime, event.time);
-            wallEndTime = std::max(wallEndTime, event.endTime);
-            wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
-        }
-
-        void UpdateTime(float time) {
-            while (event != replay->events.end() && event->time < time) {
-                switch (event->eventType) {
-                    case EventRef::Note:
-                        if (!notes.empty())
-                            ProcessNoteEvent(replay->notes[event->index]);
-                        break;
-                    case EventRef::Wall:
-                        ProcessWallEvent(replay->walls[event->index]);
-                        break;
-                    default:
-                        break;
-                }
-                event++;
-            }
-        }
+void Manager::DeleteCurrentReplay() {
+    auto replay = replays.begin() + GetCurrentIndex();
+    try {
+        std::filesystem::remove(replay->first);
+    } catch (std::exception const& e) {
+        logger.error("Failed to delete replay: {}", e.what());
+        return;
     }
+    replays.erase(replays.begin());
+    Menu::ReplayViewController::GetInstance()->UpdateUI(false);
+}
 
-    bool replaying = false;
-    bool paused = false;
-    ReplayWrapper currentReplay;
+Replay::Info& Manager::GetCurrentInfo() {
+    return GetCurrentReplay().info;
+}
 
-    ReplayInfo const& GetCurrentInfo() {
-        return currentReplay.replay->info;
-    }
+bool Manager::Replaying() {
+    return replaying;
+}
 
-    ON_EVENT(MetaCore::Events::MapSelected) {
-        Menu::EnsureSetup(MetaCore::Game::GetMainFlowCoordinator()
-                              ->_soloFreePlayFlowCoordinator->levelSelectionNavigationController->_levelCollectionNavigationController
-                              ->_levelDetailViewController->_standardLevelDetailView);
-        RefreshLevelReplays();
-        Menu::CheckMultiplayer();
-    }
+bool Manager::Rendering() {
+    return replaying && rendering;
+}
 
-    void SetReplays(std::vector<std::pair<std::string, ReplayWrapper>> replays, bool external) {
-        logger.debug("setting {} replays {}", replays.size(), external);
-        currentReplays = replays;
-        if (currentReplays.size() > 0) {
-            if (!external)
-                Menu::SetButtonEnabled(true);
-            std::vector<std::pair<std::string, ReplayInfo*>> replayInfos;
-            for (auto& pair : currentReplays)
-                replayInfos.emplace_back(pair.first, &pair.second.replay->info);
-            Menu::SetReplays(replayInfos, external);
-        } else if (!external) {
-            Menu::SetButtonEnabled(false);
-            Menu::DismissMenu();
-        }
-    }
+bool Manager::Paused() {
+    return paused;
+}
 
-    bool AreReplaysLocal() {
-        return Menu::AreReplaysLocal();
-    }
+ON_EVENT(MetaCore::Events::Update) {
+    if (!replaying)
+        return;
+    Camera::SetMoving(Utils::IsButtonDown(getConfig().MoveButton.GetValue()));
+    Camera::Travel(Utils::IsButtonDown(getConfig().TravelButton.GetValue()));
+}
 
-    void RefreshLevelReplays() {
-        logger.debug("Refresh replays");
-        SetReplays(GetReplays(MetaCore::Songs::GetSelectedKey()));
-    }
+ON_EVENT(MetaCore::Events::MapSelected) {
+    replays = Parsing::GetReplays(MetaCore::Songs::GetSelectedKey());
+    local = true;
+    Menu::ReplayViewController::SetEnabled(!replays.empty());
+    if (!replays.empty())
+        Menu::ReplayViewController::GetInstance()->UpdateUI(true);
+}
 
-    void ReplayStarted(ReplayWrapper& wrapper) {
-        logger.info("Replay started");
-        currentReplay = wrapper;
-        frameCount = currentReplay.replay->frames.size();
-        MetaCore::Game::SetScoreSubmission(MOD_ID, false);
-        Objects::hasObjects = false;
-        replaying = true;
-        paused = false;
-        currentFrame = 0;
-        lerpAmount = 0;
-        lastCutTime = -1;
-        if (currentReplay.type & ReplayType::Event)
-            Events::ReplayStarted();
-        if (currentReplay.type & ReplayType::Frame)
-            Frames::ReplayStarted();
-        Camera::ReplayStarted();
+ON_EVENT(MetaCore::Events::MapStarted) {
+    if (replaying)
+        Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData()->i___GlobalNamespace__IReadonlyBeatmapData());
+    Camera::SetupCamera();
+}
 
-        for (auto& pair : customDataCallbacks) {
-            std::string const& key = pair.first;
-            std::vector<CustomDataCallbackType>& callbacks = pair.second;
+ON_EVENT(MetaCore::Events::MapPaused) {
+    paused = true;
+    Camera::OnPause();
+}
 
-            char const* data = nullptr;
-            size_t length = 0;
-            auto eventReplay = dynamic_cast<EventReplay*>(currentReplay.replay.get());
-            if (eventReplay) {
-                auto data_it = eventReplay->customDatas.find(key);
-                if (data_it != eventReplay->customDatas.end()) {
-                    std::vector<char> const& data_vec = data_it->second;
-                    data = data_vec.data();
-                    length = data_vec.size();
-                }
-            }
-            for (int idx = 0; idx < callbacks.size(); idx++) {
-                callbacks[idx](data, length);
-            }
-        }
-    }
+ON_EVENT(MetaCore::Events::MapUnpaused) {
+    paused = false;
+    Camera::OnUnpause();
+}
 
-    void ReplayStarted(std::string const& path) {
-        for (auto& pair : currentReplays) {
-            if (pair.first == path)
-                ReplayStarted(pair.second);
-        }
-    }
+ON_EVENT(MetaCore::Events::MapRestarted) {
+    paused = false;
+}
 
-    void ReplayRestarted(bool full) {
-        logger.info("Replay restarted {}", full);
-        if (full) {
-            paused = false;
-            Objects::hasObjects = false;
-        }
-        currentFrame = 0;
-        lerpAmount = 0;
-        lastCutTime = -1;
-        if (currentReplay.type & ReplayType::Event)
-            Events::ReplayStarted();
-        if (currentReplay.type & ReplayType::Frame)
-            Frames::ReplayStarted();
-        Camera::ReplayStarted();
-    }
+ON_EVENT(MetaCore::Events::MapEnded) {
+    Camera::FinishReplay();
+    replaying = false;
+    paused = false;
+}
 
-    ON_EVENT(MetaCore::Events::MapRestarted) {
-        if (!replaying)
-            return;
-        ReplayRestarted();
-    }
+ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
+    auto main = MetaCore::Game::GetMainFlowCoordinator();
+    if (replaying && !MetaCore::Internals::mapWasQuit)
+        main->_menuLightsManager->SetColorPreset(main->_defaultLightsPreset, false, 0);
 
-    void ReplayEnded(bool quit) {
-        logger.info("Replay ended");
-        Camera::ReplayEnded();
-        MetaCore::Game::SetScoreSubmission(MOD_ID, true);
-        replaying = false;
-        if (Camera::rendering && !quit) {
-            if (!getConfig().LevelsToSelect.GetValue().empty()) {
-                if (getConfig().Restart.GetValue()) {
-                    getConfig().RenderLaunch.SetValue(true);
-                    RestartGame();
-                } else
-                    RenderLevelInConfig();
-            } else if (getConfig().Ding.GetValue())
-                PlayDing();
-        }
-    }
-
-    ON_EVENT(MetaCore::Events::MapPaused) {
-        if (!replaying)
-            return;
-        Pause::EnsureSetup(Objects::pauseManager);
-        paused = true;
-        Camera::moving = false;
-    }
-
-    ON_EVENT(MetaCore::Events::MapUnpaused) {
-        if (!replaying)
-            return;
-        Pause::OnUnpause();
-        paused = false;
-    }
-
-    void UpdateTime(float time) {
-        if (!Objects::hasObjects)
-            Objects::GetObjects();
-        if (currentReplay.type == ReplayType::Frame)
-            time += 0.01;
-        auto& frames = currentReplay.replay->frames;
-
-        while (currentFrame < frameCount && frames[currentFrame].time <= time)
-            currentFrame++;
-        if (currentFrame > 0)
-            currentFrame--;
-
-        if (currentFrame == frameCount - 1)
-            lerpAmount = 0;
-        else {
-            float timeDiff = time - frames[currentFrame].time;
-            float frameDur = frames[currentFrame + 1].time - frames[currentFrame].time;
-            lerpAmount = timeDiff / frameDur;
-        }
-        if (currentReplay.type & ReplayType::Event)
-            Events::UpdateTime(time);
-        if (currentReplay.type & ReplayType::Frame)
-            Frames::UpdateTime(time);
-        Camera::UpdateTime();
-    }
-
-    void SetLastCutTime(float value) {
-        lastCutTime = value;
-    }
-
-    bool timeForwardPressed = false, timeBackPressed = false;
-    bool speedUpPressed = false, slowDownPressed = false;
-
-    void CheckInputs() {
-        if (Camera::rendering)
-            return;
-
-        int timeState = IsButtonDown(getConfig().TimeButton.GetValue());
-        if (timeState == 1 && !timeForwardPressed)
-            Pause::SetTime(MetaCore::Stats::GetSongTime() + getConfig().TimeSkip.GetValue());
-        else if (timeState == -1 && !timeBackPressed)
-            Pause::SetTime(MetaCore::Stats::GetSongTime() - getConfig().TimeSkip.GetValue());
-        timeForwardPressed = timeState == 1;
-        timeBackPressed = timeState == -1;
-
-        int speedState = IsButtonDown(getConfig().SpeedButton.GetValue());
-        if (speedState == 1 && !speedUpPressed)
-            Pause::SetSpeed(Objects::scoreController->_audioTimeSyncController->timeScale + 0.1);
-        else if (speedState == -1 && !slowDownPressed)
-            Pause::SetSpeed(Objects::scoreController->_audioTimeSyncController->timeScale - 0.1);
-        speedUpPressed = speedState == 1;
-        slowDownPressed = speedState == -1;
-
-        Camera::moving = IsButtonDown(getConfig().MoveButton.GetValue());
-
-        Camera::Move(IsButtonDown(getConfig().TravelButton.GetValue()));
-    }
-
-    ON_EVENT(MetaCore::Events::Update) {
-        if (!replaying)
-            return;
-        UpdateTime(MetaCore::Stats::GetSongTime());
-        CheckInputs();
-    }
-
-    float GetLength() {
-        if (GetCurrentInfo().failed)
-            return GetCurrentInfo().failTime;
-        return MetaCore::Stats::GetSongLength();
-    }
-
-    Frame const& GetFrame() {
-        return currentReplay.replay->frames[currentFrame];
-    }
-
-    Frame const& GetNextFrame() {
-        if (currentFrame == frameCount - 1)
-            return currentReplay.replay->frames[currentFrame];
-        else
-            return currentReplay.replay->frames[currentFrame + 1];
-    }
-
-    float GetFrameProgress() {
-        return lerpAmount;
-    }
+    if (!replaying && !MetaCore::Internals::mapWasQuit && !recorderInstalled)
+        Menu::ReplayViewController::DisableWithRecordingHint();
 }

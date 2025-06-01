@@ -1,36 +1,15 @@
 #pragma once
 
-#include "GlobalNamespace/BeatmapKey.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "GlobalNamespace/LevelBar.hpp"
 #include "GlobalNamespace/StandardLevelDetailView.hpp"
 #include "HMUI/ModalView.hpp"
-#include "HMUI/SimpleTextDropdown.hpp"
 #include "HMUI/ViewController.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "bsml/shared/BSML/Components/Settings/DropdownListSetting.hpp"
 #include "bsml/shared/BSML/Components/Settings/IncrementSetting.hpp"
 #include "custom-types/shared/macros.hpp"
-#include "utils.hpp"
-
-struct ReplayInfo;
-
-namespace Menu {
-    void EnsureSetup(GlobalNamespace::StandardLevelDetailView* view);
-
-    void SetButtonEnabled(bool enabled);
-    void SetButtonUninteractable(std::string_view reason);
-
-    void CheckMultiplayer();
-
-    void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays, bool external = false);
-
-    void PresentMenu();
-    void DismissMenu();
-
-    bool AreReplaysLocal();
-}
 
 DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
     DECLARE_DEFAULT_CTOR();
@@ -38,14 +17,17 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
     DECLARE_OVERRIDE_METHOD_MATCH(
         void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling
     );
-
     DECLARE_INSTANCE_METHOD(void, UpdateUI, bool getData);
     DECLARE_INSTANCE_METHOD(void, OnEnable);
+    DECLARE_INSTANCE_METHOD(void, OnDestroy);
 
-   public:
-    void SetReplays(std::vector<std::pair<std::string, ReplayInfo*>> replays);
-    void SelectReplay(int index);
-    std::string& GetReplay();
+    DECLARE_STATIC_METHOD(void, CreateShortcut, GlobalNamespace::StandardLevelDetailView* view);
+    DECLARE_STATIC_METHOD(void, SetEnabled, bool value);
+    DECLARE_STATIC_METHOD(void, DisableWithRecordingHint);
+    DECLARE_STATIC_METHOD(void, CheckMultiplayer);
+    DECLARE_STATIC_METHOD(void, Present);
+    DECLARE_STATIC_METHOD(void, Dismiss);
+    DECLARE_STATIC_METHOD(ReplayViewController*, GetInstance);
 
    private:
     GlobalNamespace::LevelBar* levelBar;
@@ -62,6 +44,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
     BSML::IncrementSetting* increment;
     HMUI::ModalView* confirmModal;
 
-    std::vector<std::pair<std::string, ReplayInfo*>> replays;
     GlobalNamespace::IReadonlyBeatmapData* beatmapData;
+
+    static ReplayViewController* instance;
 };

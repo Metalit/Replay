@@ -8,85 +8,62 @@
 #include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/XR/XRNode.hpp"
-#include "assets.hpp"
 #include "bsml/shared/Helpers/utilities.hpp"
 #include "config.hpp"
 #include "main.hpp"
 #include "manager.hpp"
 #include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
+#include "playback.hpp"
 #include "replay.hpp"
+#include "utils.hpp"
 
 DEFINE_TYPE(ReplayHelpers, CameraRig);
 
 using namespace ReplayHelpers;
-using namespace UnityEngine::XR;
-
-void CameraRig::Update() {
-    if (Manager::replaying && !Manager::paused) {
-        pausedLastFrame = false;
-
-        auto& frame = Manager::GetFrame();
-        auto& targetRot = frame.head.rotation;
-        auto& targetPos = frame.head.position;
-
-        // set fake head position so playertransforms is the same as during gameplay
-        if (Manager::GetCurrentInfo().positionsAreLocal) {
-            fakeHead->localPosition = targetPos;
-            fakeHead->localRotation = targetRot;
-        } else
-            fakeHead->SetPositionAndRotation(targetPos, targetRot);
-
-        auto mode = (CameraMode) Manager::Camera::GetMode();
-
-        bool enabled = getConfig().Avatar.GetValue() && mode == CameraMode::ThirdPerson;
-        avatar->gameObject->active = enabled;
-        if (enabled) {
-            auto& nextFrame = Manager::GetNextFrame();
-            float lerp = Manager::GetFrameProgress();
-            avatar->UpdateTransforms(
-                Vector3::Lerp(targetPos, nextFrame.head.position, lerp),
-                Vector3::Lerp(frame.leftHand.position, nextFrame.leftHand.position, lerp),
-                Vector3::Lerp(frame.rightHand.position, nextFrame.rightHand.position, lerp),
-                Quaternion::Lerp(targetRot, nextFrame.head.rotation, lerp),
-                Quaternion::Lerp(frame.leftHand.rotation, nextFrame.leftHand.rotation, lerp),
-                Quaternion::Lerp(frame.rightHand.rotation, nextFrame.rightHand.rotation, lerp)
-            );
-        }
-        cameraTracker->enabled = mode == CameraMode::Headset || (Manager::Camera::moving && mode == CameraMode::ThirdPerson);
-        if (Manager::Camera::rendering) {
-            progress->active = true;
-            UpdateProgress();
-        }
-    } else if (!pausedLastFrame) {
-        pausedLastFrame = true;
-        progress->active = false;
-        avatar->gameObject->active = false;
-        cameraTracker->enabled = true;
-    }
-}
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
-    if (Manager::Camera::rendering) {
+    // when rendering, show a progress screen in the middle of nowhere instead of the gameplay
+    if (Manager::Rendering() && !Manager::Paused()) {
         transform->position = {0, -1000, -1000};
         transform->rotation = Quaternion::Euler({0, 0, -1});
+        UpdateProgress();
         return;
     }
-    // position can travel when moving, but rotation shouldn't
-    if (!Manager::Camera::moving || Manager::Camera::GetMode() != (int) CameraMode::ThirdPerson)
-        transform->rotation = rot;
+    transform->rotation = rot;
     transform->position = pos;
 }
 
 void CameraRig::UpdateProgress() {
     std::string time = MetaCore::Strings::SecondsToString(MetaCore::Stats::GetSongTime());
-    std::string tot = MetaCore::Strings::SecondsToString(Manager::GetLength());
+    std::string total = MetaCore::Strings::SecondsToString(MetaCore::Stats::GetSongLength());
     std::string queue = "";
     int len = getConfig().LevelsToSelect.GetValue().size();
     if (len > 0)
         queue = fmt::format("\n{} in queue", len);
-    std::string label = fmt::format("{}\nRendering...\nSong Time: {} / {}{}", mapString, time, tot, queue);
+    std::string label = fmt::format("{}\nRendering...\nSong Time: {} / {}{}", mapString, time, total, queue);
     progressText->text = label;
+}
+
+void CameraRig::SetTrackingEnabled(bool value) {
+    if (cameraTracker->enabled == value)
+        return;
+    cameraTracker->enabled = value;
+    // when disabling tracking, remove all of its effects
+    if (!value)
+        cameraTracker->transform->SetLocalPositionAndRotation(Vector3::zero(), Quaternion::identity());
+    // when paused, we want to take the player's real position and rotation into account
+    // otherwise, we want to avoid a sudden teleportation when we change if tracking is enabled
+    cameraTracker->CacheLocalPosition();
+    cameraTracker->m_UseRelativeTransform = !Manager::Paused();
+}
+
+UnityEngine::Vector3 CameraRig::GetCameraPosition() {
+    return cameraTracker->transform->position;
+}
+
+UnityEngine::Quaternion CameraRig::GetCameraRotation() {
+    return cameraTracker->transform->rotation;
 }
 
 using namespace GlobalNamespace;
@@ -96,6 +73,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     // original hierarchy:
     // parent
     //  - cameraTransform (playerTransforms->headTransform)
+
     // new hierarchy:
     // parent
     //  - headReplacement (playerTransforms->headTransform)
@@ -103,16 +81,14 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     // cameraTransform (CameraRig component, root object)
     //  - progress
 
-    // have the camera itself not be parented, since we calculate the local position offset in PlayerTransforms_Update
+    // have the camera itself not be parented, since we calculate the local position offset ourselves
     auto cameraRig = cameraTransform->gameObject->AddComponent<ReplayHelpers::CameraRig*>();
     cameraRig->cameraTracker = cameraTransform->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>();
     auto parent = cameraTransform->parent;
-    cameraTransform->parent = nullptr;
+    cameraTransform->SetParent(nullptr, true);
 
-    auto playerTransforms = UnityEngine::Resources::FindObjectsOfTypeAll<PlayerTransforms*>()->First();
     auto headReplacement = UnityEngine::GameObject::New_ctor("PlayerTransformsHeadReplacement")->transform;
     headReplacement->SetParent(parent, false);
-    playerTransforms->_headTransform = headReplacement;
     cameraRig->fakeHead = headReplacement;
 
     auto avatarCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::BeatAvatarEditorFlowCoordinator*>()->First([](auto x) {
@@ -134,7 +110,6 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     transform->position = {0, 0, 0};
     transform->localScale = {1, 1, 1};
 
-    customAvatar->gameObject->active = Manager::Camera::GetMode() == (int) CameraMode::ThirdPerson && getConfig().Avatar.GetValue();
     cameraRig->avatar = customAvatar;
 
     auto progress = BSML::Lite::CreateCanvas();
@@ -155,12 +130,10 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     text->rectTransform->sizeDelta = {50, 100};
     text->enableWordWrapping = true;
 
-    progress->active = Manager::Camera::rendering;
+    progress->active = Manager::Rendering();
     cameraRig->progress = progress;
     cameraRig->progressText = text;
-
-    cameraRig->pausedLastFrame = false;
-    cameraRig->mapString = GetMapString();
+    cameraRig->mapString = Utils::GetMapString();
 
     return cameraRig;
 }

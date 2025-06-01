@@ -303,6 +303,7 @@ static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info 
 
     // oh boy, I get to calculate the end time of wall events based on energy, it's not like anything better could have been done in the recording phase
     float energy = 0.5;
+    // note that beatleader does not record overlapping wall events
     float latestWallTime = -1;
     auto note = notes.begin();
 
@@ -319,6 +320,14 @@ static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info 
 
         wall.time = wallEvent.time;
 
+        events.emplace(wall.time, Replay::Events::Reference::Wall, walls.size() - 1);
+
+        // we don't care about energy or end time in this case
+        // theoretically we should use end time to keep playerHeadIsInObstacle accurate, but since the PC version
+        // records end energy instead of end time, it's not possible to know the end time on those replays in this case
+        if (replay.info.modifiers.fourLives || replay.info.modifiers.oneLife)
+            continue;
+
         // "oculus" means standalone - PC is either "steam" or "oculuspc"
         if (info.platform == "oculus") {
             wall.endTime = wallEvent.energy;
@@ -328,26 +337,24 @@ static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info 
         } else {
             // process all note events up to event time
             while (note != notes.end() && note->time < wallEvent.time) {
-                energy += EnergyForNote(note->info);
+                energy += Utils::EnergyForNote(note->info);
                 if (energy > 1)
                     energy = 1;
                 note++;
             }
             float diff = energy - wallEvent.energy;
-            // only realistic case for this happening (assuming the recorder is correct)
-            // is for a wall event's time span to be fully contained inside another wall event
+            // this should never happen
             if (diff < 0)
-                continue;
+                diff = 0;
             float seconds = diff / 1.3;
             wall.endTime = wallEvent.time + seconds;
             // now we also correct for any cuts that happen during the wall...
             while (note != notes.end() && note->time < wall.endTime) {
-                wall.endTime -= EnergyForNote(note->info) / 1.3;
+                wall.endTime += Utils::EnergyForNote(note->info) / 1.3;
                 note++;
             }
             energy = wallEvent.energy;
         }
-        events.emplace(wall.time, Replay::Events::Reference::Wall, walls.size() - 1);
     }
 
     // replays on yet another BL version just forgot to record wall event end times

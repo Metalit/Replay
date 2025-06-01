@@ -3,7 +3,6 @@
 #include "GlobalNamespace/VRController.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "VRUIControls/VRInputModule.hpp"
-#include "VRUIControls/VRPointer.hpp"
 #include "custom-types/shared/macros.hpp"
 #include "math.hpp"
 

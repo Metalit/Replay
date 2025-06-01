@@ -19,36 +19,19 @@
 #include "UnityEngine/Resources.hpp"
 #include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
-#include "config.hpp"
-#include "main.hpp"
 #include "metacore/shared/songs.hpp"
 
 using namespace GlobalNamespace;
 
-std::string GetReqlaysPath() {
-    static auto path = getDataDir("Replay") + "replays/";
-    return path;
-}
-
-std::string GetBSORsPath() {
-    static auto path = getDataDir("bl") + "replays/";
-    return path;
-}
-
-std::string GetSSReplaysPath() {
-    static auto path = getDataDir("ScoreSaber") + "replays/";
-    return path;
-}
-
-std::string GetDifficultyName(BeatmapDifficulty difficulty) {
+std::string Utils::GetDifficultyName(BeatmapDifficulty difficulty) {
     return BeatmapDifficultyMethods::Name(difficulty);
 }
 
-std::string GetDifficultyName(int difficulty) {
+std::string Utils::GetDifficultyName(int difficulty) {
     return GetDifficultyName((BeatmapDifficulty) difficulty);
 }
 
-BeatmapCharacteristicSO* GetCharacteristic(std::string serializedName) {
+BeatmapCharacteristicSO* Utils::GetCharacteristic(std::string serializedName) {
     auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>()->First();
     for (auto characteristic : chars->_beatmapCharacteristics) {
         if (characteristic->serializedName == serializedName)
@@ -57,18 +40,18 @@ BeatmapCharacteristicSO* GetCharacteristic(std::string serializedName) {
     return nullptr;
 }
 
-std::string GetCharacteristicName(BeatmapCharacteristicSO* characteristic) {
+std::string Utils::GetCharacteristicName(BeatmapCharacteristicSO* characteristic) {
     auto ret = BGLib::Polyglot::Localization::Get(characteristic->characteristicNameLocalizationKey);
     if (!ret)
         ret = characteristic->characteristicNameLocalizationKey;
     return ret;
 }
 
-std::string GetCharacteristicName(std::string serializedName) {
+std::string Utils::GetCharacteristicName(std::string serializedName) {
     return GetCharacteristicName(GetCharacteristic(serializedName));
 }
 
-std::string GetMapString() {
+std::string Utils::GetMapString() {
     std::string songName = MetaCore::Songs::GetSelectedLevel()->songName;
     std::string songAuthor = MetaCore::Songs::GetSelectedLevel()->songAuthorName;
     std::string characteristic = GetCharacteristicName(MetaCore::Songs::GetSelectedKey().beatmapCharacteristic);
@@ -76,7 +59,7 @@ std::string GetMapString() {
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
 
-std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail) {
+std::string Utils::GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail) {
     std::stringstream s;
     if (modifiers.disappearingArrows)
         s << "DA, ";
@@ -111,7 +94,7 @@ std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNo
     return str;
 }
 
-NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, Replay::Events::CutInfo const& info) {
+NoteCutInfo Utils::GetNoteCutInfo(NoteController* note, Saber* saber, Replay::Events::CutInfo const& info) {
     return NoteCutInfo(
         note ? note->noteData : nullptr,
         info.speedOK,
@@ -131,11 +114,11 @@ NoteCutInfo GetNoteCutInfo(NoteController* note, Saber* saber, Replay::Events::C
         note ? note->inverseWorldRotation : Quaternion::identity(),
         note ? note->noteTransform->rotation : Quaternion::identity(),
         note ? note->noteTransform->position : Vector3::zero(),
-        saber ? MakeFakeMovementData((ISaberMovementData*) saber->_movementData, info.beforeCutRating, info.afterCutRating) : nullptr
+        saber ? ReplayHelpers::MovementData::Create((ISaberMovementData*) saber->_movementData, info.beforeCutRating, info.afterCutRating) : nullptr
     );
 }
 
-NoteCutInfo GetBombCutInfo(NoteController* note, Saber* saber) {
+NoteCutInfo Utils::GetBombCutInfo(NoteController* note, Saber* saber) {
     return NoteCutInfo(
         note ? note->noteData : nullptr,
         true,
@@ -159,7 +142,7 @@ NoteCutInfo GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-float ModifierMultiplier(Replay::Replay const& replay, bool failed) {
+float Utils::ModifierMultiplier(Replay::Replay const& replay, bool failed) {
     auto& mods = replay.info.modifiers;
     float mult = 1;
     if (mods.disappearingArrows)
@@ -183,7 +166,7 @@ float ModifierMultiplier(Replay::Replay const& replay, bool failed) {
     return mult;
 }
 
-float EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
+float Utils::EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
     if (noteEvent.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return -0.15;
     bool goodCut = noteEvent.eventType == Replay::Events::NoteInfo::Type::GOOD;
@@ -202,7 +185,7 @@ float EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
     }
 }
 
-int ScoreForNote(Replay::Events::Note const& note, bool max) {
+int Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
     ScoreModel::NoteScoreDefinition* scoreDefinition;
     if (note.info.scoringType == -2)
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
@@ -222,7 +205,7 @@ int ScoreForNote(Replay::Events::Note const& note, bool max) {
            int(scoreDefinition->maxCenterDistanceCutScore * (1 - std::clamp(note.noteCutInfo.cutDistanceToCenter / 0.3, 0.0, 1.0)) + 0.5);
 }
 
-int BSORNoteID(GlobalNamespace::NoteData* note) {
+int Utils::BSORNoteID(GlobalNamespace::NoteData* note) {
     int colorType = (int) note->colorType;
     if (colorType < 0)
         colorType = 3;
@@ -231,7 +214,7 @@ int BSORNoteID(GlobalNamespace::NoteData* note) {
            (int) note->cutDirection;
 }
 
-int BSORNoteID(Replay::Events::NoteInfo note) {
+int Utils::BSORNoteID(Replay::Events::NoteInfo const& note) {
     int colorType = note.colorType;
     if (colorType < 0)
         colorType = 3;
@@ -239,127 +222,7 @@ int BSORNoteID(Replay::Events::NoteInfo note) {
     return (note.scoringType + 2) * 10000 + note.lineIndex * 1000 + note.lineLayer * 100 + colorType * 10 + note.cutDirection;
 }
 
-void UpdateMultiplier(int& multiplier, int& progress, bool good) {
-    if (good) {
-        progress++;
-        if (multiplier < 8 && progress == (multiplier * 2)) {
-            progress = 0;
-            multiplier *= 2;
-        }
-    } else {
-        if (multiplier > 1)
-            multiplier /= 2;
-        progress = 0;
-    }
-}
-
-void AddEnergy(float& energy, float addition, Replay::Modifiers const& modifiers) {
-    if (modifiers.oneLife) {
-        if (addition < 0)
-            energy = 0;
-    } else if (modifiers.fourLives) {
-        if (addition < 0)
-            energy -= 0.25;
-    } else if (energy > 0)
-        energy += addition;
-    if (energy > 1)
-        energy = 1;
-    if (energy < 0)
-        energy = 0;
-}
-
-MapPreview MapAtTime(Replay::Replay const& replay, float time) {
-    MapPreview ret{};
-    float recentNoteTime = -1;
-    if (replay.type & ReplayType::Event) {
-        auto eventReplay = dynamic_cast<EventReplay*>(replay.replay.get());
-        auto& modifiers = eventReplay->info.modifiers;
-        int multiplier = 1, multiProg = 0;
-        int maxMultiplier = 1, maxMultiProg = 0;
-        float lastCalculatedWall = 0, wallEnd = 0;
-        int score = 0;
-        int maxScore = 0;
-        int combo = 0;
-        float energy = 0.5;
-        if (modifiers.oneLife || modifiers.fourLives)
-            energy = 1;
-        for (auto& event : eventReplay->events) {
-            if (event.time > time)
-                break;
-            // add wall energy change since last event
-            if (lastCalculatedWall != wallEnd) {
-                if (event.time < wallEnd) {
-                    AddEnergy(energy, 1.3 * (lastCalculatedWall - event.time), modifiers);
-                    lastCalculatedWall = event.time;
-                } else {
-                    AddEnergy(energy, 1.3 * (lastCalculatedWall - wallEnd), modifiers);
-                    lastCalculatedWall = wallEnd;
-                }
-            }
-            switch (event.eventType) {
-                case EventRef::Note: {
-                    recentNoteTime = event.time;
-                    auto& note = eventReplay->notes[event.index];
-                    if (note.info.eventType != Replay::Events::NoteInfo::Type::BOMB) {
-                        UpdateMultiplier(maxMultiplier, maxMultiProg, true);
-                        maxScore += ScoreForNote(note, true) * maxMultiplier;
-                    }
-                    if (note.info.eventType == Replay::Events::NoteInfo::Type::GOOD) {
-                        UpdateMultiplier(multiplier, multiProg, true);
-                        score += ScoreForNote(note) * multiplier;
-                        combo += 1;
-                    } else {
-                        UpdateMultiplier(multiplier, multiProg, false);
-                        combo = 0;
-                    }
-                    AddEnergy(energy, EnergyForNote(note.info), modifiers);
-                    break;
-                }
-                case EventRef::Wall:
-                    // combo doesn't get set back to 0 if you enter a wall while inside of one
-                    if (event.time > wallEnd) {
-                        UpdateMultiplier(multiplier, multiProg, false);
-                        combo = 0;
-                    }
-                    // step through wall energy loss instead of doing it all at once
-                    lastCalculatedWall = event.time;
-                    wallEnd = std::max(wallEnd, eventReplay->walls[event.index].endTime);
-                    break;
-                default:
-                    break;
-            }
-        }
-        ret.energy = energy;
-        ret.combo = combo;
-        ret.score = score;
-        ret.maxScore = maxScore;
-    }
-    if (replay.type & ReplayType::Frame) {
-        auto frames = dynamic_cast<FrameReplay*>(replay.replay.get())->scoreFrames;
-        auto recentValues = ScoreFrame(0, 0, -1, 0, 1, 0);
-        for (auto& frame : frames) {
-            if (frame.time > time)
-                break;
-            if (frame.score >= 0)
-                recentValues.score = frame.score;
-            if (frame.percent >= 0)
-                recentValues.percent = frame.percent;
-            if (frame.combo >= 0)
-                recentValues.combo = frame.combo;
-            if (frame.energy >= 0)
-                recentValues.energy = frame.energy;
-        }
-        ret.energy = recentValues.energy;
-        ret.combo = recentValues.combo;
-        if (time - recentNoteTime > 0.4)
-            ret.score = recentValues.score;
-        if (recentValues.percent > 0)
-            ret.maxScore = (int) (recentValues.score / recentValues.percent);
-    }
-    return ret;
-}
-
-std::vector<OVRInput::Button> const buttons = {
+static std::vector<OVRInput::Button> const Buttons = {
     OVRInput::Button::None,
     OVRInput::Button::PrimaryHandTrigger,
     OVRInput::Button::PrimaryIndexTrigger,
@@ -370,43 +233,43 @@ std::vector<OVRInput::Button> const buttons = {
     OVRInput::Button::PrimaryThumbstickLeft,
     OVRInput::Button::PrimaryThumbstickRight
 };
-std::vector<OVRInput::Controller> const controllers = {OVRInput::Controller::LTouch, OVRInput::Controller::RTouch};
+static std::vector<OVRInput::Controller> const Controllers = {OVRInput::Controller::LTouch, OVRInput::Controller::RTouch};
 
-inline bool IsButtonDown(int const& buttonIdx, int controller) {
+static bool RawButtonDown(int const& buttonIdx, int controller) {
     if (buttonIdx <= 0)
         return false;
-    auto button = buttons[buttonIdx];
+    auto button = Buttons[buttonIdx];
     if (controller == 2)
-        return OVRInput::Get(button, controllers[0]) || OVRInput::Get(button, controllers[1]);
-    return OVRInput::Get(button, controllers[controller]);
+        return OVRInput::Get(button, Controllers[0]) || OVRInput::Get(button, Controllers[1]);
+    return OVRInput::Get(button, Controllers[controller]);
 }
 
-bool IsButtonDown(Button const& button) {
-    return IsButtonDown(button.Button, button.Controller);
+bool Utils::IsButtonDown(Button const& button) {
+    return RawButtonDown(button.Button, button.Controller);
 }
 
-int IsButtonDown(ButtonPair const& button) {
+int Utils::IsButtonDown(ButtonPair const& button) {
     int ret = 0;
-    if (IsButtonDown(button.ForwardButton, button.ForwardController))
+    if (RawButtonDown(button.ForwardButton, button.ForwardController))
         ret += 1;
-    if (IsButtonDown(button.BackButton, button.BackController))
+    if (RawButtonDown(button.BackButton, button.BackController))
         ret -= 1;
     return ret;
 }
 
-void PlayDing() {
-    static int const offset = 44;
-    static int const frequency = 44100;
-    static int const sampleSize = 2;
-    using SampleType = int16_t;
-    int length = (IncludedAssets::Ding_wav.size() - offset) / sampleSize;
-    length -= frequency * 2.5;  // remove some static that shows up at the end for some reason
+void Utils::PlayDing() {
+    static constexpr int Offset = 44;
+    static constexpr int Frequency = 44100;
+    static constexpr int SampleSize = 2;
+
+    int length = (IncludedAssets::Ding_wav.size() - Offset) / SampleSize;
+    length -= Frequency * 2.5;  // remove some static that shows up at the end for some reason
     auto arr = ArrayW<float>(length);
     for (int i = 0; i < length; i++) {
-        arr[i] = *((SampleType*) IncludedAssets::Ding_wav.data() + offset + i * sampleSize);
-        arr[i] /= std::numeric_limits<SampleType>::max();
+        arr[i] = *((short*) IncludedAssets::Ding_wav.data() + Offset + i * SampleSize);
+        arr[i] /= std::numeric_limits<short>::max();
     }
-    auto clip = UnityEngine::AudioClip::Create("Ding", length, 1, frequency, false);
+    auto clip = UnityEngine::AudioClip::Create("Ding", length, 1, Frequency, false);
     clip->SetData(arr, 0);
     auto audioClipGO = UnityEngine::GameObject::New_ctor("DingAudioClip");
     auto audioSource = audioClipGO->AddComponent<UnityEngine::AudioSource*>();

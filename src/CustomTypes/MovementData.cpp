@@ -67,11 +67,11 @@ void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovemen
     baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
 }
 
-ISaberMovementData* MakeFakeMovementData(ISaberMovementData* baseData, float beforeCutRating, float afterCutRating) {
+ISaberMovementData* MovementData::Create(ISaberMovementData* baseData, float before, float after) {
     auto movementData = CRASH_UNLESS(il2cpp_utils::New<MovementData*>());
     movementData->baseData = baseData;
-    movementData->beforeCutRating = beforeCutRating;
-    movementData->afterCutRating = afterCutRating;
+    movementData->beforeCutRating = before;
+    movementData->afterCutRating = after;
     movementData->dataProcessor = nullptr;
     return (ISaberMovementData*) movementData;
 }
