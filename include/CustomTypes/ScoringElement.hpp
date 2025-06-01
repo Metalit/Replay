@@ -5,7 +5,7 @@
 #include "custom-types/shared/macros.hpp"
 #include "replay.hpp"
 
-DECLARE_CLASS_CODEGEN(ReplayHelpers, ScoringElement, GlobalNamespace::ScoringElement) {
+DECLARE_CLASS_CODEGEN(Replay, ScoringElement, GlobalNamespace::ScoringElement) {
     DECLARE_DEFAULT_CTOR();
 
    public:

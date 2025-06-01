@@ -7,10 +7,10 @@
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "main.hpp"
 
-DEFINE_TYPE(ReplayHelpers, MovementData);
+DEFINE_TYPE(Replay, MovementData);
 
-using namespace ReplayHelpers;
 using namespace GlobalNamespace;
+using namespace Replay;
 
 BladeMovementDataElement MovementData::get_lastAddedData() {
     return baseData->lastAddedData;

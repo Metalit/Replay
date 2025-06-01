@@ -184,7 +184,7 @@ static void DecompressReplay(std::vector<char> const& replay, std::vector<char>&
         throw Parsing::Exception("Error decompressing replay");
 }
 
-static SS::Metadata ParseMetadata(std::stringstream& input, Replay::Replay& replay) {
+static SS::Metadata ParseMetadata(std::stringstream& input, Replay::Data& replay) {
     auto& info = replay.info;
     auto meta = ReadMetadata(input);
 
@@ -199,7 +199,7 @@ static SS::Metadata ParseMetadata(std::stringstream& input, Replay::Replay& repl
     return meta;
 }
 
-static void ParsePoses(std::stringstream& input, Replay::Replay& replay, bool hasRotations) {
+static void ParsePoses(std::stringstream& input, Replay::Data& replay, bool hasRotations) {
     MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), hasRotations);
 
     int count;
@@ -215,7 +215,7 @@ static void ParsePoses(std::stringstream& input, Replay::Replay& replay, bool ha
     replay.info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
 }
 
-static void ParseHeights(std::stringstream& input, Replay::Replay& replay) {
+static void ParseHeights(std::stringstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -264,7 +264,7 @@ static void ParseNote(std::stringstream& input, Replay::Events::Note& note) {
 }
 
 template <int V>
-static void ParseNotes(std::stringstream& input, Replay::Replay& replay) {
+static void ParseNotes(std::stringstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -337,7 +337,7 @@ static void ParseEnergy(std::stringstream& input, std::map<float, Replay::Frames
     }
 }
 
-Replay::Replay Parsing::ReadScoresaber(std::string const& path) {
+Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     std::ifstream inputCompressed(path, std::ios::binary);
 
     if (!inputCompressed.is_open())
@@ -351,7 +351,7 @@ Replay::Replay Parsing::ReadScoresaber(std::string const& path) {
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
     input.write(decompressed.data(), decompressed.size());
 
-    Replay::Replay replay;
+    Replay::Data replay;
     auto& info = replay.info;
 
     replay.events.emplace();

@@ -46,7 +46,7 @@ static UnityEngine::GameObject* CreateCameraModel() {
     auto mat = UnityEngine::Material::New_ctor(UnityEngine::Shader::Find("Custom/SimpleLit"));
     mat->set_color(UnityEngine::Color::get_white());
     auto ret = CreateCube(nullptr, mat, {}, {}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
-    ret->AddComponent<ReplayHelpers::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
+    ret->AddComponent<Replay::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
     CreateCube(ret, mat, {-1.461, 1.08, 1.08}, {45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 0");
     CreateCube(ret, mat, {1.461, 1.08, 1.08}, {45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 1");
     CreateCube(ret, mat, {1.461, 1.08, -1.08}, {-45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 2");

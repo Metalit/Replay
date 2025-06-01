@@ -153,7 +153,7 @@ MAKE_AUTO_HOOK_MATCH(
 ) {
     // modified scores are calculated based on max scores after this function is called
     Playback::ProcessMaxScore(self);
-    if (!il2cpp_utils::try_cast<ReplayHelpers::ScoringElement>(scoringElement))
+    if (!il2cpp_utils::try_cast<Replay::ScoringElement>(scoringElement))
         ScoreController_DespawnScoringElement(self, scoringElement);
 }
 

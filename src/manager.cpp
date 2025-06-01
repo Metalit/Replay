@@ -18,7 +18,7 @@ static bool replaying = false;
 static bool rendering = false;
 static bool paused = false;
 
-static std::vector<std::pair<std::string, Replay::Replay>> replays;
+static std::vector<std::pair<std::string, Replay::Data>> replays;
 static bool local = true;
 
 std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Manager::customDataCallbacks;
@@ -59,7 +59,7 @@ static void SelectFromConfig(int index, bool render) {
         Manager::StartReplay(true);
         main->_soloFreePlayFlowCoordinator->StartLevel(nullptr, false);
     } else
-        Menu::ReplayViewController::Present();
+        Replay::MenuView::Present();
 }
 
 void Manager::SelectLevelInConfig(int index) {
@@ -86,17 +86,17 @@ bool Manager::IsCurrentLevelInConfig() {
     return false;
 }
 
-void Manager::SetExternalReplay(std::string path, Replay::Replay replay) {
+void Manager::SetExternalReplay(std::string path, Replay::Data replay) {
     replays = {{path, replay}};
     local = false;
-    Menu::ReplayViewController::GetInstance()->UpdateUI(false);
+    Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
 bool Manager::AreReplaysLocal() {
     return local;
 }
 
-std::vector<std::pair<std::string, Replay::Replay>>& Manager::GetReplays() {
+std::vector<std::pair<std::string, Replay::Data>>& Manager::GetReplays() {
     return replays;
 }
 
@@ -144,7 +144,7 @@ static int GetCurrentIndex() {
     return idx;
 }
 
-Replay::Replay& Manager::GetCurrentReplay() {
+Replay::Data& Manager::GetCurrentReplay() {
     return replays[GetCurrentIndex()].second;
 }
 
@@ -157,7 +157,7 @@ void Manager::DeleteCurrentReplay() {
         return;
     }
     replays.erase(replays.begin());
-    Menu::ReplayViewController::GetInstance()->UpdateUI(false);
+    Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
 Replay::Info& Manager::GetCurrentInfo() {
@@ -186,9 +186,9 @@ ON_EVENT(MetaCore::Events::Update) {
 ON_EVENT(MetaCore::Events::MapSelected) {
     replays = Parsing::GetReplays(MetaCore::Songs::GetSelectedKey());
     local = true;
-    Menu::ReplayViewController::SetEnabled(!replays.empty());
+    Replay::MenuView::SetEnabled(!replays.empty());
     if (!replays.empty())
-        Menu::ReplayViewController::GetInstance()->UpdateUI(true);
+        Replay::MenuView::GetInstance()->UpdateUI(true);
 }
 
 ON_EVENT(MetaCore::Events::MapStarted) {
@@ -223,5 +223,5 @@ ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
         main->_menuLightsManager->SetColorPreset(main->_defaultLightsPreset, false, 0);
 
     if (!replaying && !MetaCore::Internals::mapWasQuit && !recorderInstalled)
-        Menu::ReplayViewController::DisableWithRecordingHint();
+        Replay::MenuView::DisableWithRecordingHint();
 }

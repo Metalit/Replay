@@ -24,13 +24,13 @@
 #include "metacore/shared/ui.hpp"
 #include "utils.hpp"
 
-DEFINE_TYPE(ReplaySettings, MainSettings)
-DEFINE_TYPE(ReplaySettings, RenderSettings)
-DEFINE_TYPE(ReplaySettings, InputSettings)
-DEFINE_TYPE(ReplaySettings, ModSettings)
+DEFINE_TYPE(Replay, MainSettings)
+DEFINE_TYPE(Replay, RenderSettings)
+DEFINE_TYPE(Replay, InputSettings)
+DEFINE_TYPE(Replay, ModSettings)
 
 using namespace GlobalNamespace;
-using namespace ReplaySettings;
+using namespace Replay;
 
 MainSettings* MainSettings::instance = nullptr;
 RenderSettings* RenderSettings::instance = nullptr;

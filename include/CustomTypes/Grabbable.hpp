@@ -6,7 +6,7 @@
 #include "custom-types/shared/macros.hpp"
 #include "math.hpp"
 
-DECLARE_CLASS_CODEGEN(ReplayHelpers, Grabbable, UnityEngine::MonoBehaviour) {
+DECLARE_CLASS_CODEGEN(Replay, Grabbable, UnityEngine::MonoBehaviour) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_INSTANCE_METHOD(void, Update);

@@ -13,14 +13,14 @@ namespace Manager {
     void RemoveCurrentLevelFromConfig();
     bool IsCurrentLevelInConfig();
 
-    void SetExternalReplay(std::string path, Replay::Replay replay);
+    void SetExternalReplay(std::string path, Replay::Data replay);
     bool AreReplaysLocal();
-    std::vector<std::pair<std::string, Replay::Replay>>& GetReplays();
+    std::vector<std::pair<std::string, Replay::Data>>& GetReplays();
 
     void StartReplay(bool render);
     void CameraFinished();
 
-    Replay::Replay& GetCurrentReplay();
+    Replay::Data& GetCurrentReplay();
     Replay::Info& GetCurrentInfo();
     void DeleteCurrentReplay();
 

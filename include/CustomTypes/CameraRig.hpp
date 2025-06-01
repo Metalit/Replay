@@ -8,7 +8,7 @@
 #include "UnityEngine/Transform.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN(ReplayHelpers, CameraRig, UnityEngine::MonoBehaviour) {
+DECLARE_CLASS_CODEGEN(Replay, CameraRig, UnityEngine::MonoBehaviour) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_INSTANCE_FIELD(UnityEngine::Transform*, fakeHead);

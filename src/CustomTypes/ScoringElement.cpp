@@ -4,10 +4,10 @@
 #include "main.hpp"
 #include "utils.hpp"
 
-DEFINE_TYPE(ReplayHelpers, ScoringElement);
+DEFINE_TYPE(Replay, ScoringElement);
 
-using Element = ReplayHelpers::ScoringElement;
 using namespace GlobalNamespace;
+using Element = Replay::ScoringElement;
 
 int Element::get_cutScore() {
     return cutScore;

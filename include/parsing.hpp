@@ -11,17 +11,17 @@ namespace Parsing {
         char const* what() const noexcept override { return message.c_str(); }
     };
 
-    Replay::Replay ReadReqlay(std::string const& path);
-    Replay::Replay ReadScoresaber(std::string const& path);
-    Replay::Replay ReadBSOR(std::string const& path);
+    Replay::Data ReadReqlay(std::string const& path);
+    Replay::Data ReadScoresaber(std::string const& path);
+    Replay::Data ReadBSOR(std::string const& path);
 
     std::string ReadString(std::stringstream& input);
     std::string ReadString(std::ifstream& input);
     std::string ReadStringUTF16(std::ifstream& input);
 
-    std::vector<std::pair<std::string, Replay::Replay>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
+    std::vector<std::pair<std::string, Replay::Data>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 
-    void RecalculateNotes(Replay::Replay& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);
+    void RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);
 }
 
 #define READ_TO(name) \

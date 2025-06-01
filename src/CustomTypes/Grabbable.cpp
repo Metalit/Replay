@@ -7,10 +7,10 @@
 #include "VRUIControls/VRPointer.hpp"
 #include "main.hpp"
 
-DEFINE_TYPE(ReplayHelpers, Grabbable);
+DEFINE_TYPE(Replay, Grabbable);
 
-using namespace ReplayHelpers;
 using namespace GlobalNamespace;
+using namespace Replay;
 
 void Grabbable::Update() {
     if (transform->position.y < 0) {

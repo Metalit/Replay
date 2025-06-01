@@ -12,7 +12,7 @@
 #include "custom-types/shared/coroutine.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController) {
+DECLARE_CLASS_CODEGEN(Replay, MainSettings, HMUI::ViewController) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_OVERRIDE_METHOD_MATCH(
@@ -26,7 +26,7 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, MainSettings, HMUI::ViewController) {
     static MainSettings* instance;
 };
 
-DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController) {
+DECLARE_CLASS_CODEGEN(Replay, RenderSettings, HMUI::ViewController) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_OVERRIDE_METHOD_MATCH(
@@ -50,7 +50,7 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, RenderSettings, HMUI::ViewController) {
     static RenderSettings* instance;
 };
 
-DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController) {
+DECLARE_CLASS_CODEGEN(Replay, InputSettings, HMUI::ViewController) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_OVERRIDE_METHOD_MATCH(
@@ -73,7 +73,7 @@ DECLARE_CLASS_CODEGEN(ReplaySettings, InputSettings, HMUI::ViewController) {
     static InputSettings* instance;
 };
 
-DECLARE_CLASS_CODEGEN(ReplaySettings, ModSettings, HMUI::FlowCoordinator) {
+DECLARE_CLASS_CODEGEN(Replay, ModSettings, HMUI::FlowCoordinator) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_OVERRIDE_METHOD_MATCH(

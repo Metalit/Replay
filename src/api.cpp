@@ -14,7 +14,7 @@ EXPOSE_API(PlayBSORFromFile, bool, std::string path) {
         auto replay = Parsing::ReadBSOR(path);
         Manager::SetExternalReplay(path, replay);
 
-        Menu::ReplayViewController::Present();
+        Replay::MenuView::Present();
         return true;
     } catch (std::exception const& e) {
         logger.error("Error parsing BSOR from {}: {}", path, e.what());

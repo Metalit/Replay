@@ -18,9 +18,9 @@
 #include "replay.hpp"
 #include "utils.hpp"
 
-DEFINE_TYPE(ReplayHelpers, CameraRig);
+DEFINE_TYPE(Replay, CameraRig);
 
-using namespace ReplayHelpers;
+using namespace Replay;
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
     // when rendering, show a progress screen in the middle of nowhere instead of the gameplay
@@ -82,7 +82,7 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     //  - progress
 
     // have the camera itself not be parented, since we calculate the local position offset ourselves
-    auto cameraRig = cameraTransform->gameObject->AddComponent<ReplayHelpers::CameraRig*>();
+    auto cameraRig = cameraTransform->gameObject->AddComponent<Replay::CameraRig*>();
     cameraRig->cameraTracker = cameraTransform->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>();
     auto parent = cameraTransform->parent;
     cameraTransform->SetParent(nullptr, true);

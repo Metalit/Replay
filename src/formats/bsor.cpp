@@ -138,7 +138,7 @@ static bool ParseMetadata(std::ifstream& input, std::string const& path) {
     return true;
 }
 
-static BSOR::Info ParseInfo(std::ifstream& input, Replay::Replay& replay) {
+static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay) {
     auto info = ReadInfo(input);
     replay.info.modifiers = ParseModifierString(info.modifiers);
     replay.info.modifiers.leftHanded = info.leftHanded;
@@ -182,7 +182,7 @@ static BSOR::Info ParseInfo(std::ifstream& input, Replay::Replay& replay) {
     return info;
 }
 
-static void ParsePoses(std::ifstream& input, Replay::Replay& replay, bool hasRotation) {
+static void ParsePoses(std::ifstream& input, Replay::Data& replay, bool hasRotation) {
     int count;
     READ_TO(count);
 
@@ -224,7 +224,7 @@ static void ParsePoses(std::ifstream& input, Replay::Replay& replay, bool hasRot
     replay.info.averageOffset = Quaternion::Inverse(averageCalc.GetAverage());
 }
 
-static void ParseNotes(std::ifstream& input, Replay::Replay& replay) {
+static void ParseNotes(std::ifstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -291,7 +291,7 @@ static void ParseNotes(std::ifstream& input, Replay::Replay& replay) {
     }
 }
 
-static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info const& info) {
+static void ParseWalls(std::ifstream& input, Replay::Data& replay, BSOR::Info const& info) {
     int count;
     READ_TO(count);
 
@@ -366,7 +366,7 @@ static void ParseWalls(std::ifstream& input, Replay::Replay& replay, BSOR::Info 
     }
 }
 
-static void ParseHeights(std::ifstream& input, Replay::Replay& replay) {
+static void ParseHeights(std::ifstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -382,7 +382,7 @@ static void ParseHeights(std::ifstream& input, Replay::Replay& replay) {
     replay.info.hasYOffset = true;
 }
 
-static void ParsePauses(std::ifstream& input, Replay::Replay& replay) {
+static void ParsePauses(std::ifstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -396,11 +396,11 @@ static void ParsePauses(std::ifstream& input, Replay::Replay& replay) {
     }
 }
 
-static void ParseOffsets(std::ifstream& input, Replay::Replay& replay) {
+static void ParseOffsets(std::ifstream& input, Replay::Data& replay) {
     READ_TO(replay.offsets.emplace());
 }
 
-static void ParseCustomData(std::ifstream& input, Replay::Replay& replay) {
+static void ParseCustomData(std::ifstream& input, Replay::Data& replay) {
     int count;
     READ_TO(count);
 
@@ -421,9 +421,9 @@ static void ParseCustomData(std::ifstream& input, Replay::Replay& replay) {
     }
 }
 
-static void ParseOptionalSection(std::ifstream& input, Replay::Replay& replay) {}
+static void ParseOptionalSection(std::ifstream& input, Replay::Data& replay) {}
 
-Replay::Replay Parsing::ReadBSOR(std::string const& path) {
+Replay::Data Parsing::ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
 
@@ -434,7 +434,7 @@ Replay::Replay Parsing::ReadBSOR(std::string const& path) {
         return {};
 
     int8_t section;
-    Replay::Replay replay;
+    Replay::Data replay;
     replay.events.emplace();
 
     auto info = ParseInfo(input, replay);

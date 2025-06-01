@@ -114,7 +114,7 @@ NoteCutInfo Utils::GetNoteCutInfo(NoteController* note, Saber* saber, Replay::Ev
         note ? note->inverseWorldRotation : Quaternion::identity(),
         note ? note->noteTransform->rotation : Quaternion::identity(),
         note ? note->noteTransform->position : Vector3::zero(),
-        saber ? ReplayHelpers::MovementData::Create((ISaberMovementData*) saber->_movementData, info.beforeCutRating, info.afterCutRating) : nullptr
+        saber ? Replay::MovementData::Create((ISaberMovementData*) saber->_movementData, info.beforeCutRating, info.afterCutRating) : nullptr
     );
 }
 
@@ -142,7 +142,7 @@ NoteCutInfo Utils::GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-float Utils::ModifierMultiplier(Replay::Replay const& replay, bool failed) {
+float Utils::ModifierMultiplier(Replay::Data const& replay, bool failed) {
     auto& mods = replay.info.modifiers;
     float mult = 1;
     if (mods.disappearingArrows)

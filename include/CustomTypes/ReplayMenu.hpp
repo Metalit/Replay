@@ -11,7 +11,7 @@
 #include "bsml/shared/BSML/Components/Settings/IncrementSetting.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
+DECLARE_CLASS_CODEGEN(Replay, MenuView, HMUI::ViewController) {
     DECLARE_DEFAULT_CTOR();
 
     DECLARE_OVERRIDE_METHOD_MATCH(
@@ -27,7 +27,7 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
     DECLARE_STATIC_METHOD(void, CheckMultiplayer);
     DECLARE_STATIC_METHOD(void, Present);
     DECLARE_STATIC_METHOD(void, Dismiss);
-    DECLARE_STATIC_METHOD(ReplayViewController*, GetInstance);
+    DECLARE_STATIC_METHOD(MenuView*, GetInstance);
 
    private:
     GlobalNamespace::LevelBar* levelBar;
@@ -46,5 +46,5 @@ DECLARE_CLASS_CODEGEN(Menu, ReplayViewController, HMUI::ViewController) {
 
     GlobalNamespace::IReadonlyBeatmapData* beatmapData;
 
-    static ReplayViewController* instance;
+    static MenuView* instance;
 };

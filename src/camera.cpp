@@ -44,7 +44,7 @@ static Quaternion baseCameraRotation;
 
 int Camera::reinitDistortions = -1;
 
-static ReplayHelpers::CameraRig* cameraRig = nullptr;
+static Replay::CameraRig* cameraRig = nullptr;
 UnityEngine::Camera* mainCamera = nullptr;
 int oldCullingMask = 0;
 int uiCullingMask = 1 << 5;
@@ -133,7 +133,7 @@ static void SetupRecording() {
         UnityEngine::Object::DestroyImmediate(comp);
     if (auto comp = customCamera->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>())
         UnityEngine::Object::DestroyImmediate(comp);
-    if (auto comp = customCamera->GetComponent<ReplayHelpers::CameraRig*>())
+    if (auto comp = customCamera->GetComponent<Replay::CameraRig*>())
         UnityEngine::Object::DestroyImmediate(comp);
 
     customCamera->clearFlags = mainCamera->clearFlags;
@@ -270,7 +270,7 @@ void Camera::SetupCamera() {
     if (Manager::Rendering())
         SetupRecording();
 
-    cameraRig = ReplayHelpers::CameraRig::Create(mainCamera->transform);
+    cameraRig = Replay::CameraRig::Create(mainCamera->transform);
     ResetBasePosition();
 }
 

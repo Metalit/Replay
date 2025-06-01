@@ -105,8 +105,8 @@ Replay::Transform ConvertTransform(EulerTransform& euler) {
     return ret;
 }
 
-Replay::Replay ReadFromV1(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV1(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     V1Modifiers modifiers;
@@ -129,8 +129,8 @@ Replay::Replay ReadFromV1(std::ifstream& input) {
 }
 
 // changed modifier order, added version header, added jump offset to keyframes
-Replay::Replay ReadFromV2(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV2(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     V2Modifiers modifiers;
@@ -152,8 +152,8 @@ Replay::Replay ReadFromV2(std::ifstream& input) {
 }
 
 // added info for fails in replays (different from reaching 0 energy with no fail)
-Replay::Replay ReadFromV3(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV3(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     READ_TO(replay.info.failed);
@@ -177,8 +177,8 @@ Replay::Replay ReadFromV3(std::ifstream& input) {
 }
 
 // explicitly added reached 0 energy bool and time to the replay
-Replay::Replay ReadFromV4(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV4(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     READ_TO(replay.info.failed);
@@ -204,8 +204,8 @@ Replay::Replay ReadFromV4(std::ifstream& input) {
 }
 
 // added energy to keyframes
-Replay::Replay ReadFromV5(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV5(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     READ_TO(replay.info.failed);
@@ -231,8 +231,8 @@ Replay::Replay ReadFromV5(std::ifstream& input) {
 }
 
 // reordered modifiers again and added the new ones
-Replay::Replay ReadFromV6(std::ifstream& input) {
-    Replay::Replay replay;
+Replay::Data ReadFromV6(std::ifstream& input) {
+    Replay::Data replay;
     replay.frames.emplace();
 
     READ_TO(replay.info.failed);
@@ -259,7 +259,7 @@ Replay::Replay ReadFromV6(std::ifstream& input) {
 
 unsigned char fileHeader[3] = {0xa1, 0xd2, 0x45};
 
-Replay::Replay ReadVersionedReqlay(std::string const& path) {
+Replay::Data ReadVersionedReqlay(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
 
@@ -296,7 +296,7 @@ Replay::Replay ReadVersionedReqlay(std::string const& path) {
     }
 }
 
-Replay::Replay Parsing::ReadReqlay(std::string const& path) {
+Replay::Data Parsing::ReadReqlay(std::string const& path) {
     auto replay = ReadVersionedReqlay(path);
 
     auto modified = std::filesystem::last_write_time(path);

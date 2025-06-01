@@ -184,7 +184,7 @@ namespace Replay {
         Transform rightSaber;
     };
 
-    struct Replay {
+    struct Data {
         Info info;
         std::vector<Pose> poses;
         std::optional<Frames::Data> frames;

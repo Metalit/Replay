@@ -5,7 +5,7 @@
 #include "GlobalNamespace/ISaberMovementDataProcessor.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN_INTERFACES(ReplayHelpers, MovementData, Il2CppObject, GlobalNamespace::ISaberMovementData*, GlobalNamespace::ISaberMovementDataProcessor*) {
+DECLARE_CLASS_CODEGEN_INTERFACES(Replay, MovementData, Il2CppObject, GlobalNamespace::ISaberMovementData*, GlobalNamespace::ISaberMovementDataProcessor*) {
     DECLARE_DEFAULT_CTOR();
 
    public:

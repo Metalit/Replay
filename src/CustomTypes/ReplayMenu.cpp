@@ -21,13 +21,12 @@
 #include "metacore/shared/unity.hpp"
 #include "utils.hpp"
 
-DEFINE_TYPE(Menu, ReplayViewController);
+DEFINE_TYPE(Replay, MenuView);
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
-using namespace Menu;
 
-ReplayViewController* ReplayViewController::instance = nullptr;
+Replay::MenuView* Replay::MenuView::instance = nullptr;
 
 static ConstString RecordingHint = "Install BeatLeader or ScoreSaber to record replays";
 
@@ -39,8 +38,8 @@ static StringW QueueButtonText() {
 }
 
 static void OnReplayButtonClick() {
-    ReplayViewController::GetInstance()->UpdateUI(true);
-    ReplayViewController::Present();
+    Replay::MenuView::GetInstance()->UpdateUI(true);
+    Replay::MenuView::Present();
 }
 
 static void OnWatchButtonClick() {
@@ -58,7 +57,7 @@ static void OnQueueButtonClick() {
         Manager::RemoveCurrentLevelFromConfig();
     else
         Manager::SaveCurrentLevelInConfig();
-    ReplayViewController::GetInstance()->OnEnable();
+    Replay::MenuView::GetInstance()->OnEnable();
 }
 
 static void OnDeleteButtonClick() {
@@ -70,14 +69,14 @@ static void OnDeleteButtonClick() {
 static void OnSettingsButtonClick() {
     static UnityW<HMUI::FlowCoordinator> settings;
     if (!settings)
-        settings = (HMUI::FlowCoordinator*) BSML::Helpers::CreateFlowCoordinator<ReplaySettings::ModSettings*>();
+        settings = (HMUI::FlowCoordinator*) BSML::Helpers::CreateFlowCoordinator<Replay::ModSettings*>();
     auto flow = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
     flow->PresentFlowCoordinator(settings, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
 }
 
 static void OnIncrementChanged(float value) {
     getConfig().LastReplayIdx.SetValue(value);
-    ReplayViewController::GetInstance()->UpdateUI(false);
+    Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
 static void SetPreferred(Component* object, std::optional<float> width, std::optional<float> height) {
@@ -123,7 +122,7 @@ static UI::Toggle* AddConfigValueToggle(Transform* parent, ConfigUtils::ConfigVa
     return object;
 }
 
-void ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
+void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     if (!firstActivation) {
         cameraDropdown->dropdown->SelectCellWithIdx(getConfig().CamMode.GetValue());
         return;
@@ -215,7 +214,7 @@ void ReplayViewController::DidActivate(bool firstActivation, bool addedToHierarc
     SetPreferred(cancelButton, 20, 10);
 }
 
-void ReplayViewController::UpdateUI(bool getData) {
+void Replay::MenuView::UpdateUI(bool getData) {
     auto beatmap = MetaCore::Songs::GetSelectedKey();
     auto level = MetaCore::Songs::GetSelectedLevel();
 
@@ -265,14 +264,14 @@ void ReplayViewController::UpdateUI(bool getData) {
     increment->gameObject->SetActive(increment->minValue != increment->maxValue);
 }
 
-void ReplayViewController::OnEnable() {
+void Replay::MenuView::OnEnable() {
     if (queueButton) {
         queueButton->interactable = Manager::AreReplaysLocal();
         BSML::Lite::SetButtonText(queueButton, QueueButtonText());
     }
 }
 
-void ReplayViewController::OnDestroy() {
+void Replay::MenuView::OnDestroy() {
     instance = nullptr;
 }
 
@@ -281,7 +280,7 @@ static void MatchRequirements(UI::Button* replayButton) {
     replayButton->interactable = interactable && replayButton->interactable;
 }
 
-void ReplayViewController::CreateShortcut(StandardLevelDetailView* view) {
+void Replay::MenuView::CreateShortcut(StandardLevelDetailView* view) {
     levelView = view;
 
     if (!canvas) {
@@ -326,7 +325,7 @@ void ReplayViewController::CreateShortcut(StandardLevelDetailView* view) {
         hint->text = "";
 }
 
-void ReplayViewController::SetEnabled(bool value) {
+void Replay::MenuView::SetEnabled(bool value) {
     if (!canvas)
         return;
     canvas->active = value;
@@ -335,7 +334,7 @@ void ReplayViewController::SetEnabled(bool value) {
     canvas->transform->parent->GetComponent<RectTransform*>()->anchoredPosition = {xpos, -55};
 }
 
-void ReplayViewController::DisableWithRecordingHint() {
+void Replay::MenuView::DisableWithRecordingHint() {
     if (!canvas)
         return;
     auto replayButton = canvas->GetComponentInChildren<UI::Button*>();
@@ -346,29 +345,29 @@ void ReplayViewController::DisableWithRecordingHint() {
         BSML::Lite::AddHoverHint(replayButton, RecordingHint);
 }
 
-void ReplayViewController::CheckMultiplayer() {
+void Replay::MenuView::CheckMultiplayer() {
     auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
     if (flowCoordinator.try_cast<MultiplayerLevelSelectionFlowCoordinator>())
         SetEnabled(false);
 }
 
-void ReplayViewController::Present() {
+void Replay::MenuView::Present() {
     auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
     flowCoordinator->showBackButton = true;
     flowCoordinator->PresentViewController(GetInstance(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
     GetInstance()->UpdateUI(false);
 }
 
-void ReplayViewController::Dismiss() {
+void Replay::MenuView::Dismiss() {
     if (GetInstance()->isInViewControllerHierarchy && !GetInstance()->childViewController) {
         auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
         flowCoordinator->DismissViewController(GetInstance(), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
     }
 }
 
-ReplayViewController* ReplayViewController::GetInstance() {
+Replay::MenuView* Replay::MenuView::GetInstance() {
     if (!instance) {
-        instance = BSML::Helpers::CreateViewController<ReplayViewController*>();
+        instance = BSML::Helpers::CreateViewController<Replay::MenuView*>();
         instance->name = "ReplayMenuViewController";
     }
     return instance;

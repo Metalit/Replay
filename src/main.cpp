@@ -35,7 +35,7 @@ extern "C" void late_load() {
     // (there is an option to disable it non-indefinitely for this exact purpose but I can't be bothered)
     Hollywood::SetScreenOn(false);
 
-    BSML::Register::RegisterSettingsMenu<ReplaySettings::ModSettings*>(MOD_ID);
+    BSML::Register::RegisterSettingsMenu<Replay::ModSettings*>(MOD_ID);
 
     Hooks::Install();
 
