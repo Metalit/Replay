@@ -70,20 +70,71 @@ void Manager::BeginQueue() {
     SelectFromConfig(0, true);
 }
 
-void Manager::SaveCurrentLevelInConfig() {}
+static std::optional<LevelSelection> GetCurrentLevel() {
+    std::optional<LevelSelection> ret = std::nullopt;
 
-void Manager::RemoveCurrentLevelFromConfig() {}
+    auto map = MetaCore::Songs::GetSelectedKey();
+    if (!map.IsValid())
+        return ret;
+
+    ret.emplace();
+    ret->ID = (std::string) map.levelId;
+    ret->Difficulty = (int) map.difficulty;
+    ret->Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+
+    auto pack = MetaCore::Songs::GetSelectedPlaylist();
+    if (pack)
+        ret->PackID = (std::string) pack->packID;
+
+    ret->ReplayIndex = getConfig().LastReplayIdx.GetValue();
+    return ret;
+}
+
+void Manager::SaveCurrentLevelInConfig() {
+    auto map = MetaCore::Songs::GetSelectedKey();
+    if (!map.IsValid())
+        return;
+
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto added = levels.emplace_back();
+
+    added.ID = (std::string) map.levelId;
+    added.Difficulty = (int) map.difficulty;
+    added.Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+
+    auto pack = MetaCore::Songs::GetSelectedPlaylist();
+    if (pack)
+        added.PackID = (std::string) pack->packID;
+
+    added.ReplayIndex = getConfig().LastReplayIdx.GetValue();
+
+    getConfig().LevelsToSelect.SetValue(levels);
+}
+
+static std::vector<LevelSelection>::iterator FindCurrentLevel(std::vector<LevelSelection>& levels) {
+    auto current = MetaCore::Songs::GetSelectedKey();
+    if (!current.IsValid())
+        return levels.end();
+    for (auto level = levels.begin(); level != levels.end(); level++) {
+        if (level->ID == current.levelId && level->Characteristic == current.beatmapCharacteristic->_serializedName &&
+            level->Difficulty == (int) current.difficulty && level->ReplayIndex == getConfig().LastReplayIdx.GetValue())
+            return level;
+    }
+    return levels.end();
+}
+
+void Manager::RemoveCurrentLevelFromConfig() {
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto level = FindCurrentLevel(levels);
+    if (level == levels.end())
+        return;
+    levels.erase(level);
+    getConfig().LevelsToSelect.SetValue(levels);
+}
 
 bool Manager::IsCurrentLevelInConfig() {
-    auto selection = MetaCore::Songs::GetSelectedKey();
-    if (!selection.IsValid())
-        return false;
-    for (auto level : getConfig().LevelsToSelect.GetValue()) {
-        if (level.ID == selection.levelId && level.Characteristic == selection.beatmapCharacteristic->_serializedName &&
-            level.Difficulty == (int) selection.difficulty && level.ReplayIndex == getConfig().LastReplayIdx.GetValue())
-            return true;
-    }
-    return false;
+    auto levels = getConfig().LevelsToSelect.GetValue();
+    return FindCurrentLevel(levels) != levels.end();
 }
 
 void Manager::SetExternalReplay(std::string path, Replay::Data replay) {

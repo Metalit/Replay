@@ -26,7 +26,6 @@ DECLARE_JSON_STRUCT(LevelSelection) {
     VALUE(std::string, PackID);
     VALUE(int, Difficulty);
     VALUE(std::string, Characteristic);
-    VALUE(int, Category);
     VALUE(int, ReplayIndex);
 };
 
