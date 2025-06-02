@@ -29,8 +29,8 @@ namespace Utils {
     GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, Replay::Events::CutInfo const& info);
     GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-    float ModifierMultiplier(Replay::Data const& replay, bool failed);
-    float EnergyForNote(Replay::Events::NoteInfo const& noteEvent);
+    float EnergyForNote(Replay::Events::NoteInfo const& note);
+    float AccuracyForDistance(float distance);
     int ScoreForNote(Replay::Events::Note const& note, bool max = false);
 
     int BSORNoteID(GlobalNamespace::NoteData* note);

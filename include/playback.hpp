@@ -10,7 +10,8 @@
 
 namespace Playback {
     void UpdateTime();
-    void OnFinish();
+
+    void SeekTo(float time);
 
     Replay::Pose const& GetPose();
 

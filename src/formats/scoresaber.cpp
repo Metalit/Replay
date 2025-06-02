@@ -55,6 +55,12 @@ namespace SS {
         float Time;
     };
 
+    struct MultiplierEvent {
+        int Multiplier;
+        float NextMultiplierProgress;
+        float Time;
+    };
+
     struct EnergyEvent {
         float Energy;
         float Time;
@@ -293,11 +299,16 @@ static int ParseScores(std::stringstream& input, std::map<float, Replay::Frames:
             percent = ssScore.Score / (float) ssScore.MaxScore;
 
         auto existing = frames.find(ssScore.Time);
-        if (existing != frames.end()) {
+        if (existing == frames.end()) {
+            if (frames.begin()->second.score < 0)
+                frames.begin()->second.score = ssScore.Score;
+            if (frames.begin()->second.percent < 0)
+                frames.begin()->second.percent = percent;
+            frames.emplace(ssScore.Time, Replay::Frames::Score{ssScore.Time, ssScore.Score, percent, -1, -1, -1, -1, -1});
+        } else {
             existing->second.score = ssScore.Score;
             existing->second.percent = percent;
-        } else
-            frames.emplace(ssScore.Time, Replay::Frames::Score{ssScore.Time, ssScore.Score, percent, -1, -1, 0});
+        }
     }
 
     return ssScore.Score;
@@ -313,10 +324,36 @@ static void ParseCombo(std::stringstream& input, std::map<float, Replay::Frames:
         READ_TO(ssCombo);
 
         auto existing = frames.find(ssCombo.Time);
-        if (existing == frames.end())
-            frames.emplace(ssCombo.Time, Replay::Frames::Score{ssCombo.Time, -1, -1, ssCombo.Combo, -1, 0});
-        else
+        if (existing == frames.end()) {
+            if (frames.begin()->second.combo < 0)
+                frames.begin()->second.combo = ssCombo.Combo;
+            frames.emplace(ssCombo.Time, Replay::Frames::Score{ssCombo.Time, -1, -1, ssCombo.Combo, -1, -1, -1, -1});
+        } else
             existing->second.combo = ssCombo.Combo;
+    }
+}
+
+static void ParseMultiplier(std::stringstream& input, std::map<float, Replay::Frames::Score>& frames) {
+    int count;
+    READ_TO(count);
+
+    SS::MultiplierEvent ssMultiplier;
+
+    for (int i = 0; i < count; i++) {
+        READ_TO(ssMultiplier);
+        int realProgress = ssMultiplier.NextMultiplierProgress * ssMultiplier.Multiplier * 2;
+
+        auto existing = frames.find(ssMultiplier.Time);
+        if (existing == frames.end()) {
+            if (frames.begin()->second.multiplier < 0)
+                frames.begin()->second.multiplier = ssMultiplier.Multiplier;
+            if (frames.begin()->second.multiplierProgress < 0)
+                frames.begin()->second.multiplierProgress = realProgress;
+            frames.emplace(ssMultiplier.Time, Replay::Frames::Score{ssMultiplier.Time, -1, -1, -1, -1, -1, ssMultiplier.Multiplier, realProgress});
+        } else {
+            existing->second.multiplier = ssMultiplier.Multiplier;
+            existing->second.multiplierProgress = realProgress;
+        }
     }
 }
 
@@ -330,9 +367,11 @@ static void ParseEnergy(std::stringstream& input, std::map<float, Replay::Frames
         READ_TO(ssEnergy);
 
         auto existing = frames.find(ssEnergy.Time);
-        if (existing == frames.end())
-            frames.emplace(ssEnergy.Time, Replay::Frames::Score{ssEnergy.Time, -1, -1, -1, ssEnergy.Energy, 0});
-        else
+        if (existing == frames.end()) {
+            if (frames.begin()->second.energy < 0)
+                frames.begin()->second.energy = ssEnergy.Energy;
+            frames.emplace(ssEnergy.Time, Replay::Frames::Score{ssEnergy.Time, -1, -1, -1, ssEnergy.Energy, -1, -1, -1});
+        } else
             existing->second.energy = ssEnergy.Energy;
     }
 }
@@ -393,7 +432,7 @@ Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     input.seekg(pointers.comboKeyframes);
     ParseCombo(input, frames);
 
-    // multipliers unused
+    input.seekg(pointers.multiplierKeyframes);
 
     input.seekg(pointers.energyKeyframes);
     ParseEnergy(input, frames);
@@ -406,5 +445,7 @@ Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     info.source = "ScoreSaber";
     info.positionsAreLocal = false;
     replay.events->cutInfoMissingOKs = true;
+
+    PreProcess(replay);
     return replay;
 }

@@ -31,31 +31,23 @@ namespace Frames {
     static constexpr int frameSearchRadius = 2;
     static Replay::Frames::Data const* frames;
     static decltype(frames->scores)::const_iterator score;
-    static Replay::Frames::Score current;
     static float lastCutTime;
-
-    static void Increment() {
-        if (!frames)
-            return;
-        current.time = score->time;
-        if (score->score >= 0)
-            current.score = score->score;
-        if (score->percent >= 0)
-            current.percent = score->percent;
-        if (score->combo >= 0)
-            current.combo = score->combo;
-        if (score->energy >= 0)
-            current.energy = score->energy;
-        if (score->offset >= 0)
-            current.offset = score->offset;
-        score++;
-    }
 
     static void UpdateTime(float time) {
         if (!frames)
             return;
         while (score != frames->scores.end() && score->time < time)
-            Increment();
+            score++;
+    }
+
+    static void SeekTo(float currentTime, float time) {
+        if (!frames)
+            return;
+        if (time < currentTime) {
+            while (score != frames->scores.begin() && score->time > time)
+                score--;
+        } else
+            UpdateTime(time);
     }
 
     static bool AllowComboDrop() {
@@ -81,7 +73,7 @@ namespace Frames {
     static bool AllowScoreOverride() {
         if (!frames)
             return false;
-        if (current.percent >= 0)
+        if (score->percent >= 0)
             return true;
         // fix scoresaber replays having incorrect max score before cut finishes
         return MetaCore::Stats::GetSongTime() - lastCutTime > 0.4;
@@ -141,6 +133,7 @@ namespace Events {
             auto data = controller->noteData;
             if (!Matches(data, info))
                 continue;
+            RunNoteEvent(event, controller);
             if (info.eventType == Replay::Events::NoteInfo::Type::MISS)
                 notes.erase(iter);  // note will despawn and be removed in the other cases
             return;
@@ -176,6 +169,18 @@ namespace Events {
             event++;
         }
     }
+
+    static void SeekTo(float currentTime, float time) {
+        if (!events)
+            return;
+        if (time > currentTime) {
+            while (event != events->events.end() && event->time < time)
+                event++;
+        } else {
+            while (event != events->events.begin() && event->time > time)
+                event--;
+        }
+    }
 }
 
 static Replay::Pose interpolatedPose;
@@ -185,21 +190,7 @@ static Replay::Transform Lerp(Replay::Transform const& start, Replay::Transform 
     return {Vector3::Lerp(start.position, end.position, t), Quaternion::Lerp(start.rotation, end.rotation, t)};
 }
 
-void Playback::UpdateTime() {
-    if (!Manager::Replaying())
-        return;
-
-    float time = MetaCore::Stats::GetSongTime();
-    Frames::UpdateTime(time);
-    Events::UpdateTime(time);
-
-    auto& poses = Manager::GetCurrentReplay().poses;
-
-    while (index < poses.size() && poses[index].time <= time)
-        index++;
-    if (index > 0)
-        index--;
-
+static void UpdateInterpolatedPose(std::vector<Replay::Pose> const& poses, float time) {
     if (index < poses.size() - 1) {
         auto const& current = poses[index];
         auto const& next = poses[index + 1];
@@ -215,6 +206,41 @@ void Playback::UpdateTime() {
         interpolatedPose.rightHand = Lerp(current.rightHand, next.rightHand, lerpAmount);
     } else
         interpolatedPose = poses[index];
+}
+
+void Playback::UpdateTime() {
+    if (!Manager::Replaying())
+        return;
+
+    float time = MetaCore::Stats::GetSongTime();
+    Frames::UpdateTime(time);
+    Events::UpdateTime(time);
+
+    auto& poses = Manager::GetCurrentReplay().poses;
+
+    while (index < poses.size() - 1 && poses[index].time < time)
+        index++;
+    UpdateInterpolatedPose(poses, time);
+}
+
+void Playback::SeekTo(float time) {
+    if (!Manager::Replaying())
+        return;
+
+    auto& poses = Manager::GetCurrentReplay().poses;
+    float currentTime = interpolatedPose.time;
+
+    Frames::SeekTo(currentTime, time);
+    Events::SeekTo(currentTime, time);
+
+    if (time > currentTime) {
+        while (index < poses.size() - 1 && poses[index].time < time)
+            index++;
+    } else {
+        while (index > 0 && poses[index].time > time)
+            index--;
+    }
+    UpdateInterpolatedPose(poses, time);
 }
 
 Replay::Pose const& Playback::GetPose() {
@@ -296,7 +322,6 @@ void Playback::ProcessStart(GameplayModifiers*& modifiers, PracticeSettings*& pr
     Events::wallEndTime = 0;
     Events::wallEnergyLoss = 0;
 
-    Frames::current = {-1, -1, -1, -1, -1, -1};
     Frames::lastCutTime = -9999;
 
     if (!Manager::Replaying())
@@ -308,11 +333,8 @@ void Playback::ProcessStart(GameplayModifiers*& modifiers, PracticeSettings*& pr
         Events::event = Events::events->events.begin();
 
     Frames::frames = replay.frames ? &*replay.frames : nullptr;
-    if (Frames::frames) {
+    if (Frames::frames)
         Frames::score = Frames::frames->scores.begin();
-        while (Frames::current.score < 0 || Frames::current.combo < 0 || Frames::current.energy < 0 || Frames::current.offset < 0)
-            Frames::Increment();
-    }
 
     interpolatedPose = replay.poses.front();
     index = 0;
@@ -362,24 +384,24 @@ void Playback::ProcessScore(ScoreController* controller) {
         return;
 
     // potentially necessary if no scoring elements were despawned, preventing ProcessMaxScore from being called
-    if (Frames::AllowScoreOverride() && controller->_multipliedScore != Frames::current.score) {
-        controller->_multipliedScore = Frames::current.score;
-        if (Frames::current.percent > 0)
-            controller->_immediateMaxPossibleMultipliedScore = Frames::current.score / Frames::current.percent;
-        float multiplier = controller->_gameplayModifiersModel->GetTotalMultiplier(controller->_gameplayModifierParams, Frames::current.energy);
-        controller->_modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(Frames::current.score, multiplier);
+    if (Frames::AllowScoreOverride() && controller->_multipliedScore != Frames::score->score) {
+        controller->_multipliedScore = Frames::score->score;
+        if (Frames::score->percent > 0)
+            controller->_immediateMaxPossibleMultipliedScore = Frames::score->score / Frames::score->percent;
+        float multiplier = controller->_gameplayModifiersModel->GetTotalMultiplier(controller->_gameplayModifierParams, Frames::score->energy);
+        controller->_modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(Frames::score->score, multiplier);
         controller->_immediateMaxPossibleModifiedScore =
             ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(controller->immediateMaxPossibleMultipliedScore, multiplier);
         if (!controller->scoreDidChangeEvent->Equals(nullptr))
-            controller->scoreDidChangeEvent->Invoke(Frames::current.score, controller->modifiedScore);
+            controller->scoreDidChangeEvent->Invoke(Frames::score->score, controller->modifiedScore);
     }
 }
 
 void Playback::ProcessMaxScore(ScoreController* controller) {
     if (Manager::Replaying() && Frames::AllowScoreOverride()) {
-        controller->_multipliedScore = Frames::current.score;
-        if (Frames::current.percent > 0)
-            controller->_immediateMaxPossibleMultipliedScore = Frames::current.score / Frames::current.percent;
+        controller->_multipliedScore = Frames::score->score;
+        if (Frames::score->percent > 0)
+            controller->_immediateMaxPossibleMultipliedScore = Frames::score->score / Frames::score->percent;
     }
 }
 
@@ -403,7 +425,7 @@ bool Playback::ProcessEnergy(GameEnergyCounter* counter) {
         }
     }
 
-    if (float energy = Frames::current.energy; energy >= 0) {
+    if (float energy = Frames::score->energy; energy >= 0) {
         if (battery) {
             counter->energy = energy;
             // process the fail if needed, otherwise just send the callback

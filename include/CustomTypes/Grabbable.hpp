@@ -17,5 +17,5 @@ DECLARE_CLASS_CODEGEN(Replay, Grabbable, UnityEngine::MonoBehaviour) {
     DECLARE_INSTANCE_FIELD(Quaternion, grabRot);
 
    public:
-    std::function<void(UnityEngine::GameObject*)> onRelease = nullptr;
+    std::function<void()> onRelease = nullptr;
 };

@@ -421,7 +421,18 @@ static void ParseCustomData(std::ifstream& input, Replay::Data& replay) {
     }
 }
 
-static void ParseOptionalSection(std::ifstream& input, Replay::Data& replay) {}
+static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
+    while (true) {
+        int8_t section;
+        if (!READ_TO(section))
+            return;
+
+        if (section == 6)
+            ParseOffsets(input, replay);
+        else if (section == 7)
+            ParseOffsets(input, replay);
+    }
+}
 
 Replay::Data Parsing::ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
@@ -462,12 +473,8 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
     if (section != 5)
         throw Exception("Invalid section 5 header");
 
-    try {
-        while (true)
-            ParseOptionalSection(input, replay);
-    } catch (std::ios::failure const& e) {
-        // ignore
-    }
+    ParseOptionalSections(input, replay);
 
+    PreProcess(replay);
     return replay;
 }

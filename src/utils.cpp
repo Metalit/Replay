@@ -142,36 +142,12 @@ NoteCutInfo Utils::GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-float Utils::ModifierMultiplier(Replay::Data const& replay, bool failed) {
-    auto& mods = replay.info.modifiers;
-    float mult = 1;
-    if (mods.disappearingArrows)
-        mult += 0.07;
-    if (mods.noObstacles)
-        mult -= 0.05;
-    if (mods.noBombs)
-        mult -= 0.1;
-    if (mods.noArrows)
-        mult -= 0.3;
-    if (mods.slowerSong)
-        mult -= 0.3;
-    if (mods.noFail && failed)
-        mult -= 0.5;
-    if (mods.ghostNotes)
-        mult += 0.11;
-    if (mods.fasterSong)
-        mult += 0.08;
-    if (mods.superFastSong)
-        mult += 0.1;
-    return mult;
-}
-
-float Utils::EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
-    if (noteEvent.eventType == Replay::Events::NoteInfo::Type::BOMB)
+float Utils::EnergyForNote(Replay::Events::NoteInfo const& note) {
+    if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return -0.15;
-    bool goodCut = noteEvent.eventType == Replay::Events::NoteInfo::Type::GOOD;
-    bool miss = noteEvent.eventType == Replay::Events::NoteInfo::Type::MISS;
-    switch (noteEvent.scoringType) {
+    bool goodCut = note.eventType == Replay::Events::NoteInfo::Type::GOOD;
+    bool miss = note.eventType == Replay::Events::NoteInfo::Type::MISS;
+    switch (note.scoringType) {
         case -2:
         case (int) NoteData::ScoringType::Normal:
         case (int) NoteData::ScoringType::ChainHead:
@@ -185,6 +161,10 @@ float Utils::EnergyForNote(Replay::Events::NoteInfo const& noteEvent) {
     }
 }
 
+float Utils::AccuracyForDistance(float distance) {
+    return (1 - std::clamp(distance / (float) 0.3, (float) 0, (float) 1));
+}
+
 int Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
     ScoreModel::NoteScoreDefinition* scoreDefinition;
     if (note.info.scoringType == -2)
@@ -193,16 +173,15 @@ int Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
     if (max)
         return scoreDefinition->maxCutScore;
-    return scoreDefinition->fixedCutScore +
-           int(std::lerp(
-                   scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, std::clamp(note.noteCutInfo.beforeCutRating, 0.0f, 1.0f)
-               ) +
-               0.5) +
-           int(std::lerp(
-                   scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, std::clamp(note.noteCutInfo.afterCutRating, 0.0f, 1.0f)
-               ) +
-               0.5) +
-           int(scoreDefinition->maxCenterDistanceCutScore * (1 - std::clamp(note.noteCutInfo.cutDistanceToCenter / 0.3, 0.0, 1.0)) + 0.5);
+
+    float before = std::clamp(note.noteCutInfo.beforeCutRating, (float) 0, (float) 1);
+    float after = std::clamp(note.noteCutInfo.afterCutRating, (float) 0, (float) 1);
+    float acc = AccuracyForDistance(note.noteCutInfo.cutDistanceToCenter);
+
+    // add 0.5 all over the place so it gets rounded
+    return scoreDefinition->fixedCutScore + int(std::lerp(scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, before) + 0.5) +
+           int(std::lerp(scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, after) + 0.5) +
+           int(scoreDefinition->maxCenterDistanceCutScore * acc + 0.5);
 }
 
 int Utils::BSORNoteID(GlobalNamespace::NoteData* note) {

@@ -118,7 +118,7 @@ Replay::Data ReadFromV1(std::ifstream& input) {
     V1KeyFrame frame;
     while (READ_TO(frame)) {
         frame.head.rotation = frame.head.rotation * 90;
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, 0);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, -1, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -141,7 +141,7 @@ Replay::Data ReadFromV2(std::ifstream& input) {
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -166,7 +166,7 @@ Replay::Data ReadFromV3(std::ifstream& input) {
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -193,7 +193,7 @@ Replay::Data ReadFromV4(std::ifstream& input) {
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -220,7 +220,7 @@ Replay::Data ReadFromV5(std::ifstream& input) {
 
     V5KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -247,7 +247,7 @@ Replay::Data ReadFromV6(std::ifstream& input) {
 
     V5KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset);
+        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
         replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
@@ -312,5 +312,6 @@ Replay::Data Parsing::ReadReqlay(std::string const& path) {
 
     replay.info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
 
+    PreProcess(replay);
     return replay;
 }

@@ -5,21 +5,31 @@
 namespace Replay {
     namespace Frames {
         struct Score {
-            float time;
-            int score;
-            float percent;
-            int combo;
-            float energy;
-            float offset;
+            float time = 0;
+            int score = -1;
+            float percent = -1;
+            int combo = -1;
+            float energy = -1;
+            float offset = -1;
+            int multiplier = 1;
+            int multiplierProgress = 0;
+            int maxCombo = 0;
 
             constexpr Score() = default;
-            constexpr Score(float time, int score, float percent, int combo, float energy, float offset) :
+            constexpr Score(float time, int score, float percent, int combo, float energy, float offset, int multiplier, int multiplierProgress) :
                 time(time),
                 score(score),
                 percent(percent),
                 combo(combo),
                 energy(energy),
-                offset(offset) {}
+                offset(offset),
+                multiplier(multiplier),
+                multiplierProgress(multiplierProgress) {}
+
+            struct Searcher {
+                constexpr bool operator()(Score const& lhs, float rhs) const { return lhs.time < rhs; }
+                constexpr bool operator()(float lhs, Score const& rhs) const { return lhs < rhs.time; }
+            };
         };
 
         struct Data {
@@ -89,6 +99,14 @@ namespace Replay {
             Type eventType;
             int index;
 
+            // precalculated for seeking
+            int combo;
+            int leftCombo;
+            int rightCombo;
+            int maxCombo;
+            int multiplier;
+            int multiplierProgress;
+
             constexpr Reference(float time, Type eventType, int index) : time(time), eventType(eventType), index(index) {}
 
             struct Comparer {
@@ -97,6 +115,11 @@ namespace Replay {
                         return lhs.eventType < rhs.eventType || (lhs.eventType == rhs.eventType && lhs.index < rhs.index);
                     return lhs.time < rhs.time;
                 }
+            };
+
+            struct Searcher {
+                constexpr bool operator()(Reference const& lhs, float rhs) const { return lhs.time < rhs; }
+                constexpr bool operator()(float lhs, Reference const& rhs) const { return lhs < rhs.time; }
             };
         };
 

@@ -55,10 +55,10 @@ std::string Parsing::ReadStringUTF16(std::ifstream& input) {
     return str;
 }
 
-static std::string const reqlaySuffix1 = ".reqlay";
-static std::string const reqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
-static std::string const bsorSuffix = ".bsor";
-static std::string const ssSuffix = ".dat";
+static std::string const ReqlaySuffix1 = ".reqlay";
+static std::string const ReqlaySuffix2 = ".questReplayFileForQuestDontTryOnPcAlsoPinkEraAndLillieAreCuteBtwWilliamGay";
+static std::string const BSORSuffix = ".bsor";
+static std::string const SSSuffix = ".dat";
 
 static std::string GetReqlaysPath() {
     static auto path = getDataDir("Replay") + "replays/";
@@ -82,8 +82,8 @@ static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pai
     std::string diff = std::to_string((int) beatmap.difficulty);
     std::string mode = beatmap.beatmapCharacteristic->compoundIdPartName;
     std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
-    tests.emplace_back(reqlayName + reqlaySuffix1);
-    tests.emplace_back(reqlayName + reqlaySuffix2);
+    tests.emplace_back(reqlayName + ReqlaySuffix1);
+    tests.emplace_back(reqlayName + ReqlaySuffix2);
     logger.debug("searching for reqlays with name {}", reqlayName);
     for (auto& path : tests) {
         try {
@@ -114,7 +114,7 @@ static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<
     for (auto const& entry : std::filesystem::directory_iterator(GetBSORsPath())) {
         auto path = entry.path();
         try {
-            if (!entry.is_directory() && path.extension() == bsorSuffix && path.stem().string().find(search) != std::string::npos) {
+            if (!entry.is_directory() && path.extension() == BSORSuffix && path.stem().string().find(search) != std::string::npos) {
                 replays.emplace_back(path.string(), Parsing::ReadBSOR(path.string()));
                 logger.info("Read bsor from {}", path.string());
             }
@@ -141,7 +141,7 @@ static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::p
     for (auto const& entry : std::filesystem::directory_iterator(GetSSReplaysPath())) {
         auto path = entry.path();
         try {
-            if (!entry.is_directory() && path.extension() == ssSuffix && path.stem().string().ends_with(ending)) {
+            if (!entry.is_directory() && path.extension() == SSSuffix && path.stem().string().ends_with(ending)) {
                 replays.emplace_back(path.string(), Parsing::ReadScoresaber(path.string()));
                 logger.info("Read scoresaber replay from {}", path.string());
             }
@@ -168,6 +168,110 @@ std::vector<std::pair<std::string, Replay::Data>> Parsing::GetReplays(GlobalName
         GetSSReplays(beatmap, replays);
 
     return replays;
+}
+
+static int combo;
+static int leftCombo;
+static int rightCombo;
+static int maxCombo;
+static int multiplier;
+static int multiplierProgress;
+
+static void ResetTrackers() {
+    combo = 0;
+    leftCombo = 0;
+    rightCombo = 0;
+    maxCombo = 0;
+    multiplier = 1;
+    multiplierProgress = 0;
+}
+
+static void GoodEvent(bool left, bool right) {
+    combo++;
+    if (left)
+        leftCombo++;
+    if (right)
+        rightCombo++;
+    maxCombo = std::max(combo, maxCombo);
+    if (multiplier == 8 || ++multiplierProgress < multiplier * 2)
+        return;
+    multiplier *= 2;
+    multiplierProgress = 0;
+}
+
+static void BadEvent(bool left, bool right) {
+    combo = 0;
+    if (left)
+        leftCombo = 0;
+    if (right)
+        rightCombo = 0;
+    multiplierProgress = 0;
+    if (multiplier != 1)
+        multiplier /= 2;
+}
+
+void Parsing::PreProcess(Replay::Data& replay) {
+    if (replay.frames) {
+        auto& frames = *replay.frames;
+        ResetTrackers();
+
+        Replay::Frames::Score previous;
+        for (auto& score : frames.scores) {
+            if (score.score < 0)
+                score.score = previous.score;
+            if (score.percent < 0)
+                score.percent = previous.percent;
+            if (score.combo < 0)
+                score.combo = previous.combo;
+            if (score.energy < 0)
+                score.energy = previous.energy;
+            if (score.offset < 0)
+                score.offset = previous.offset;
+            if (score.multiplier < 0)
+                score.multiplier = previous.multiplier;
+            if (score.multiplierProgress < 0)
+                score.multiplierProgress = previous.multiplierProgress;
+            score.maxCombo = std::max(score.combo, score.maxCombo);
+            previous = score;
+
+            // do our best guess of multipliers if missing, no hope for per hand combo though
+            if (score.multiplier < 0) {
+                if (score.combo < previous.combo)
+                    BadEvent(false, false);
+                else if (score.combo > previous.combo)
+                    GoodEvent(false, false);
+                score.multiplier = multiplier;
+                score.multiplierProgress = multiplierProgress;
+            }
+        }
+    }
+
+    if (replay.events) {
+        auto& events = *replay.events;
+        ResetTrackers();
+
+        for (auto event = events.events.begin(); event != events.events.end(); event++) {
+            bool note = event->eventType == Replay::Events::Reference::Note;
+            bool wall = event->eventType == Replay::Events::Reference::Wall;
+
+            auto noteInfo = note ? &events.notes[event->index].info : nullptr;
+
+            bool mistake = wall || note && noteInfo->eventType != Replay::Events::NoteInfo::Type::GOOD;
+            bool left = note && noteInfo->colorType == 0;
+            bool right = note && noteInfo->colorType == 1;
+
+            if (wall || note)
+                mistake ? BadEvent(left, right) : GoodEvent(left, right);
+
+            // casts are ok because these aren't used when sorting the set
+            const_cast<int&>(event->combo) = combo;
+            const_cast<int&>(event->leftCombo) = leftCombo;
+            const_cast<int&>(event->rightCombo) = rightCombo;
+            const_cast<int&>(event->maxCombo) = maxCombo;
+            const_cast<int&>(event->multiplier) = multiplier;
+            const_cast<int&>(event->multiplierProgress) = multiplierProgress;
+        }
+    }
 }
 
 void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData) {

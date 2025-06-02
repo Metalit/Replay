@@ -46,7 +46,7 @@ void Grabbable::Update() {
         controller = nullptr;
 
     if (wasGrabbing && !controller)
-        onRelease(get_gameObject());
+        onRelease();
 
     if (!controller)
         return;
@@ -72,6 +72,6 @@ void Grabbable::Update() {
     auto pos = controller->transform->TransformPoint(grabPos);
     auto rot = Quaternion(controller->transform->rotation) * grabRot;
 
-    transform->set_position(Vector3::Lerp(transform->position, pos, 10 * UnityEngine::Time::get_unscaledDeltaTime()));
-    transform->set_rotation(Quaternion::Slerp(transform->rotation, rot, 5 * UnityEngine::Time::get_unscaledDeltaTime()));
+    transform->position = Vector3::Lerp(transform->position, pos, 10 * UnityEngine::Time::get_unscaledDeltaTime());
+    transform->rotation = Quaternion::Slerp(transform->rotation, rot, 5 * UnityEngine::Time::get_unscaledDeltaTime());
 }
