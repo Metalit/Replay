@@ -14,6 +14,7 @@ namespace Camera {
 
     void OnPause();
     void OnUnpause();
+    void OnRestart();
 
     bool UpdateTime(GlobalNamespace::AudioTimeSyncController* controller);
     void UpdateCamera(GlobalNamespace::PlayerTransforms* player);

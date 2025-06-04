@@ -38,7 +38,6 @@ static StringW QueueButtonText() {
 }
 
 static void OnReplayButtonClick() {
-    Replay::MenuView::GetInstance()->UpdateUI(true);
     Replay::MenuView::Present();
 }
 
@@ -215,10 +214,14 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
 }
 
 void Replay::MenuView::UpdateUI(bool getData) {
+    if (!wasActivatedBefore)
+        return;
+
     auto beatmap = MetaCore::Songs::GetSelectedKey();
     auto level = MetaCore::Songs::GetSelectedLevel();
 
-    if (getData && !beatmapData) {
+    if (getData) {
+        beatmapData = nullptr;
         MetaCore::Songs::GetBeatmapData(beatmap, [this, forMap = beatmap](IReadonlyBeatmapData* data) {
             if (!MetaCore::Songs::GetSelectedKey().Equals(forMap))
                 return;
@@ -280,13 +283,13 @@ static void MatchRequirements(UI::Button* replayButton) {
     replayButton->interactable = interactable && replayButton->interactable;
 }
 
-void Replay::MenuView::CreateShortcut(StandardLevelDetailView* view) {
-    levelView = view;
-
+void Replay::MenuView::CreateShortcut() {
     if (!canvas) {
         logger.info("Making button canvas");
 
-        auto parent = view->practiceButton->transform->parent->GetComponent<RectTransform*>();
+        levelView = UnityEngine::Object::FindObjectOfType<StandardLevelDetailView*>(true);
+
+        auto parent = levelView->practiceButton->transform->parent->GetComponent<RectTransform*>();
         canvas = BSML::Lite::CreateCanvas();
         MetaCore::Engine::SetOnDestroy(canvas, []() { canvas = nullptr; });
 
@@ -355,7 +358,7 @@ void Replay::MenuView::Present() {
     auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
     flowCoordinator->showBackButton = true;
     flowCoordinator->PresentViewController(GetInstance(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
-    GetInstance()->UpdateUI(false);
+    GetInstance()->UpdateUI(true);
 }
 
 void Replay::MenuView::Dismiss() {

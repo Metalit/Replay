@@ -2,7 +2,6 @@
 
 #include <GLES3/gl3.h>
 
-#include "CustomTypes/ScoringElement.hpp"
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 #include "GlobalNamespace/BombNoteController.hpp"
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
@@ -147,14 +146,13 @@ MAKE_AUTO_HOOK_MATCH(ScoreController_LateUpdate, &ScoreController::LateUpdate, v
     Playback::ProcessScore(self);
 }
 
-// set max score and fix crash with custom scoring elements
+// override max score
 MAKE_AUTO_HOOK_MATCH(
     ScoreController_DespawnScoringElement, &ScoreController::DespawnScoringElement, void, ScoreController* self, ScoringElement* scoringElement
 ) {
     // modified scores are calculated based on max scores after this function is called
     Playback::ProcessMaxScore(self);
-    if (!il2cpp_utils::try_cast<Replay::ScoringElement>(scoringElement))
-        ScoreController_DespawnScoringElement(self, scoringElement);
+    ScoreController_DespawnScoringElement(self, scoringElement);
 }
 
 // keep track of all notes
@@ -224,19 +222,6 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
 
 // disable results view controller for replays
 MAKE_AUTO_HOOK_MATCH(
-    SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish,
-    &SinglePlayerLevelSelectionFlowCoordinator::HandleStandardLevelDidFinish,
-    void,
-    SinglePlayerLevelSelectionFlowCoordinator* self,
-    StandardLevelScenesTransitionSetupDataSO* standardLevelScenesTransitionSetupData,
-    LevelCompletionResults* levelCompletionResults
-) {
-    cancelPresentation = Manager::Replaying();
-    SinglePlayerLevelSelectionFlowCoordinator_HandleStandardLevelDidFinish(self, standardLevelScenesTransitionSetupData, levelCompletionResults);
-    cancelPresentation = false;
-}
-
-MAKE_AUTO_HOOK_MATCH(
     FlowCoordinator_PresentViewController,
     &HMUI::FlowCoordinator::PresentViewController,
     void,
@@ -246,7 +231,7 @@ MAKE_AUTO_HOOK_MATCH(
     HMUI::ViewController::AnimationDirection animationDirection,
     bool immediately
 ) {
-    if (!cancelPresentation)
+    if (!Manager::CancelPresentation())
         FlowCoordinator_PresentViewController(self, viewController, finishedCallback, animationDirection, immediately);
 }
 
@@ -260,7 +245,7 @@ MAKE_AUTO_HOOK_MATCH(
     HMUI::ViewController* newViewController,
     HMUI::ViewController::AnimationType animationType
 ) {
-    if (newViewController->name == "ReplayViewController") {
+    if (newViewController->name == "ReplayMenuViewController") {
         self->SetLeftScreenViewController(nullptr, animationType);
         self->SetRightScreenViewController(nullptr, animationType);
         self->SetBottomScreenViewController(nullptr, animationType);
@@ -281,7 +266,7 @@ MAKE_AUTO_HOOK_MATCH(
     SinglePlayerLevelSelectionFlowCoordinator* self,
     HMUI::ViewController* topViewController
 ) {
-    if (topViewController->name == "ReplayViewController")
+    if (topViewController->name == "ReplayMenuViewController")
         self->DismissViewController(topViewController, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
     else
         SinglePlayerLevelSelectionFlowCoordinator_BackButtonWasPressed(self, topViewController);

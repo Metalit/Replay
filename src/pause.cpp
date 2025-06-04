@@ -1,33 +1,44 @@
 #include "pause.hpp"
 
 #include "CustomTypes/Grabbable.hpp"
+#include "GlobalNamespace/AudioManagerSO.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksUpdater.hpp"
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
+#include "GlobalNamespace/CallbacksInTime.hpp"
 #include "GlobalNamespace/ComboController.hpp"
+#include "GlobalNamespace/ComboUIController.hpp"
+#include "GlobalNamespace/CutScoreBuffer.hpp"
 #include "GlobalNamespace/GameEnergyCounter.hpp"
 #include "GlobalNamespace/GameEnergyUIPanel.hpp"
+#include "GlobalNamespace/GoodCutScoringElement.hpp"
 #include "GlobalNamespace/MemoryPoolContainer_1.hpp"
 #include "GlobalNamespace/NoteCutSoundEffect.hpp"
 #include "GlobalNamespace/NoteCutSoundEffectManager.hpp"
 #include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
+#include "GlobalNamespace/SaberSwingRatingCounter.hpp"
 #include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/ScoreMultiplierCounter.hpp"
+#include "GlobalNamespace/ScoringElement.hpp"
 #include "System/Action_1.hpp"
 #include "System/Action_2.hpp"
+#include "System/Collections/Generic/HashSet_1.hpp"
+#include "UnityEngine/Animator.hpp"
 #include "UnityEngine/AudioSource.hpp"
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Playables/PlayableDirector.hpp"
 #include "UnityEngine/PrimitiveType.hpp"
 #include "UnityEngine/Renderer.hpp"
+#include "UnityEngine/Resources.hpp"
 #include "UnityEngine/Shader.hpp"
 #include "UnityEngine/Time.hpp"
 #include "config.hpp"
 #include "manager.hpp"
 #include "metacore/shared/events.hpp"
+#include "metacore/shared/il2cpp.hpp"
 #include "metacore/shared/internals.hpp"
 #include "metacore/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
@@ -44,11 +55,15 @@ static GlobalNamespace::BeatmapObjectManager* objectManager;
 static GlobalNamespace::PlayerHeadAndObstacleInteraction* obstacleInteraction;
 static GlobalNamespace::BeatmapCallbacksController* callbackController;
 static GlobalNamespace::ComboController* comboController;
+static GlobalNamespace::ComboUIController* comboPanel;
 static GlobalNamespace::NoteCutSoundEffectManager* soundManager;
+static GlobalNamespace::AudioManagerSO* audioManager;
 static GlobalNamespace::GameEnergyCounter* energyCounter;
 static GlobalNamespace::GameEnergyUIPanel* energyPanel;
 
 static UnityEngine::GameObject* cameraModel;
+static BSML::SliderSetting* timeSlider;
+static BSML::SliderSetting* speedSlider;
 
 static void SetCameraModelToThirdPerson() {
     auto trans = cameraModel->transform;
@@ -86,14 +101,17 @@ CreateCube(UnityEngine::GameObject* parent, UnityEngine::Material* mat, Vector3 
 }
 
 static UnityEngine::GameObject* CreateCameraModel() {
-    auto mat = UnityEngine::Material::New_ctor(UnityEngine::Shader::Find("Custom/SimpleLit"));
+    auto shader = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Shader*>()->First([](auto s) {
+        return (std::string) s->name == "Custom/SimpleLit";
+    });
+    auto mat = UnityEngine::Material::New_ctor(shader);
     mat->color = UnityEngine::Color::get_white();
-    auto ret = CreateCube(nullptr, mat, {}, {}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
+    auto ret = CreateCube(nullptr, mat, {0, 0, 0}, {0, 0, 0}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
     CreateCube(ret, mat, {-1.461, 1.08, 1.08}, {45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 0");
     CreateCube(ret, mat, {1.461, 1.08, 1.08}, {45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 1");
     CreateCube(ret, mat, {1.461, 1.08, -1.08}, {-45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 2");
     CreateCube(ret, mat, {-1.461, 1.08, -1.08}, {-45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 3");
-    CreateCube(ret, mat, {0, 2.08, 0}, {}, {5.845, 0.07, 4.322}, "Camera Screen");
+    CreateCube(ret, mat, {0, 2.08, 0}, {0, 0, 0}, {5.845, 0.07, 4.322}, "Camera Screen");
     return ret;
 }
 
@@ -159,12 +177,12 @@ static void CreateUI() {
     if (endTime < startTime + 1)
         endTime = startTime + 1;
 
-    auto timeSlider = TextlessSlider(parent, startTime, endTime, startTime, (endTime - startTime) / 100, Pause::SetTime, [](float time) {
+    timeSlider = TextlessSlider(parent, startTime, endTime, startTime, (endTime - startTime) / 1000, Pause::SetTime, [](float time) {
         return MetaCore::Strings::SecondsToString(time);
     });
     SetTransform(timeSlider, {0, 6}, {100, 10});
 
-    auto speedSlider = TextlessSlider(parent, 0.5, 2, 1, 0.1, Pause::SetSpeed, [](float speed) { return fmt::format("{:.1f}x", speed); }, true);
+    speedSlider = TextlessSlider(parent, 0.1, 5, 1, 0.05, Pause::SetSpeed, [](float speed) { return fmt::format("{:.2f}x", speed); }, true);
     SetTransform(speedSlider, {-18, -4}, {65, 10});
 
     auto dropdown = AddConfigValueDropdownEnum(parent, getConfig().CamMode, CameraModes);
@@ -175,6 +193,13 @@ static void CreateUI() {
     auto transform = dropdown->transform->parent;
     transform->Find("Label")->GetComponent<TMPro::TextMeshProUGUI*>()->text = "";
     SetTransform(transform, {-10, -11.5}, {10, 10});
+}
+
+static void UpdateUI() {
+    if (!inited)
+        return;
+    timeSlider->set_Value(MetaCore::Stats::GetSongTime());
+    speedSlider->set_Value(audioController->_timeScale);
 }
 
 static void LazyInit() {
@@ -189,7 +214,9 @@ static void LazyInit() {
     obstacleInteraction = scoreController->_playerHeadAndObstacleInteraction;
     callbackController = UnityEngine::Object::FindObjectOfType<GlobalNamespace::BeatmapCallbacksUpdater*>(true)->_beatmapCallbacksController;
     comboController = UnityEngine::Object::FindObjectOfType<GlobalNamespace::ComboController*>(true);
+    comboPanel = UnityEngine::Object::FindObjectOfType<GlobalNamespace::ComboUIController*>(true);
     soundManager = UnityEngine::Object::FindObjectOfType<GlobalNamespace::NoteCutSoundEffectManager*>(true);
+    audioManager = soundManager->_audioManager;
     energyCounter = il2cpp_utils::try_cast<GlobalNamespace::GameEnergyCounter>(scoreController->_gameEnergyCounter).value_or(nullptr);
     energyPanel = UnityEngine::Object::FindObjectOfType<GlobalNamespace::GameEnergyUIPanel*>(true);
 
@@ -211,6 +238,7 @@ static void StopSounds() {
 
 void Pause::OnPause() {
     LazyInit();
+    UpdateUI();
     StopSounds();
 }
 
@@ -219,6 +247,7 @@ void Pause::OnUnpause() {
         return;
     cameraModel->active = false;
     SetThirdPersonToCameraModel();
+    audioController->_inBetweenDSPBufferingTimeEstimate = 0;
 }
 
 void Pause::SetSpeed(float value) {
@@ -227,6 +256,7 @@ void Pause::SetSpeed(float value) {
     audioController->_audioSource->pitch = value;
     audioController->_audioStartTimeOffsetSinceStart =
         (UnityEngine::Time::get_timeSinceLevelLoad() * value) - (audioController->songTime + audioController->_initData->songTimeOffset);
+    audioManager->musicPitch = 1 / value;
 }
 
 using EventsIterator = decltype(Replay::Events::Data::events)::iterator;
@@ -269,7 +299,7 @@ static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
 }
 
 #define MODIFY(var, num) \
-    var += forwards ? num : -num
+    var += forwards ? num : -(num)
 
 #define SIDED_MOD_1(post, num) \
     MODIFY((left ? MetaCore::Internals::left##post() : MetaCore::Internals::right##post()), num)
@@ -303,7 +333,7 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
     int mult = event->multiplier;
     int maxMult = GetMaxMultiplier();
 
-    int score = mistake ? 0 : Utils::ScoreForNote(note);
+    int score = Utils::ScoreForNote(note);
     int max = Utils::ScoreForNote(note, true) * maxMult;
 
     SIDED_MOD_1(Score, score * mult);
@@ -315,24 +345,19 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
             SIDED_MOD_1(MissedMaxScore, max);
     } else
         SIDED_MOD_1(MissedFixedScore, score * maxMult - score * mult);
-
-    if (MetaCore::Internals::health() > 0 || !forwards)
-        MODIFY(MetaCore::Internals::health(), Utils::EnergyForNote(note.info));
 }
 
 static void CalculateWallChanges(Replay::Events::Wall const& event, bool forwards) {
     MODIFY(MetaCore::Internals::wallsHit(), 1);
-
-    if (MetaCore::Internals::health() > 0 || !forwards)
-        MODIFY(MetaCore::Internals::health(), (event.time - event.endTime) * 1.3);
 }
 
-static void CalculateEventChanges(Replay::Events::Data& events, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
+static void CalculateEventChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
     float current = MetaCore::Stats::GetSongTime();
     bool forwards = time > current;
 
     bool hadFailed = MetaCore::Internals::health() == 0;
 
+    auto& events = *replay.events;
     auto event = FindNextEvent(events, current);
     auto stop = FindNextEvent(events, time);
 
@@ -350,12 +375,20 @@ static void CalculateEventChanges(Replay::Events::Data& events, float time, int&
         }
     }
 
-    if (forwards)
+    // since stop is the next event to be processed whether forwards or backwards, we want to set these values to the "current" event instead
+    if (stop != events.events.begin()) {
         stop--;
-    // precalculated because it's a pain going backwards
-    MetaCore::Internals::combo() = stop->combo;
-    MetaCore::Internals::leftCombo() = stop->leftCombo;
-    MetaCore::Internals::rightCombo() = stop->rightCombo;
+        // precalculated because it's a pain going backwards
+        MetaCore::Internals::combo() = stop->combo;
+        MetaCore::Internals::leftCombo() = stop->leftCombo;
+        MetaCore::Internals::rightCombo() = stop->rightCombo;
+        MetaCore::Internals::health() = stop->energy;
+    } else {
+        MetaCore::Internals::combo() = 0;
+        MetaCore::Internals::leftCombo() = 0;
+        MetaCore::Internals::rightCombo() = 0;
+        MetaCore::Internals::health() = replay.info.modifiers.oneLife || replay.info.modifiers.fourLives ? 1 : 0.5;
+    }
 
     bool nowFailed = MetaCore::Internals::health() == 0;
 
@@ -371,7 +404,8 @@ static void CalculateEventChanges(Replay::Events::Data& events, float time, int&
     maxCombo = stop->maxCombo;
 }
 
-static void CalculateFrameChanges(Replay::Frames::Data& frames, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
+static void CalculateFrameChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
+    auto& frames = *replay.frames;
     auto nextScore = std::lower_bound(frames.scores.begin(), frames.scores.end(), time, Replay::Frames::Score::Searcher());
     if (nextScore != frames.scores.begin())
         nextScore--;
@@ -389,7 +423,6 @@ static void CalculateFrameChanges(Replay::Frames::Data& frames, float time, int&
     MetaCore::Internals::combo() = nextScore->combo;
     MetaCore::Internals::leftCombo() = nextScore->combo / 2;
     MetaCore::Internals::rightCombo() = (nextScore->combo + 1) / 2;
-
     MetaCore::Internals::health() = nextScore->energy;
 
     multiplier = nextScore->multiplier;
@@ -421,8 +454,35 @@ static void ResetEnergyBar() {
 }
 
 static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxCombo) {
-    // update song time (also updates note controllers)
     float time = MetaCore::Stats::GetSongTime();
+
+    // remove currently spawned objects
+    ListW<GlobalNamespace::IBeatmapObjectController*> objects = objectManager->_allBeatmapObjects;
+    for (auto object : objects) {
+        object->Hide(false);
+        object->Pause(false);
+        ((UnityEngine::Component*) object)->gameObject->active = true;
+        // scoresaber does all the above, is it necessary?
+        object->Dissolve(0);
+    }
+    obstacleInteraction->_intersectingObstacles->Clear();
+
+    // (effectively) clear all current callbacks
+    auto callbacks = callbackController->_callbacksInTimes;
+    for (auto callback : DictionaryW(callbacks).values())
+        callback->lastProcessedNode = nullptr;
+    callbackController->_startFilterTime = time;
+
+    // force finish all scoring elements (before changing audioTimeSyncController time)
+    scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
+    scoreController->LateUpdate();
+    for (auto element : ListW<GlobalNamespace::ScoringElement*>(scoreController->_scoringElementsWithMultiplier)) {
+        if (auto goodElement = il2cpp_utils::try_cast<GlobalNamespace::GoodCutScoringElement>(element).value_or(nullptr))
+            goodElement->_cutScoreBuffer->_saberSwingRatingCounter->Finish();
+    }
+    scoreController->LateUpdate();
+
+    // update song time
     float controllerTime = (time - audioController->_startSongTime) / audioController->timeScale;
     audioController->SeekTo(controllerTime);
 
@@ -430,9 +490,10 @@ static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxC
     float health = MetaCore::Stats::GetHealth();
     energyCounter->_energy_k__BackingField = health;
     energyCounter->_nextFrameEnergyChange = 0;
+    energyCounter->_didReach0Energy = health == 0;
     if (health > 0 && !energyPanel->_energyBar->enabled)
         ResetEnergyBar();
-    if (!energyCounter->gameEnergyDidChangeEvent->Equals(nullptr))
+    if (!System::Object::Equals(energyCounter->gameEnergyDidChangeEvent, nullptr))
         energyCounter->gameEnergyDidChangeEvent->Invoke(health);
 
     // update score multipliers
@@ -459,14 +520,22 @@ static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxC
     // update combo
     comboController->_combo = MetaCore::Stats::GetCombo(MetaCore::Stats::BothSabers);
     comboController->_maxCombo = maxCombo;
-    if (!comboController->comboDidChangeEvent->Equals(nullptr))
+    if (!System::Object::Equals(comboController->comboDidChangeEvent, nullptr))
         comboController->comboDidChangeEvent->Invoke(comboController->_combo);
-    // does the combo ui panel need to be updated more? (for its animated full combo lines)
+
+    bool full = MetaCore::Stats::GetFullCombo(MetaCore::Stats::BothSabers);
+    if (full && comboPanel->_fullComboLost)
+        comboPanel->_animator->Rebind();
+    else if (!full && !comboPanel->_fullComboLost)
+        comboPanel->_animator->SetTrigger(comboPanel->_comboLostId);
+    comboPanel->_fullComboLost = !full;
 }
 
 void Pause::SetTime(float value) {
     if (!Manager::Replaying() || MetaCore::Stats::GetSongTime() == value)
         return;
+
+    logger.info("Setting replay time to {}", value);
 
     LazyInit();
 
@@ -477,9 +546,9 @@ void Pause::SetTime(float value) {
     int multiplierProgress;
     int maxCombo;
     if (replay.events)
-        CalculateEventChanges(*replay.events, value, multiplier, multiplierProgress, maxCombo);
+        CalculateEventChanges(replay, value, multiplier, multiplierProgress, maxCombo);
     else if (replay.frames)
-        CalculateFrameChanges(*replay.frames, value, multiplier, multiplierProgress, maxCombo);
+        CalculateFrameChanges(replay, value, multiplier, multiplierProgress, maxCombo);
 
     Playback::SeekTo(value);
 

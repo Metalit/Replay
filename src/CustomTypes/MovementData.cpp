@@ -61,7 +61,7 @@ void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovemen
         // (because they changed the score spawning to wait a frame, if the counter finishes instantly,
         // it's possible for it to be reused and have a different note cut info before the score is spawned)
         BSML::MainThreadScheduler::ScheduleNextFrame([counter]() {
-            counter->Finish();  // TODO: this likely causes finishes to be in an arbitrary order, causing at least part of the scoring issue
+            counter->Finish();
         });
     }
     baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);

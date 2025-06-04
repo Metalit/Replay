@@ -424,9 +424,11 @@ static void ParseCustomData(std::ifstream& input, Replay::Data& replay) {
 static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
     while (true) {
         int8_t section;
-        if (!READ_TO(section))
+        try {
+            READ_TO(section);
+        } catch (...) {
             return;
-
+        }
         if (section == 6)
             ParseOffsets(input, replay);
         else if (section == 7)
@@ -468,10 +470,12 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
     READ_TO(section);
     if (section != 4)
         throw Exception("Invalid section 4 header");
+    ParseHeights(input, replay);
 
     READ_TO(section);
     if (section != 5)
         throw Exception("Invalid section 5 header");
+    ParsePauses(input, replay);
 
     ParseOptionalSections(input, replay);
 

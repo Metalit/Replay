@@ -21,7 +21,7 @@ DECLARE_CLASS_CODEGEN(Replay, MenuView, HMUI::ViewController) {
     DECLARE_INSTANCE_METHOD(void, OnEnable);
     DECLARE_INSTANCE_METHOD(void, OnDestroy);
 
-    DECLARE_STATIC_METHOD(void, CreateShortcut, GlobalNamespace::StandardLevelDetailView* view);
+    DECLARE_STATIC_METHOD(void, CreateShortcut);
     DECLARE_STATIC_METHOD(void, SetEnabled, bool value);
     DECLARE_STATIC_METHOD(void, DisableWithRecordingHint);
     DECLARE_STATIC_METHOD(void, CheckMultiplayer);

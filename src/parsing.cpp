@@ -250,6 +250,16 @@ void Parsing::PreProcess(Replay::Data& replay) {
         auto& events = *replay.events;
         ResetTrackers();
 
+        int lives = 0;
+        if (replay.info.modifiers.oneLife)
+            lives = 1;
+        else if (replay.info.modifiers.fourLives)
+            lives = 4;
+
+        float wallSegmentStart = 0;
+        float wallSegmentEnd = 0;
+        float energy = lives > 0 ? 1 : 0.5;
+
         for (auto event = events.events.begin(); event != events.events.end(); event++) {
             bool note = event->eventType == Replay::Events::Reference::Note;
             bool wall = event->eventType == Replay::Events::Reference::Wall;
@@ -263,11 +273,37 @@ void Parsing::PreProcess(Replay::Data& replay) {
             if (wall || note)
                 mistake ? BadEvent(left, right) : GoodEvent(left, right);
 
+            if (lives == 0) {
+                // split up the energy loss from walls if there are events in between
+                if (wallSegmentEnd > 0) {
+                    if (event->time > wallSegmentEnd) {
+                        energy -= (wallSegmentEnd - wallSegmentStart) * 1.3;
+                        wallSegmentEnd = 0;
+                    } else {
+                        energy -= (event->time - wallSegmentStart) * 1.3;
+                        wallSegmentStart = event->time;
+                    }
+                }
+
+                if (wall) {
+                    wallSegmentStart = event->time;
+                    wallSegmentEnd = events.walls[event->index].endTime;
+                } else if (note && energy > 0)
+                    energy += Utils::EnergyForNote(*noteInfo);
+            } else if (mistake)
+                energy -= 1 / (float) lives;
+
+            if (energy > 1)
+                energy = 1;
+            else if (energy < 0)
+                energy = 0;
+
             // casts are ok because these aren't used when sorting the set
             const_cast<int&>(event->combo) = combo;
             const_cast<int&>(event->leftCombo) = leftCombo;
             const_cast<int&>(event->rightCombo) = rightCombo;
             const_cast<int&>(event->maxCombo) = maxCombo;
+            const_cast<float&>(event->energy) = energy;
             const_cast<int&>(event->multiplier) = multiplier;
             const_cast<int&>(event->multiplierProgress) = multiplierProgress;
         }
@@ -282,6 +318,8 @@ void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyB
     if (!events.needsRecalculation)
         return;
     events.needsRecalculation = false;
+
+    logger.debug("recalculating replay notes with beatmap data");
 
     std::list<Replay::Events::Note*> notes;
     for (auto& note : events.notes)

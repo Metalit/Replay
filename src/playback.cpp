@@ -78,6 +78,19 @@ namespace Frames {
         // fix scoresaber replays having incorrect max score before cut finishes
         return MetaCore::Stats::GetSongTime() - lastCutTime > 0.4;
     }
+
+    static void ProcessEnergy(GameEnergyCounter* counter) {
+        if (!frames)
+            return;
+        if (score->energy >= 0) {
+            if (counter->energyType == GameplayModifiers::EnergyType::Battery) {
+                counter->energy = score->energy;
+                // process the fail if needed, otherwise just send the callback
+                counter->ProcessEnergyChange(score->energy == 0 ? -1 : 0);
+            } else
+                counter->ProcessEnergyChange(score->energy - counter->energy);
+        }
+    }
 }
 
 namespace Events {
@@ -181,6 +194,29 @@ namespace Events {
                 event--;
         }
     }
+
+    static void ProcessEnergy(GameEnergyCounter* counter) {
+        if (!events || wallEnergyLoss == 0)
+            return;
+        bool battery = counter->energyType == GameplayModifiers::EnergyType::Battery;
+        float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
+
+        if (battery) {
+            counter->ProcessEnergyChange(-1);
+            wallEnergyLoss = 0;
+        } else if (gameEnergyLoss >= wallEnergyLoss) {
+            counter->ProcessEnergyChange(-wallEnergyLoss);
+            wallEnergyLoss = 0;
+        } else {
+            counter->ProcessEnergyChange(-gameEnergyLoss);
+            wallEnergyLoss -= gameEnergyLoss;
+        }
+
+        if (counter->_nextFrameEnergyChange != 0) {
+            counter->ProcessEnergyChange(counter->_nextFrameEnergyChange);
+            counter->_nextFrameEnergyChange = 0;
+        }
+    }
 }
 
 static Replay::Pose interpolatedPose;
@@ -252,15 +288,14 @@ bool Playback::DisableRealEvent(bool bad) {
         return false;
     if (Events::events)
         return true;
-    if (Frames::frames && bad && !Frames::AllowComboDrop())
+    if (bad && !Frames::AllowComboDrop())
         return true;
     return false;
 }
 
 void Playback::AddNoteController(NoteController* note) {
-    if (!Manager::Rendering())
+    if (!Manager::Replaying())
         return;
-
     auto data = note->noteData;
     if (data->scoringType > NoteData::ScoringType::NoScore || data->gameplayType == NoteData::GameplayType::Bomb)
         Events::notes.insert(note);
@@ -327,6 +362,7 @@ void Playback::ProcessStart(GameplayModifiers*& modifiers, PracticeSettings*& pr
     if (!Manager::Replaying())
         return;
     auto& replay = Manager::GetCurrentReplay();
+    logger.debug("process replay start, frames: {} events: {}", replay.frames.has_value(), replay.events.has_value());
 
     Events::events = replay.events ? &*replay.events : nullptr;
     if (Events::events)
@@ -409,30 +445,9 @@ bool Playback::ProcessEnergy(GameEnergyCounter* counter) {
     if (!Manager::Replaying())
         return true;
 
-    bool battery = counter->energyType == GameplayModifiers::EnergyType::Battery;
-
-    if (Events::wallEnergyLoss > 0) {
-        float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
-        if (battery) {
-            counter->ProcessEnergyChange(-1);
-            Events::wallEnergyLoss = 0;
-        } else if (gameEnergyLoss >= Events::wallEnergyLoss) {
-            counter->ProcessEnergyChange(-Events::wallEnergyLoss);
-            Events::wallEnergyLoss = 0;
-        } else {
-            counter->ProcessEnergyChange(-gameEnergyLoss);
-            Events::wallEnergyLoss -= gameEnergyLoss;
-        }
-    }
-
-    if (float energy = Frames::score->energy; energy >= 0) {
-        if (battery) {
-            counter->energy = energy;
-            // process the fail if needed, otherwise just send the callback
-            counter->ProcessEnergyChange(energy == 0 ? -1 : 0);
-        } else
-            counter->ProcessEnergyChange(energy - counter->energy);
-    }
+    // make sure to process events first in case both are present
+    Events::ProcessEnergy(counter);
+    Frames::ProcessEnergy(counter);
 
     return false;
 }

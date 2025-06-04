@@ -27,4 +27,6 @@ namespace Manager {
     bool Replaying();
     bool Rendering();
     bool Paused();
+
+    bool CancelPresentation();
 }

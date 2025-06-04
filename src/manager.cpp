@@ -11,6 +11,7 @@
 #include "metacore/shared/internals.hpp"
 #include "metacore/shared/songs.hpp"
 #include "parsing.hpp"
+#include "pause.hpp"
 #include "playback.hpp"
 #include "utils.hpp"
 
@@ -20,6 +21,8 @@ static bool paused = false;
 
 static std::vector<std::pair<std::string, Replay::Data>> replays;
 static bool local = true;
+
+static bool cancelPresentation = false;
 
 std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Manager::customDataCallbacks;
 
@@ -154,11 +157,14 @@ std::vector<std::pair<std::string, Replay::Data>>& Manager::GetReplays() {
 void Manager::StartReplay(bool render) {
     if (replays.empty())
         return;
+    logger.info("Starting replay, rendering: {}", render);
+
     auto& replay = GetCurrentReplay();
 
     replaying = true;
     rendering = render;
     paused = false;
+    cancelPresentation = true;
     MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
 
     for (auto& pair : customDataCallbacks) {
@@ -166,6 +172,7 @@ void Manager::StartReplay(bool render) {
         auto& callbacks = pair.second;
 
         auto found = replay.customData.find(key);
+        logger.debug("calling {} callbacks for {} {}", callbacks.size(), key, found != replay.customData.end());
         if (found == replay.customData.end())
             continue;
 
@@ -227,9 +234,16 @@ bool Manager::Paused() {
     return paused;
 }
 
+bool Manager::CancelPresentation() {
+    bool ret = cancelPresentation;
+    cancelPresentation = false;
+    return ret;
+}
+
 ON_EVENT(MetaCore::Events::Update) {
-    if (!replaying)
+    if (!replaying || paused)
         return;
+    Playback::UpdateTime();
     Camera::SetMoving(Utils::IsButtonDown(getConfig().MoveButton.GetValue()));
     Camera::Travel(Utils::IsButtonDown(getConfig().TravelButton.GetValue()));
 }
@@ -237,42 +251,62 @@ ON_EVENT(MetaCore::Events::Update) {
 ON_EVENT(MetaCore::Events::MapSelected) {
     replays = Parsing::GetReplays(MetaCore::Songs::GetSelectedKey());
     local = true;
+    Replay::MenuView::CreateShortcut();
     Replay::MenuView::SetEnabled(!replays.empty());
-    if (!replays.empty())
-        Replay::MenuView::GetInstance()->UpdateUI(true);
 }
 
 ON_EVENT(MetaCore::Events::MapStarted) {
-    if (replaying)
-        Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData()->i___GlobalNamespace__IReadonlyBeatmapData());
+    if (!replaying)
+        return;
+    logger.debug("replay started");
+    Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData()->i___GlobalNamespace__IReadonlyBeatmapData());
     Camera::SetupCamera();
 }
 
 ON_EVENT(MetaCore::Events::MapPaused) {
+    if (!replaying)
+        return;
+    logger.debug("replay paused");
     paused = true;
     Camera::OnPause();
+    Pause::OnPause();
 }
 
 ON_EVENT(MetaCore::Events::MapUnpaused) {
+    if (!replaying)
+        return;
+    logger.debug("replay unpaused");
     paused = false;
     Camera::OnUnpause();
+    Pause::OnUnpause();
 }
 
 ON_EVENT(MetaCore::Events::MapRestarted) {
+    if (!replaying)
+        return;
+    logger.debug("replay restarted");
     paused = false;
+    Camera::OnRestart();
+    Pause::OnUnpause();
+    Playback::SeekTo(0);
 }
 
 ON_EVENT(MetaCore::Events::MapEnded) {
+    if (!replaying)
+        return;
+    logger.debug("replay ended");
     Camera::FinishReplay();
-    replaying = false;
     paused = false;
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
+    logger.debug("replay scene ended");
     auto main = MetaCore::Game::GetMainFlowCoordinator();
     if (replaying && !MetaCore::Internals::mapWasQuit)
         main->_menuLightsManager->SetColorPreset(main->_defaultLightsPreset, false, 0);
 
     if (!replaying && !MetaCore::Internals::mapWasQuit && !recorderInstalled)
         Replay::MenuView::DisableWithRecordingHint();
+
+    replaying = false;
 }

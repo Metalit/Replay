@@ -250,6 +250,7 @@ static constexpr inline UnityEngine::Matrix4x4 MatrixTranslate(UnityEngine::Vect
 }
 
 void Camera::SetupCamera() {
+    logger.debug("setting up camera");
     // set culling matrix for moved camera modes and for rendering
     mainCamera = UnityEngine::Camera::get_main();
 
@@ -366,6 +367,17 @@ void Camera::OnUnpause() {
     cameraRig->progress->active = Manager::Rendering();
 }
 
+void Camera::OnRestart() {
+    OnPause();
+
+    mainCamera = nullptr;
+    oldCullingMask = 0;
+
+    if (cameraRig)
+        UnityEngine::Object::DestroyImmediate(cameraRig);
+    cameraRig = nullptr;
+}
+
 static Quaternion GetCameraRotation() {
     auto ret = baseCameraRotation;
     if (GetMode() == (int) CameraMode::Smooth && getConfig().Correction.GetValue())
@@ -386,6 +398,7 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
     float estimatedTimeIncrease = UnityEngine::Time::get_deltaTime() * self->_timeScale;
 
     int timeSamples = self->_audioSource->timeSamples;
+    logger.debug("time samples is {} vs {}", timeSamples, self->_prevAudioSamplePos);
     if (self->_prevAudioSamplePos > timeSamples)
         self->_playbackLoopIndex++;
     if (self->_prevAudioSamplePos == timeSamples)
@@ -398,7 +411,7 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
     float audioSourceTime = self->_songTime + estimatedTimeIncrease;
     if (self->_audioSource->isPlaying)
         audioSourceTime =
-            self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length + self->_inBetweenDSPBufferingTimeEstimate;
+            self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length / self->_timeScale + self->_inBetweenDSPBufferingTimeEstimate;
     float unityClockTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
 
     self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - audioSourceTime / self->_timeScale;
@@ -427,7 +440,7 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
 }
 
 bool Camera::UpdateTime(GlobalNamespace::AudioTimeSyncController* controller) {
-    if (!Manager::Rendering())
+    if (!Manager::Rendering() || Manager::Paused())
         return true;
     RunDefaultTimeSync(controller);
     return false;
