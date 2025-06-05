@@ -36,8 +36,11 @@ void MovementData::RequestLastDataProcessing(ISaberMovementDataProcessor* dataPr
     counter->_rateAfterCut = true;
     counter->_afterCutRating = 0;
     counter->ProcessNewData(baseElement, baseElement, true);
-    // register as a data processor and wait for the next data so that the counter can finish properly
-    baseData->AddDataProcessor((ISaberMovementDataProcessor*) this);
+    if (counter->_beforeCutRating > 1)
+        counter->_beforeCutRating = 1;
+    // because the flying score spawning waits a frame, if the counter finishes instantly,
+    // it's possible for it to be reused and have a different note cut info before the score is spawned
+    BSML::MainThreadScheduler::ScheduleNextFrame([counter]() { counter->Finish(); });
 }
 
 float MovementData::ComputeSwingRating(float overrideSegmentAngle) {
@@ -46,25 +49,6 @@ float MovementData::ComputeSwingRating(float overrideSegmentAngle) {
 
 float MovementData::ComputeSwingRatingOverload() {
     return beforeCutRating;
-}
-
-void MovementData::ProcessNewData(BladeMovementDataElement newData, BladeMovementDataElement prevData, bool prevDataAreValid) {
-    auto counter = (SaberSwingRatingCounter*) dataProcessor;
-    if (counter) {
-        if (counter->_beforeCutRating > 1)
-            counter->_beforeCutRating = 1;
-        // run change events because the receivers aren't registered at the time of RequestLastDataProcessing
-        ListW<ISaberSwingRatingCounterDidChangeReceiver*> changeEvents = counter->_didChangeReceivers->items;
-        for (auto& changeEvent : changeEvents)
-            changeEvent->HandleSaberSwingRatingCounterDidChange(counter->i___GlobalNamespace__ISaberSwingRatingCounter(), counter->afterCutRating);
-        // thanks beatgames
-        // (because they changed the score spawning to wait a frame, if the counter finishes instantly,
-        // it's possible for it to be reused and have a different note cut info before the score is spawned)
-        BSML::MainThreadScheduler::ScheduleNextFrame([counter]() {
-            counter->Finish();
-        });
-    }
-    baseData->RemoveDataProcessor((ISaberMovementDataProcessor*) this);
 }
 
 ISaberMovementData* MovementData::Create(ISaberMovementData* baseData, float before, float after) {

@@ -3,6 +3,12 @@
 #include "main.hpp"
 
 namespace Replay {
+    template <class T>
+    struct TimeSearcher {
+        constexpr bool operator()(T const& lhs, float rhs) const { return lhs.time < rhs; }
+        constexpr bool operator()(float lhs, T const& rhs) const { return lhs < rhs.time; }
+    };
+
     namespace Frames {
         struct Score {
             float time = 0;
@@ -25,11 +31,6 @@ namespace Replay {
                 offset(offset),
                 multiplier(multiplier),
                 multiplierProgress(multiplierProgress) {}
-
-            struct Searcher {
-                constexpr bool operator()(Score const& lhs, float rhs) const { return lhs.time < rhs; }
-                constexpr bool operator()(float lhs, Score const& rhs) const { return lhs < rhs.time; }
-            };
         };
 
         struct Data {
@@ -110,17 +111,14 @@ namespace Replay {
 
             constexpr Reference(float time, Type eventType, int index) : time(time), eventType(eventType), index(index) {}
 
-            struct Comparer {
+            struct Comparer : TimeSearcher<Reference> {
                 constexpr bool operator()(Reference const& lhs, Reference const& rhs) const {
                     if (lhs.time == rhs.time)
                         return lhs.eventType < rhs.eventType || (lhs.eventType == rhs.eventType && lhs.index < rhs.index);
                     return lhs.time < rhs.time;
                 }
-            };
-
-            struct Searcher {
-                constexpr bool operator()(Reference const& lhs, float rhs) const { return lhs.time < rhs; }
-                constexpr bool operator()(float lhs, Reference const& rhs) const { return lhs < rhs.time; }
+                using TimeSearcher<Reference>::operator();
+                using is_transparent = std::true_type;
             };
         };
 

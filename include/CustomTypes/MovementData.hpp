@@ -2,10 +2,9 @@
 
 #include "GlobalNamespace/BladeMovementDataElement.hpp"
 #include "GlobalNamespace/ISaberMovementData.hpp"
-#include "GlobalNamespace/ISaberMovementDataProcessor.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN_INTERFACES(Replay, MovementData, Il2CppObject, GlobalNamespace::ISaberMovementData*, GlobalNamespace::ISaberMovementDataProcessor*) {
+DECLARE_CLASS_CODEGEN_INTERFACES(Replay, MovementData, Il2CppObject, GlobalNamespace::ISaberMovementData*) {
     DECLARE_DEFAULT_CTOR();
 
    public:
@@ -23,10 +22,6 @@ DECLARE_CLASS_CODEGEN_INTERFACES(Replay, MovementData, Il2CppObject, GlobalNames
         float, ComputeSwingRating, static_cast<float (IData::*)(float)>(&IData::ComputeSwingRating), float overrideSegmentAngle
     );
     DECLARE_OVERRIDE_METHOD_MATCH(float, ComputeSwingRatingOverload, static_cast<float (IData::*)()>(&IData::ComputeSwingRating));
-
-    DECLARE_OVERRIDE_METHOD_MATCH(
-        void, ProcessNewData, &IDataProcessor::ProcessNewData, DataElement newData, DataElement prevData, bool prevDataAreValid
-    );
 
     DECLARE_INSTANCE_FIELD(IData*, baseData);
     DECLARE_INSTANCE_FIELD(float, beforeCutRating);

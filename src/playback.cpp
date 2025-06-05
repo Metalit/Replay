@@ -19,7 +19,7 @@
 
 using namespace GlobalNamespace;
 
-struct NoteCompare {
+struct NoteComparer {
     constexpr bool operator()(NoteController const* const& lhs, NoteController const* const& rhs) const {
         if (lhs->_noteData->_time_k__BackingField == rhs->_noteData->_time_k__BackingField)
             return lhs < rhs;
@@ -40,18 +40,14 @@ namespace Frames {
             score++;
     }
 
-    static void SeekTo(float currentTime, float time) {
+    static void SeekTo(float time) {
         if (!frames)
             return;
-        if (time < currentTime) {
-            while (score != frames->scores.begin() && score->time > time)
-                score--;
-        } else
-            UpdateTime(time);
+        score = std::lower_bound(frames->scores.begin(), frames->scores.end(), time, Replay::TimeSearcher<Replay::Frames::Score>());
     }
 
     static bool AllowComboDrop() {
-        if (!frames)
+        if (!frames || Manager::Paused())
             return true;
         int back = std::min(frameSearchRadius, (int) std::distance(score, frames->scores.begin()));
         auto iter = score - back;
@@ -71,7 +67,7 @@ namespace Frames {
     }
 
     static bool AllowScoreOverride() {
-        if (!frames)
+        if (!frames || Manager::Paused())
             return false;
         if (score->percent >= 0)
             return true;
@@ -80,7 +76,7 @@ namespace Frames {
     }
 
     static void ProcessEnergy(GameEnergyCounter* counter) {
-        if (!frames)
+        if (!frames || Manager::Paused())
             return;
         if (score->energy >= 0) {
             if (counter->energyType == GameplayModifiers::EnergyType::Battery) {
@@ -94,7 +90,7 @@ namespace Frames {
 }
 
 namespace Events {
-    static std::set<NoteController*, NoteCompare> notes;
+    static std::set<NoteController*, NoteComparer> notes;
     static Replay::Events::Data const* events;
     static decltype(events->events)::const_iterator event;
     static float wallEndTime;
@@ -112,7 +108,7 @@ namespace Events {
 
         bool isLeftSaber = event.noteCutInfo.saberType == (int) SaberType::SaberA;
         auto sabers = MetaCore::Internals::saberManager();
-        Saber* saber = isLeftSaber ? sabers->_leftSaber : sabers->_rightSaber;
+        auto saber = isLeftSaber ? sabers->_leftSaber : sabers->_rightSaber;
 
         switch (event.info.eventType) {
             case Replay::Events::NoteInfo::Type::GOOD:
@@ -183,16 +179,10 @@ namespace Events {
         }
     }
 
-    static void SeekTo(float currentTime, float time) {
+    static void SeekTo(float time) {
         if (!events)
             return;
-        if (time > currentTime) {
-            while (event != events->events.end() && event->time < time)
-                event++;
-        } else {
-            while (event != events->events.begin() && event->time > time)
-                event--;
-        }
+        event = events->events.lower_bound(time);
     }
 
     static void ProcessEnergy(GameEnergyCounter* counter) {
@@ -241,7 +231,7 @@ static void UpdateInterpolatedPose(std::vector<Replay::Pose> const& poses, float
         interpolatedPose.leftHand = Lerp(current.leftHand, next.leftHand, lerpAmount);
         interpolatedPose.rightHand = Lerp(current.rightHand, next.rightHand, lerpAmount);
     } else
-        interpolatedPose = poses[index];
+        interpolatedPose = poses.back();
 }
 
 void Playback::UpdateTime() {
@@ -254,7 +244,7 @@ void Playback::UpdateTime() {
 
     auto& poses = Manager::GetCurrentReplay().poses;
 
-    while (index < poses.size() - 1 && poses[index].time < time)
+    while (index < poses.size() && poses[index].time < time)
         index++;
     UpdateInterpolatedPose(poses, time);
 }
@@ -263,19 +253,11 @@ void Playback::SeekTo(float time) {
     if (!Manager::Replaying())
         return;
 
+    Frames::SeekTo(time);
+    Events::SeekTo(time);
+
     auto& poses = Manager::GetCurrentReplay().poses;
-    float currentTime = interpolatedPose.time;
-
-    Frames::SeekTo(currentTime, time);
-    Events::SeekTo(currentTime, time);
-
-    if (time > currentTime) {
-        while (index < poses.size() - 1 && poses[index].time < time)
-            index++;
-    } else {
-        while (index > 0 && poses[index].time > time)
-            index--;
-    }
+    index = std::distance(poses.begin(), std::lower_bound(poses.begin(), poses.end(), time, Replay::TimeSearcher<Replay::Pose>()));
     UpdateInterpolatedPose(poses, time);
 }
 

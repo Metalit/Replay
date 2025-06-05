@@ -182,7 +182,7 @@ static void CreateUI() {
     });
     SetTransform(timeSlider, {0, 6}, {100, 10});
 
-    speedSlider = TextlessSlider(parent, 0.1, 5, 1, 0.05, Pause::SetSpeed, [](float speed) { return fmt::format("{:.2f}x", speed); }, true);
+    speedSlider = TextlessSlider(parent, 0.1, 2.5, 1, 0.05, Pause::SetSpeed, [](float speed) { return fmt::format("{:.2f}x", speed); }, true);
     SetTransform(speedSlider, {-18, -4}, {65, 10});
 
     auto dropdown = AddConfigValueDropdownEnum(parent, getConfig().CamMode, CameraModes);
@@ -262,7 +262,7 @@ void Pause::SetSpeed(float value) {
 using EventsIterator = decltype(Replay::Events::Data::events)::iterator;
 
 static EventsIterator FindNextEvent(Replay::Events::Data& events, float time) {
-    return std::lower_bound(events.events.begin(), events.events.end(), time, Replay::Events::Reference::Searcher());
+    return events.events.lower_bound(time);
 }
 
 static int GetMaxMultiplier() {
@@ -406,7 +406,7 @@ static void CalculateEventChanges(Replay::Data& replay, float time, int& multipl
 
 static void CalculateFrameChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
     auto& frames = *replay.frames;
-    auto nextScore = std::lower_bound(frames.scores.begin(), frames.scores.end(), time, Replay::Frames::Score::Searcher());
+    auto nextScore = std::lower_bound(frames.scores.begin(), frames.scores.end(), time, Replay::TimeSearcher<Replay::Frames::Score>());
     if (nextScore != frames.scores.begin())
         nextScore--;
 
@@ -453,6 +453,16 @@ static void ResetEnergyBar() {
     energyCounter->energyType = energyType;
 }
 
+static void FinishScoringElements() {
+    scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
+    scoreController->LateUpdate();
+    for (auto element : ListW<GlobalNamespace::ScoringElement*>(scoreController->_scoringElementsWithMultiplier)) {
+        if (auto goodElement = il2cpp_utils::try_cast<GlobalNamespace::GoodCutScoringElement>(element).value_or(nullptr))
+            goodElement->_cutScoreBuffer->_saberSwingRatingCounter->Finish();
+    }
+    scoreController->LateUpdate();
+}
+
 static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxCombo) {
     float time = MetaCore::Stats::GetSongTime();
 
@@ -471,16 +481,9 @@ static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxC
     auto callbacks = callbackController->_callbacksInTimes;
     for (auto callback : DictionaryW(callbacks).values())
         callback->lastProcessedNode = nullptr;
+    callbackController->_prevSongTime = time - 0.01;
+    callbackController->_songTime = time;
     callbackController->_startFilterTime = time;
-
-    // force finish all scoring elements (before changing audioTimeSyncController time)
-    scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
-    scoreController->LateUpdate();
-    for (auto element : ListW<GlobalNamespace::ScoringElement*>(scoreController->_scoringElementsWithMultiplier)) {
-        if (auto goodElement = il2cpp_utils::try_cast<GlobalNamespace::GoodCutScoringElement>(element).value_or(nullptr))
-            goodElement->_cutScoreBuffer->_saberSwingRatingCounter->Finish();
-    }
-    scoreController->LateUpdate();
 
     // update song time
     float controllerTime = (time - audioController->_startSongTime) / audioController->timeScale;
@@ -538,6 +541,11 @@ void Pause::SetTime(float value) {
     logger.info("Setting replay time to {}", value);
 
     LazyInit();
+
+    // I don't fully understand it, but there is some weirdness with the score calculation if any elements are left unfinished
+    // this function is *probably* unnecessary, since the custom saber movement data finishes everything within the frame,
+    // but I'm going to leave it here just to be safe (even though without the custom movement this function doesn't fix it)
+    FinishScoringElements();
 
     auto& replay = Manager::GetCurrentReplay();
 

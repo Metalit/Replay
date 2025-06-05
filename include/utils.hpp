@@ -10,8 +10,8 @@
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/Saber.hpp"
 #include "UnityEngine/Sprite.hpp"
-#include "replay.hpp"
 #include "config.hpp"
+#include "replay.hpp"
 
 namespace Utils {
     std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
