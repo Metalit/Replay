@@ -211,6 +211,25 @@ static int GetMode() {
     return (int) mode;
 }
 
+static void SetMoving(bool value) {
+    if (GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
+        return;
+    if (moving && !value) {
+        getConfig().ThirdPerPos.SetValue(cameraRig->GetCameraPosition());
+        getConfig().ThirdPerRot.SetValue(cameraRig->GetCameraRotation().eulerAngles);
+        cameraRig->SetTrackingEnabled(false);
+    }
+    moving = value;
+}
+
+static void Travel(int direction) {
+    if (direction == 0 || GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
+        return;
+    float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
+    baseCameraPosition += Sombrero::QuaternionMultiply(cameraRig->GetCameraRotation(), BaseMovement * delta * direction);
+    getConfig().ThirdPerPos.SetValue(baseCameraPosition);
+}
+
 void Camera::SetMode(int value) {
     CameraMode oldMode = (CameraMode) getConfig().CamMode.GetValue();
     CameraMode mode = (CameraMode) value;
@@ -410,8 +429,8 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
     // add regular delta time after audio ends
     float audioSourceTime = self->_songTime + estimatedTimeIncrease;
     if (self->_audioSource->isPlaying)
-        audioSourceTime =
-            self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length / self->_timeScale + self->_inBetweenDSPBufferingTimeEstimate;
+        audioSourceTime = self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length / self->_timeScale +
+                          self->_inBetweenDSPBufferingTimeEstimate;
     float unityClockTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
 
     self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - audioSourceTime / self->_timeScale;
@@ -497,23 +516,9 @@ void Camera::UpdateCamera(GlobalNamespace::PlayerTransforms* player) {
         );
 }
 
-void Camera::SetMoving(bool value) {
-    if (GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
-        return;
-    if (moving && !value) {
-        getConfig().ThirdPerPos.SetValue(cameraRig->GetCameraPosition());
-        getConfig().ThirdPerRot.SetValue(cameraRig->GetCameraRotation().eulerAngles);
-        cameraRig->SetTrackingEnabled(false);
-    }
-    moving = value;
-}
-
-void Camera::Travel(int direction) {
-    if (direction == 0 || GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
-        return;
-    float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
-    baseCameraPosition += Sombrero::QuaternionMultiply(cameraRig->GetCameraRotation(), BaseMovement * delta * direction);
-    getConfig().ThirdPerPos.SetValue(baseCameraPosition);
+void Camera::UpdateInputs() {
+    SetMoving(Utils::IsButtonDown(getConfig().MoveButton.GetValue()));
+    Travel(Utils::IsButtonDown(getConfig().TravelButton.GetValue()));
 }
 
 void Camera::CreateReplayText() {

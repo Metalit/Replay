@@ -19,8 +19,7 @@ namespace Camera {
     bool UpdateTime(GlobalNamespace::AudioTimeSyncController* controller);
     void UpdateCamera(GlobalNamespace::PlayerTransforms* player);
 
-    void SetMoving(bool value);
-    void Travel(int direction);
+    void UpdateInputs();
 
     void CreateReplayText();
 }

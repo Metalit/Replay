@@ -245,8 +245,8 @@ ON_EVENT(MetaCore::Events::Update) {
     if (!replaying || paused)
         return;
     Playback::UpdateTime();
-    Camera::SetMoving(Utils::IsButtonDown(getConfig().MoveButton.GetValue()));
-    Camera::Travel(Utils::IsButtonDown(getConfig().TravelButton.GetValue()));
+    Camera::UpdateInputs();
+    Pause::UpdateInputs();
 }
 
 ON_EVENT(MetaCore::Events::MapSelected) {

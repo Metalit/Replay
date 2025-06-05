@@ -575,3 +575,15 @@ void Pause::SetTime(float value) {
     MetaCore::Events::Broadcast(MetaCore::Events::WallHit);
     MetaCore::Events::Broadcast(MetaCore::Events::Update);
 }
+
+void Pause::UpdateInputs() {
+    int skip = Utils::IsButtonDown(getConfig().TimeButton.GetValue());
+    if (skip)
+        SetTime(MetaCore::Stats::GetSongTime() + getConfig().TimeSkip.GetValue() * skip);
+
+    int speed = Utils::IsButtonDown(getConfig().SpeedButton.GetValue());
+    if (speed) {
+        LazyInit();
+        SetSpeed(audioController->_timeScale + speed * 0.05);
+    }
+}

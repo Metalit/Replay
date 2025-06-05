@@ -8,4 +8,6 @@ namespace Pause {
 
     void SetSpeed(float value);
     void SetTime(float value);
+
+    void UpdateInputs();
 }
