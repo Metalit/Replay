@@ -165,7 +165,6 @@ void Manager::StartReplay(bool render) {
     replaying = true;
     rendering = render;
     paused = false;
-    cancelPresentation = true;
     MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
 
     for (auto& pair : customDataCallbacks) {
@@ -299,6 +298,7 @@ ON_EVENT(MetaCore::Events::MapEnded) {
     logger.debug("replay ended");
     Camera::FinishReplay();
     paused = false;
+    cancelPresentation = !MetaCore::Internals::mapWasQuit;
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {

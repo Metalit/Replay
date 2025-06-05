@@ -23,7 +23,6 @@
 using namespace GlobalNamespace;
 
 static bool disableObstacleEntry = false;
-static bool cancelPresentation = false;
 
 // TODO: move to utils
 static bool IsBadCut(NoteController* note, Saber* saber, Vector3 cutDirVec, float angle) {
