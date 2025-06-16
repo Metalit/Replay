@@ -28,37 +28,34 @@ static bool cancelPresentation = false;
 std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Manager::customDataCallbacks;
 
 static void SelectFromConfig(int index, bool render) {
-    logger.debug("Selecting level, render: {}, idx: {}", render, index);
+    logger.debug("selecting level, render: {}, index: {}", render, index);
 
-    auto levels = getConfig().LevelsToSelect.GetValue();
-    if (index >= levels.size() || index < 0)
+    auto replays = getConfig().LevelsToSelect.GetValue();
+    if (index >= replays.size() || index < 0)
         return;
-    auto levelToSelect = levels[index];
+    auto replay = replays[index];
 
     if (render) {
-        levels.erase(levels.begin() + index);
-        getConfig().LevelsToSelect.SetValue(levels);
+        replays.erase(replays.begin() + index);
+        getConfig().LevelsToSelect.SetValue(replays);
     }
 
     auto main = MetaCore::Game::GetMainFlowCoordinator();
-    auto pack = main->_beatmapLevelsModel->GetLevelPack(levelToSelect.PackID);
-    if (!pack)
-        pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(levelToSelect.ID);
-    auto level = main->_beatmapLevelsModel->GetBeatmapLevel(levelToSelect.ID);
-
-    logger.debug("level id {}, pack id {}", levelToSelect.ID, levelToSelect.PackID);
-    logger.debug("found level {} ({}) in pack {} ({})", fmt::ptr(level), level ? level->songName : "", fmt::ptr(pack), pack ? pack->packName : "");
-
+    auto level = main->_beatmapLevelsModel->GetBeatmapLevel(replay.ID);
+    auto pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(replay.ID);
     if (!level) {
+        logger.debug("level id {} not found", replay.ID);
         // if we're going through the render queue, go ahead and try to do the next one
         if (render)
             SelectFromConfig(index, render);
         return;
     }
+    logger.debug("found level {} ({}) for id {}", fmt::ptr(level), level->songName, replay.ID);
 
-    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(levelToSelect.Characteristic), levelToSelect.Difficulty, levelToSelect.ID}, pack);
+    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(replay.Characteristic), replay.Difficulty, replay.ID}, pack);
 
-    getConfig().LastReplayIdx.SetValue(levelToSelect.ReplayIndex);
+    getConfig().LastReplayIdx.SetValue(replay.ReplayIndex);
+
     if (render) {
         Manager::StartReplay(true);
         main->_soloFreePlayFlowCoordinator->StartLevel(nullptr, false);
@@ -86,10 +83,6 @@ static std::optional<LevelSelection> GetCurrentLevel() {
     ret->Difficulty = (int) map.difficulty;
     ret->Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
 
-    auto pack = MetaCore::Songs::GetSelectedPlaylist();
-    if (pack)
-        ret->PackID = (std::string) pack->packID;
-
     ret->ReplayIndex = getConfig().LastReplayIdx.GetValue();
     return ret;
 }
@@ -100,15 +93,11 @@ void Manager::SaveCurrentLevelInConfig() {
         return;
 
     auto levels = getConfig().LevelsToSelect.GetValue();
-    auto added = levels.emplace_back();
+    auto& added = levels.emplace_back();
 
     added.ID = (std::string) map.levelId;
     added.Difficulty = (int) map.difficulty;
     added.Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
-
-    auto pack = MetaCore::Songs::GetSelectedPlaylist();
-    if (pack)
-        added.PackID = (std::string) pack->packID;
 
     added.ReplayIndex = getConfig().LastReplayIdx.GetValue();
 
