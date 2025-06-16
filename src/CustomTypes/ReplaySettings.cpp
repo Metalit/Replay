@@ -1,6 +1,5 @@
-#include "config.hpp"
-
 #include "CustomTypes/ReplaySettings.hpp"
+
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/IPreviewMediaData.hpp"
 #include "HMUI/TextSegmentedControl.hpp"
@@ -18,6 +17,7 @@
 #include "bsml/shared/BSML-Lite.hpp"
 #include "bsml/shared/Helpers/creation.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
+#include "config.hpp"
 #include "main.hpp"
 #include "manager.hpp"
 #include "metacore/shared/delegates.hpp"
@@ -261,6 +261,8 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
 
     AddConfigValueToggle(rendering, getConfig().Ding);
 
+    AddConfigValueToggle(rendering, getConfig().HEVC);
+
     auto horizontal = BSML::Lite::CreateHorizontalLayoutGroup(rendering);
 
     beginQueueButton = CreateSmallButton(horizontal, "Begin Queue", [this]() {
@@ -273,7 +275,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
         OnEnable();
     });
 
-    queueList = BSML::Lite::CreateScrollableList(rendering, {90, 51}, [this](int idx) {
+    queueList = BSML::Lite::CreateScrollableList(rendering, {90, 45}, [this](int idx) {
         queueList->tableView->ClearSelection();
         Manager::SelectLevelInConfig(idx);
     });

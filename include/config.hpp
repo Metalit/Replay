@@ -61,6 +61,13 @@ DECLARE_CONFIG(Config) {
     CONFIG_VALUE(Bitrate, int, "Bitrate", 10000, "The bitrate in kbps to use when rendering");
     CONFIG_VALUE(FOV, float, "FOV", 70, "Only applies during renders");
     CONFIG_VALUE(FPS, int, "FPS", 60, "Only applies during renders");
+    CONFIG_VALUE(
+        HEVC,
+        bool,
+        "HEVC Encoder",
+        true,
+        "Whether to use the HEVC/H265 encoder, instead of AVC/H264, for better video quality but potentially less support on old devices or platforms"
+    );
 
     CONFIG_VALUE(Pauses, bool, "Allow Pauses", false, "Whether to allow the game to pause while rendering");
     CONFIG_VALUE(Ding, bool, "Ding", false, "Plays a sound when renders are finished");

@@ -161,7 +161,10 @@ static void SetupRecording() {
     video->onOutputUnit = [](uint8_t* data, size_t len) {
         videoOutput.write((char*) data, len);
     };
-    video->Init(width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * 1000, getConfig().FOV.GetValue(), false);
+    int bitMult = getConfig().HEVC.GetValue() ? 1000 : 2000;
+    video->Init(
+        width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * bitMult, getConfig().FOV.GetValue(), getConfig().HEVC.GetValue()
+    );
 
     UnityEngine::Time::set_captureDeltaTime(1 / (float) getConfig().FPS.GetValue());
 
@@ -417,7 +420,6 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
     float estimatedTimeIncrease = UnityEngine::Time::get_deltaTime() * self->_timeScale;
 
     int timeSamples = self->_audioSource->timeSamples;
-    logger.debug("time samples is {} vs {}", timeSamples, self->_prevAudioSamplePos);
     if (self->_prevAudioSamplePos > timeSamples)
         self->_playbackLoopIndex++;
     if (self->_prevAudioSamplePos == timeSamples)
