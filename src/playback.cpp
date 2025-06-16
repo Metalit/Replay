@@ -107,7 +107,7 @@ namespace Events {
         static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
 
         bool isLeftSaber = event.noteCutInfo.saberType == (int) SaberType::SaberA;
-        auto sabers = MetaCore::Internals::saberManager();
+        auto sabers = MetaCore::Internals::saberManager;
         auto saber = isLeftSaber ? sabers->_leftSaber : sabers->_rightSaber;
 
         switch (event.info.eventType) {

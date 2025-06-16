@@ -302,10 +302,10 @@ static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
     var += forwards ? num : -(num)
 
 #define SIDED_MOD_1(post, num) \
-    MODIFY((left ? MetaCore::Internals::left##post() : MetaCore::Internals::right##post()), num)
+    MODIFY((left ? MetaCore::Internals::left##post : MetaCore::Internals::right##post), num)
 
 #define SIDED_MOD_2(pre, post, num) \
-    MODIFY((left ? MetaCore::Internals::pre##Left##post() : MetaCore::Internals::pre##Right##post()), num)
+    MODIFY((left ? MetaCore::Internals::pre##Left##post : MetaCore::Internals::pre##Right##post), num)
 
 static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator event, bool forwards) {
     auto& note = events.notes[event->index];
@@ -348,14 +348,14 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
 }
 
 static void CalculateWallChanges(Replay::Events::Wall const& event, bool forwards) {
-    MODIFY(MetaCore::Internals::wallsHit(), 1);
+    MODIFY(MetaCore::Internals::wallsHit, 1);
 }
 
 static void CalculateEventChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
     float current = MetaCore::Stats::GetSongTime();
     bool forwards = time > current;
 
-    bool hadFailed = MetaCore::Internals::health() == 0;
+    bool hadFailed = MetaCore::Internals::health == 0;
 
     auto& events = *replay.events;
     auto event = FindNextEvent(events, current);
@@ -379,24 +379,24 @@ static void CalculateEventChanges(Replay::Data& replay, float time, int& multipl
     if (stop != events.events.begin()) {
         stop--;
         // precalculated because it's a pain going backwards
-        MetaCore::Internals::combo() = stop->combo;
-        MetaCore::Internals::leftCombo() = stop->leftCombo;
-        MetaCore::Internals::rightCombo() = stop->rightCombo;
-        MetaCore::Internals::health() = stop->energy;
+        MetaCore::Internals::combo = stop->combo;
+        MetaCore::Internals::leftCombo = stop->leftCombo;
+        MetaCore::Internals::rightCombo = stop->rightCombo;
+        MetaCore::Internals::health = stop->energy;
     } else {
-        MetaCore::Internals::combo() = 0;
-        MetaCore::Internals::leftCombo() = 0;
-        MetaCore::Internals::rightCombo() = 0;
-        MetaCore::Internals::health() = replay.info.modifiers.oneLife || replay.info.modifiers.fourLives ? 1 : 0.5;
+        MetaCore::Internals::combo = 0;
+        MetaCore::Internals::leftCombo = 0;
+        MetaCore::Internals::rightCombo = 0;
+        MetaCore::Internals::health = replay.info.modifiers.oneLife || replay.info.modifiers.fourLives ? 1 : 0.5;
     }
 
-    bool nowFailed = MetaCore::Internals::health() == 0;
+    bool nowFailed = MetaCore::Internals::health == 0;
 
-    if (MetaCore::Internals::noFail()) {
+    if (MetaCore::Internals::noFail) {
         if (hadFailed && !nowFailed)
-            MetaCore::Internals::negativeMods() += 0.5;
+            MetaCore::Internals::negativeMods += 0.5;
         else if (!hadFailed && nowFailed)
-            MetaCore::Internals::negativeMods() -= 0.5;
+            MetaCore::Internals::negativeMods -= 0.5;
     }
 
     multiplier = stop->multiplier;
@@ -411,19 +411,19 @@ static void CalculateFrameChanges(Replay::Data& replay, float time, int& multipl
         nextScore--;
 
     // divide equally since we don't have the info
-    MetaCore::Internals::leftScore() = nextScore->score / 2;
-    MetaCore::Internals::rightScore() = (nextScore->score + 1) / 2;
+    MetaCore::Internals::leftScore = nextScore->score / 2;
+    MetaCore::Internals::rightScore = (nextScore->score + 1) / 2;
 
     if (nextScore->percent >= 0) {
         int maxScore = nextScore->score / nextScore->percent;
-        MetaCore::Internals::leftMaxScore() = maxScore / 2;
-        MetaCore::Internals::rightMaxScore() = (maxScore + 1) / 2;
+        MetaCore::Internals::leftMaxScore = maxScore / 2;
+        MetaCore::Internals::rightMaxScore = (maxScore + 1) / 2;
     }
 
-    MetaCore::Internals::combo() = nextScore->combo;
-    MetaCore::Internals::leftCombo() = nextScore->combo / 2;
-    MetaCore::Internals::rightCombo() = (nextScore->combo + 1) / 2;
-    MetaCore::Internals::health() = nextScore->energy;
+    MetaCore::Internals::combo = nextScore->combo;
+    MetaCore::Internals::leftCombo = nextScore->combo / 2;
+    MetaCore::Internals::rightCombo = (nextScore->combo + 1) / 2;
+    MetaCore::Internals::health = nextScore->energy;
 
     multiplier = nextScore->multiplier;
     multiplierProgress = nextScore->multiplierProgress;
@@ -560,7 +560,7 @@ void Pause::SetTime(float value) {
 
     Playback::SeekTo(value);
 
-    MetaCore::Internals::songTime() = value;
+    MetaCore::Internals::songTime = value;
 
     // would be extra cool if I could do lighting, but man that seems annoying, especially backwards
     UpdateBaseGameState(multiplier, multiplierProgress, maxCombo);

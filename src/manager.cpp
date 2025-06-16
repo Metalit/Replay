@@ -259,7 +259,7 @@ ON_EVENT(MetaCore::Events::MapStarted) {
     if (!replaying)
         return;
     logger.debug("replay started");
-    Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData()->i___GlobalNamespace__IReadonlyBeatmapData());
+    Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData->i___GlobalNamespace__IReadonlyBeatmapData());
     Camera::SetupCamera();
 }
 
