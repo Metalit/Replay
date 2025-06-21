@@ -410,7 +410,7 @@ void Playback::ProcessScore(ScoreController* controller) {
         controller->_modifiedScore = ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(Frames::score->score, multiplier);
         controller->_immediateMaxPossibleModifiedScore =
             ScoreModel::GetModifiedScoreForGameplayModifiersScoreMultiplier(controller->immediateMaxPossibleMultipliedScore, multiplier);
-        if (!controller->scoreDidChangeEvent->Equals(nullptr))
+        if (!System::MulticastDelegate::op_Equality(controller->scoreDidChangeEvent, nullptr))
             controller->scoreDidChangeEvent->Invoke(Frames::score->score, controller->modifiedScore);
     }
 }
