@@ -4,6 +4,8 @@
 #include "parsing.hpp"
 
 namespace SS {
+// scoresaber serializes field by field instead of whole structs at a time
+#pragma pack(1)
     struct Pointers {
         int metadata;
         int poseKeyframes;
@@ -26,8 +28,7 @@ namespace SS {
         int CutDirection;
     };
 
-    // scoresaber serializes field by field instead of whole structs at a time
-    struct __attribute__((packed)) NoteEvent {
+    struct NoteEvent {
         NoteEventType EventType;
         Vector3 CutPoint;
         Vector3 CutNormal;
@@ -102,7 +103,7 @@ namespace SS {
             float CutDirectionAngleOffset;
         };
 
-        struct __attribute__((packed)) NoteEvent : SS::NoteEvent {
+        struct NoteEvent : SS::NoteEvent {
             float TimeDeviation;
             Quaternion WorldRotation;
             Quaternion InverseWorldRotation;
@@ -114,15 +115,7 @@ namespace SS {
             int MaxScore;
         };
     }
-}
-
-static std::string ReadString(std::stringstream& input) {
-    int length;
-    READ_TO(length);
-    std::string str;
-    str.resize(length);
-    input.read(str.data(), length);
-    return str;
+#pragma pack()
 }
 
 static SS::Metadata ReadMetadata(std::stringstream& input) {
@@ -135,7 +128,7 @@ static SS::Metadata ReadMetadata(std::stringstream& input) {
     int modifiersLength;
     READ_TO(modifiersLength);
     for (int i = 0; i < modifiersLength; i++)
-        ret.Modifiers.emplace_back(ReadString(input));
+        ret.Modifiers.emplace_back(Parsing::ReadString(input));
     READ_TO(ret.NoteSpawnOffset);
     READ_TO(ret.LeftHanded);
     READ_TO(ret.InitialHeight);
