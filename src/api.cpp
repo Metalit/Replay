@@ -49,6 +49,7 @@ EXPOSE_API(IsInRender, bool) {
     return Manager::Rendering();
 }
 
+// callback may be given (nullptr, 0) if a replay is started without any custom data matching the key
 EXPOSE_API(AddReplayCustomDataCallback, void, std::string key, std::function<void(char const*, size_t)> callback) {
     Manager::customDataCallbacks[key].emplace_back(std::move(callback));
 }

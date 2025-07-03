@@ -156,17 +156,22 @@ void Manager::StartReplay(bool render) {
     paused = false;
     MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
 
-    for (auto& pair : customDataCallbacks) {
+    auto copy = customDataCallbacks;
+    for (auto const& pair : copy) {
         std::string const& key = pair.first;
         auto& callbacks = pair.second;
 
         auto found = replay.customData.find(key);
-        logger.debug("calling {} callbacks for {} {}", callbacks.size(), key, found != replay.customData.end());
-        if (found == replay.customData.end())
-            continue;
+        logger.debug("calling {} callbacks for {}, with data: {}", callbacks.size(), key, found != replay.customData.end());
 
+        char const* data = nullptr;
+        int size = 0;
+        if (found != replay.customData.end()) {
+            data = found->second.data();
+            size = found->second.size();
+        }
         for (auto& callback : callbacks)
-            callback(found->second.data(), found->second.size());
+            callback(data, size);
     }
 }
 

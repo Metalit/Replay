@@ -432,7 +432,7 @@ static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
         if (section == 6)
             ParseOffsets(input, replay);
         else if (section == 7)
-            ParseOffsets(input, replay);
+            ParseCustomData(input, replay);
     }
 }
 
