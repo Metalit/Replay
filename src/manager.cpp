@@ -8,6 +8,7 @@
 #include "config.hpp"
 #include "metacore/shared/events.hpp"
 #include "metacore/shared/game.hpp"
+#include "metacore/shared/input.hpp"
 #include "metacore/shared/internals.hpp"
 #include "metacore/shared/songs.hpp"
 #include "parsing.hpp"
@@ -155,6 +156,7 @@ void Manager::StartReplay(bool render) {
     rendering = render;
     paused = false;
     MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
+    MetaCore::Input::SetHaptics(MOD_ID, false);
 
     auto copy = customDataCallbacks;
     for (auto const& pair : copy) {
@@ -264,6 +266,7 @@ ON_EVENT(MetaCore::Events::MapPaused) {
     paused = true;
     Camera::OnPause();
     Pause::OnPause();
+    MetaCore::Input::SetHaptics(MOD_ID, true);
 }
 
 ON_EVENT(MetaCore::Events::MapUnpaused) {
@@ -273,6 +276,7 @@ ON_EVENT(MetaCore::Events::MapUnpaused) {
     paused = false;
     Camera::OnUnpause();
     Pause::OnUnpause();
+    MetaCore::Input::SetHaptics(MOD_ID, false);
 }
 
 ON_EVENT(MetaCore::Events::MapRestarted) {
@@ -293,6 +297,7 @@ ON_EVENT(MetaCore::Events::MapEnded) {
     Camera::FinishReplay();
     paused = false;
     cancelPresentation = !MetaCore::Internals::mapWasQuit;
+    MetaCore::Input::SetHaptics(MOD_ID, true);
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
