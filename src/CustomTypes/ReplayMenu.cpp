@@ -74,7 +74,7 @@ static void OnSettingsButtonClick() {
 }
 
 static void OnIncrementChanged(float value) {
-    getConfig().LastReplayIdx.SetValue(value);
+    getConfig().LastReplayIdx.SetValue(value - 1);
     Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
@@ -260,9 +260,11 @@ void Replay::MenuView::UpdateUI(bool getData) {
 
     deleteButton->gameObject->SetActive(Manager::AreReplaysLocal());
 
+    int selectedReplay = getConfig().LastReplayIdx.GetValue() + 1;
+    increment->set_Value(selectedReplay);
     auto buttons = increment->transform->GetChild(1)->GetComponentsInChildren<UI::Button*>();
-    buttons->First()->interactable = getConfig().LastReplayIdx.GetValue() + 1 != increment->minValue;
-    buttons->Last()->interactable = getConfig().LastReplayIdx.GetValue() + 1 != increment->maxValue;
+    buttons->First()->interactable = selectedReplay != increment->minValue;
+    buttons->Last()->interactable = selectedReplay != increment->maxValue;
 
     increment->gameObject->SetActive(increment->minValue != increment->maxValue);
 }
