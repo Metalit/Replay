@@ -339,10 +339,10 @@ MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPaus
     return Manager::Rendering() ? getConfig().Pauses.GetValue() : PauseController_get_canPause(self);
 }
 
-// delay ending of renders to avoid sharp cuts
-// MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
-//     return (Manager::Rendering() ? 1 : 0) + AudioTimeSyncController_get_songEndTime(self);
-// }
+// delay ending of replays by one second
+MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
+    return (Manager::Replaying() ? 1 : 0) + AudioTimeSyncController_get_songEndTime(self);
+}
 
 // fix distortions in renders
 MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversion, int passMode) {
