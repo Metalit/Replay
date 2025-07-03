@@ -75,7 +75,7 @@ MAKE_AUTO_HOOK_MATCH(
     UnityEngine::Vector3 cutDirVec,
     bool allowBadCut
 ) {
-    if (!Playback::DisableRealEvent(false) && allowBadCut && !Playback::DisableRealEvent(IsBadCut(self, saber, cutDirVec, self->_cutAngleTolerance)))
+    if (!Playback::DisableRealEvent(allowBadCut && IsBadCut(self, saber, cutDirVec, self->_cutAngleTolerance)))
         GameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
 }
 
@@ -91,7 +91,7 @@ MAKE_AUTO_HOOK_MATCH(
     UnityEngine::Vector3 cutDirVec,
     bool allowBadCut
 ) {
-    if (!Playback::DisableRealEvent(false) && allowBadCut && !Playback::DisableRealEvent(IsBadCut(self, saber, cutDirVec, 360)))
+    if (!Playback::DisableRealEvent(allowBadCut && IsBadCut(self, saber, cutDirVec, 360)))
         BurstSliderGameNoteController_HandleCut(self, saber, cutPoint, orientation, cutDirVec, allowBadCut);
 }
 
