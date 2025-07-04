@@ -155,7 +155,7 @@ void Manager::StartReplay(bool render) {
     replaying = true;
     rendering = render;
     paused = false;
-    MetaCore::Game::DisableScoreSubmissionOnce(MOD_ID);
+    MetaCore::Game::SetScoreSubmission(MOD_ID, false);
     MetaCore::Input::SetHaptics(MOD_ID, false);
 
     auto copy = customDataCallbacks;
@@ -297,7 +297,6 @@ ON_EVENT(MetaCore::Events::MapEnded) {
     Camera::FinishReplay();
     paused = false;
     cancelPresentation = !MetaCore::Internals::mapWasQuit;
-    MetaCore::Input::SetHaptics(MOD_ID, true);
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
@@ -313,6 +312,9 @@ ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
 
     if (!replaying && !MetaCore::Internals::mapWasQuit && !recorderInstalled)
         Replay::MenuView::DisableWithRecordingHint();
+
+    MetaCore::Game::SetScoreSubmission(MOD_ID, true);
+    MetaCore::Input::SetHaptics(MOD_ID, true);
 
     replaying = false;
 }
