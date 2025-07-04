@@ -225,11 +225,14 @@ static void UpdateInterpolatedPose(std::vector<Replay::Pose> const& poses, float
         float poseDuration = next.time - current.time;
         float lerpAmount = progress / poseDuration;
 
-        interpolatedPose.time = time;
-        interpolatedPose.fps = current.fps;
-        interpolatedPose.head = Lerp(current.head, next.head, lerpAmount);
-        interpolatedPose.leftHand = Lerp(current.leftHand, next.leftHand, lerpAmount);
-        interpolatedPose.rightHand = Lerp(current.rightHand, next.rightHand, lerpAmount);
+        if (poseDuration != 0) {
+            interpolatedPose.time = time;
+            interpolatedPose.fps = current.fps;
+            interpolatedPose.head = Lerp(current.head, next.head, lerpAmount);
+            interpolatedPose.leftHand = Lerp(current.leftHand, next.leftHand, lerpAmount);
+            interpolatedPose.rightHand = Lerp(current.rightHand, next.rightHand, lerpAmount);
+        } else
+            interpolatedPose = current;
     } else
         interpolatedPose = poses.back();
 }

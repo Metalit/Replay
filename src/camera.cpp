@@ -197,8 +197,15 @@ static Replay::Transform const& GetHead() {
     return Playback::GetPose().head;
 }
 
+static CameraMode GetMode() {
+    CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
+    if (mode == CameraMode::Headset && Manager::Rendering())
+        return CameraMode::Smooth;
+    return mode;
+}
+
 static void ResetBasePosition() {
-    if (getConfig().CamMode.GetValue() == (int) CameraMode::ThirdPerson) {
+    if (GetMode() == CameraMode::ThirdPerson) {
         baseCameraPosition = getConfig().ThirdPerPos.GetValue();
         baseCameraRotation = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
     } else {
@@ -207,29 +214,21 @@ static void ResetBasePosition() {
     }
 }
 
-static int GetMode() {
-    CameraMode mode = (CameraMode) getConfig().CamMode.GetValue();
-    if (mode == CameraMode::Headset && Manager::Rendering())
-        return (int) CameraMode::Smooth;
-    return (int) mode;
-}
-
 static void SetMoving(bool value) {
-    if (GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
+    if (moving == value)
         return;
-    if (moving && !value) {
-        getConfig().ThirdPerPos.SetValue(cameraRig->GetCameraPosition());
-        getConfig().ThirdPerRot.SetValue(cameraRig->GetCameraRotation().eulerAngles);
-        cameraRig->SetTrackingEnabled(false);
+    if (!value) {
+        getConfig().ThirdPerPos.SetValue(cameraRig->GetPosition());
+        getConfig().ThirdPerRot.SetValue(cameraRig->GetRotation().eulerAngles);
     }
     moving = value;
 }
 
 static void Travel(int direction) {
-    if (direction == 0 || GetMode() != (int) CameraMode::ThirdPerson || Manager::Rendering())
+    if (direction == 0)
         return;
     float delta = UnityEngine::Time::get_deltaTime() * getConfig().TravelSpeed.GetValue();
-    baseCameraPosition += Sombrero::QuaternionMultiply(cameraRig->GetCameraRotation(), BaseMovement * delta * direction);
+    baseCameraPosition += Sombrero::QuaternionMultiply(cameraRig->GetRotation(), BaseMovement * delta * direction);
     getConfig().ThirdPerPos.SetValue(baseCameraPosition);
 }
 
@@ -282,7 +281,7 @@ void Camera::SetupCamera() {
 
     int mask = 2147483647;
     // Everything except FirstPerson (6) or ThirdPerson (3)
-    if (GetMode() == (int) CameraMode::ThirdPerson)
+    if (GetMode() == CameraMode::ThirdPerson)
         mask &= ~(1 << 6);
     else
         mask &= ~(1 << 3);
@@ -379,36 +378,36 @@ void Camera::OnPause() {
     if (mainCamera && Manager::Rendering())
         mainCamera->cullingMask = oldCullingMask;
     SetMoving(false);
-    cameraRig->SetTrackingEnabled(true);
+    cameraRig->SetTrackingEnabled(true, false);
     cameraRig->progress->active = false;
 }
 
 void Camera::OnUnpause() {
     if (mainCamera && Manager::Rendering())
         mainCamera->cullingMask = uiCullingMask;
+    cameraRig->SetTrackingEnabled(false, false);
     cameraRig->progress->active = Manager::Rendering();
 }
 
 void Camera::OnRestart() {
     OnPause();
 
+    cameraRig = nullptr;
     mainCamera = nullptr;
     oldCullingMask = 0;
-
-    if (cameraRig)
-        UnityEngine::Object::DestroyImmediate(cameraRig);
-    cameraRig = nullptr;
 }
 
 static Quaternion GetCameraRotation() {
+    if (GetMode() != CameraMode::Smooth)
+        return baseCameraRotation;
     auto ret = baseCameraRotation;
-    if (GetMode() == (int) CameraMode::Smooth && getConfig().Correction.GetValue())
+    if (getConfig().Correction.GetValue())
         ret = Sombrero::QuaternionMultiply(baseCameraRotation, Manager::GetCurrentInfo().averageOffset);
     return ApplyTilt(ret, getConfig().TargetTilt.GetValue());
 }
 
 static Vector3 GetCameraPosition() {
-    if (GetMode() != (int) CameraMode::Smooth)
+    if (GetMode() != CameraMode::Smooth)
         return baseCameraPosition;
     auto offset = getConfig().Offset.GetValue();
     if (getConfig().Relative.GetValue())
@@ -468,20 +467,23 @@ bool Camera::UpdateTime(GlobalNamespace::AudioTimeSyncController* controller) {
 }
 
 static void UpdateCameraTransform(GlobalNamespace::PlayerTransforms* player) {
-    if (GetMode() == (int) CameraMode::Smooth) {
+    CameraMode mode = GetMode();
+
+    if (mode == CameraMode::Smooth) {
         float deltaTime = UnityEngine::Time::get_deltaTime();
+        auto& head = GetHead();
         baseCameraPosition =
-            EaseLerp(baseCameraPosition, GetHead().position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
-        baseCameraRotation = Slerp(baseCameraRotation, GetHead().rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
-    } else if (GetMode() == (int) CameraMode::ThirdPerson)
+            EaseLerp(baseCameraPosition, head.position, UnityEngine::Time::get_time(), deltaTime * 2 / getConfig().Smoothing.GetValue());
+        baseCameraRotation = Slerp(baseCameraRotation, head.rotation, deltaTime * 2 / getConfig().Smoothing.GetValue());
+    } else if (mode == CameraMode::ThirdPerson)
         ResetBasePosition();
 
     Vector3 cameraPosition = GetCameraPosition();
     Quaternion cameraRotation = GetCameraRotation();
-    if (Manager::GetCurrentInfo().positionsAreLocal) {
+    if (mode == CameraMode::Smooth && Manager::GetCurrentInfo().positionsAreLocal) {
         auto parent = player->_originParentTransform ? player->_originParentTransform : cameraRig->fakeHead->parent;
-        cameraPosition = Sombrero::QuaternionMultiply(parent->rotation, cameraPosition) + parent->position;
-        cameraRotation = Sombrero::QuaternionMultiply(parent->rotation, cameraRotation);
+        cameraPosition = Quaternion(parent->rotation) * cameraPosition + parent->position;
+        cameraRotation = Quaternion(parent->rotation) * cameraRotation;
     }
     if (cameraRig)
         cameraRig->SetPositionAndRotation(cameraPosition, cameraRotation);
@@ -493,22 +495,21 @@ void Camera::UpdateCamera(GlobalNamespace::PlayerTransforms* player) {
     if (!cameraRig)
         return;
 
-    CameraMode mode = (CameraMode) GetMode();
+    CameraMode mode = GetMode();
     bool overridePosition = !Manager::Paused() && mode != CameraMode::Headset;
     auto& pose = Playback::GetPose();
 
     // set fake head position so playertransforms is the same as during gameplay
     player->_headTransform = cameraRig->fakeHead;
-    if (Manager::GetCurrentInfo().positionsAreLocal) {
-        cameraRig->fakeHead->localPosition = pose.head.position;
-        cameraRig->fakeHead->localRotation = pose.head.rotation;
-    } else
+    if (Manager::GetCurrentInfo().positionsAreLocal)
+        cameraRig->fakeHead->SetLocalPositionAndRotation(pose.head.position, pose.head.rotation);
+    else
         cameraRig->fakeHead->SetPositionAndRotation(pose.head.position, pose.head.rotation);
 
     if (overridePosition)
         UpdateCameraTransform(player);
 
-    cameraRig->SetTrackingEnabled(!overridePosition || moving);
+    cameraRig->SetTrackingEnabled(!overridePosition || moving, moving);
 
     bool enabled = mode == CameraMode::ThirdPerson && !Manager::Paused() && getConfig().Avatar.GetValue();
     cameraRig->avatar->gameObject->active = enabled;
@@ -519,6 +520,8 @@ void Camera::UpdateCamera(GlobalNamespace::PlayerTransforms* player) {
 }
 
 void Camera::UpdateInputs() {
+    if (GetMode() != CameraMode::ThirdPerson || Manager::Rendering())
+        return;
     SetMoving(Utils::IsButtonDown(getConfig().MoveButton.GetValue()));
     Travel(Utils::IsButtonDown(getConfig().TravelButton.GetValue()));
 }

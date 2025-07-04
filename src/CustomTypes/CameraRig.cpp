@@ -6,6 +6,7 @@
 #include "GlobalNamespace/BeatAvatarEditorFlowCoordinator.hpp"
 #include "GlobalNamespace/PlayerTransforms.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "UnityEngine/SpatialTracking/PoseDataFlags.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "UnityEngine/XR/XRNode.hpp"
 #include "bsml/shared/Helpers/utilities.hpp"
@@ -20,6 +21,8 @@
 
 DEFINE_TYPE(Replay, CameraRig);
 
+using namespace BeatSaber::BeatAvatarSDK;
+using namespace GlobalNamespace;
 using namespace Replay;
 
 void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Quaternion rot) {
@@ -28,10 +31,10 @@ void CameraRig::SetPositionAndRotation(UnityEngine::Vector3 pos, UnityEngine::Qu
         transform->position = {0, -1000, -1000};
         transform->rotation = Quaternion::Euler({0, 0, -1});
         UpdateProgress();
-        return;
+    } else {
+        transform->rotation = rot;
+        transform->position = pos;
     }
-    transform->rotation = rot;
-    transform->position = pos;
 }
 
 void CameraRig::UpdateProgress() {
@@ -45,29 +48,42 @@ void CameraRig::UpdateProgress() {
     progressText->text = label;
 }
 
-void CameraRig::SetTrackingEnabled(bool value) {
-    if (cameraTracker->enabled == value)
+static void SetOriginPoseToInverseTracking(UnityEngine::SpatialTracking::TrackedPoseDriver* tracker) {
+    UnityEngine::Pose trackedPose;
+    if (tracker->GetPoseData(tracker->m_Device, tracker->m_PoseSource, byref(trackedPose)) == UnityEngine::SpatialTracking::PoseDataFlags::NoData)
+        logger.warn("failed to get pose data for relative tracking calculation");
+
+    Quaternion originRotation = Quaternion::Inverse(trackedPose.rotation);
+    tracker->m_OriginPose.position = -(originRotation * trackedPose.position);
+    tracker->m_OriginPose.rotation = originRotation;
+}
+
+void CameraRig::SetTrackingEnabled(bool value, bool preservePosition) {
+    if (tracking == value)
         return;
-    cameraTracker->enabled = value;
-    // when disabling tracking, remove all of its effects
-    if (!value)
-        cameraTracker->transform->SetLocalPositionAndRotation(Vector3::zero(), Quaternion::identity());
-    // when paused, we want to take the player's real position and rotation into account
-    // otherwise, we want to avoid a sudden teleportation when we change if tracking is enabled
+    tracking = value;
+
+    if (!preservePosition)
+        cameraTransform->SetLocalPositionAndRotation(Vector3::zero(), Quaternion::identity());
     cameraTracker->CacheLocalPosition();
-    cameraTracker->m_UseRelativeTransform = !Manager::Paused();
+    cameraTracker->enabled = tracking;
+
+    if (tracking) {
+        if (!preservePosition)
+            transform->SetPositionAndRotation(Vector3::zero(), Quaternion::identity());
+        else
+            SetOriginPoseToInverseTracking(cameraTracker);
+        cameraTracker->m_UseRelativeTransform = preservePosition;
+    }
 }
 
-UnityEngine::Vector3 CameraRig::GetCameraPosition() {
-    return cameraTracker->transform->position;
+UnityEngine::Vector3 CameraRig::GetPosition() {
+    return cameraTransform->position;
 }
 
-UnityEngine::Quaternion CameraRig::GetCameraRotation() {
-    return cameraTracker->transform->rotation;
+UnityEngine::Quaternion CameraRig::GetRotation() {
+    return cameraTransform->rotation;
 }
-
-using namespace GlobalNamespace;
-using namespace BeatSaber::BeatAvatarSDK;
 
 CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     // original hierarchy:
@@ -78,14 +94,19 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     // parent
     //  - headReplacement (playerTransforms->headTransform)
     //  - customAvatar
-    // cameraTransform (CameraRig component, root object)
-    //  - progress
+    // cameraRig (root object)
+    //  - cameraTransform (main camera, TrackedPoseDriver)
+    //     - progress
 
-    // have the camera itself not be parented, since we calculate the local position offset ourselves
-    auto cameraRig = cameraTransform->gameObject->AddComponent<Replay::CameraRig*>();
+    // have the camera rig itself not be parented, since we calculate the local position offset ourselves
+    auto cameraRig = UnityEngine::GameObject::New_ctor("ReplayCameraRig")->AddComponent<Replay::CameraRig*>();
+    cameraRig->cameraTransform = cameraTransform;
     cameraRig->cameraTracker = cameraTransform->GetComponent<UnityEngine::SpatialTracking::TrackedPoseDriver*>();
     auto parent = cameraTransform->parent;
-    cameraTransform->SetParent(nullptr, true);
+    cameraTransform->SetParent(cameraRig->transform, false);
+
+    cameraRig->tracking = true;
+    cameraRig->SetTrackingEnabled(false, false);
 
     auto headReplacement = UnityEngine::GameObject::New_ctor("PlayerTransformsHeadReplacement")->transform;
     headReplacement->SetParent(parent, false);
