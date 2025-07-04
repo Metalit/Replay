@@ -262,6 +262,7 @@ void Replay::MenuView::UpdateUI(bool getData) {
 
     int selectedReplay = getConfig().LastReplayIdx.GetValue() + 1;
     increment->set_Value(selectedReplay);
+    increment->maxValue = Manager::GetReplays().size();
     auto buttons = increment->transform->GetChild(1)->GetComponentsInChildren<UI::Button*>();
     buttons->First()->interactable = selectedReplay != increment->minValue;
     buttons->Last()->interactable = selectedReplay != increment->maxValue;
