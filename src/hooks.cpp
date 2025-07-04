@@ -5,6 +5,7 @@
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 #include "GlobalNamespace/BombNoteController.hpp"
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
+#include "GlobalNamespace/DeactivateVRControllersOnFocusCapture.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/NoteBasicCutInfoHelper.hpp"
@@ -208,6 +209,20 @@ MAKE_AUTO_HOOK_MATCH(
 MAKE_AUTO_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber* self) {
     Playback::ProcessSaber(self);
     Saber_ManualUpdate(self);
+}
+
+// force sabers enabled in replays
+MAKE_AUTO_HOOK_MATCH(
+    DeactivateVRControllersOnFocusCapture_UpdateVRControllerActiveState,
+    &DeactivateVRControllersOnFocusCapture::UpdateVRControllerActiveState,
+    void,
+    DeactivateVRControllersOnFocusCapture* self
+) {
+    if (Manager::Replaying()) {
+        for (auto controller : self->_vrControllerGameObjects)
+            controller->active = true;
+    } else
+        DeactivateVRControllersOnFocusCapture_UpdateVRControllerActiveState(self);
 }
 
 // fix timing during renders
