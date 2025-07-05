@@ -288,6 +288,7 @@ ON_EVENT(MetaCore::Events::MapRestarted) {
     Camera::OnRestart();
     Pause::OnUnpause();
     Playback::SeekTo(0);
+    MetaCore::Input::SetHaptics(MOD_ID, false);
 }
 
 ON_EVENT(MetaCore::Events::MapEnded) {
