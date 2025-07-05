@@ -265,28 +265,6 @@ static EventsIterator FindNextEvent(Replay::Events::Data& events, float time) {
     return events.events.lower_bound(time);
 }
 
-static int GetMaxMultiplier() {
-    int notesCount = MetaCore::Stats::GetTotalNotes(MetaCore::Stats::BothSabers);
-    if (notesCount < 2)
-        return 1;
-    if (notesCount < 2 + 4)
-        return 2;
-    if (notesCount < 2 + 4 + 8)
-        return 4;
-    return 8;
-}
-
-static int GetMaxMultiplierProgress() {
-    int notesCount = MetaCore::Stats::GetTotalNotes(MetaCore::Stats::BothSabers);
-    if (notesCount < 2)
-        return notesCount;
-    if (notesCount < 2 + 4)
-        return notesCount - 2;
-    if (notesCount < 2 + 4 + 8)
-        return notesCount - 2 - 4;
-    return 0;
-}
-
 static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
     if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return false;
@@ -295,11 +273,11 @@ static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
            note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcTail ||
            note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHead ||
            note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcHeadArcTail ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail;
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail || note.scoringType == -2;
 }
 
 #define MODIFY(var, num) \
-    var += forwards ? num : -(num)
+    var += forwards ? (num) : -(num)
 
 #define SIDED_MOD_1(post, num) \
     MODIFY((left ? MetaCore::Internals::left##post : MetaCore::Internals::right##post), num)
@@ -314,35 +292,44 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
     bool mistake = note.info.eventType != Replay::Events::NoteInfo::Type::GOOD;
     bool fixed = note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLink ||
                  note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead;
+    bool count = ShouldCountNote(note.info);
 
-    if (ShouldCountNote(note.info))
+    auto [pre, post, acc, score] = Utils::ScoreForNote(note);
+    auto [maxPre, maxPost, maxAcc, maxScore] = Utils::ScoreForNote(note, true);
+
+    // chains are set to full post swing for average calculations
+    if (maxPost == 0 && !fixed)
+        post = 30;
+
+    int mult = event->multiplier;
+    int maxMult = MetaCore::Stats::GetMaxMultiplier();
+
+    if (count)
         SIDED_MOD_2(remainingNotes, , -1);
+
     if (note.info.eventType == Replay::Events::NoteInfo::Type::BOMB)
         SIDED_MOD_2(bombs, Hit, 1);
     else if (note.info.eventType == Replay::Events::NoteInfo::Type::BAD)
         SIDED_MOD_2(notes, BadCut, 1);
     else if (note.info.eventType == Replay::Events::NoteInfo::Type::MISS)
         SIDED_MOD_2(notes, Missed, 1);
-    else {
+    else if (count) {
         SIDED_MOD_2(notes, Cut, 1);
-        SIDED_MOD_1(PreSwing, std::clamp(note.noteCutInfo.beforeCutRating, (float) 0, (float) 1));
-        SIDED_MOD_1(PostSwing, std::clamp(note.noteCutInfo.afterCutRating, (float) 0, (float) 1));
-        SIDED_MOD_1(Accuracy, Utils::AccuracyForDistance(note.noteCutInfo.cutDistanceToCenter));
+        SIDED_MOD_1(PreSwing, pre);
+        SIDED_MOD_1(PostSwing, post);
+        SIDED_MOD_1(Accuracy, acc);
+        // the game uses the multipliers from after the cut, and we calculate it based on the notes cut (and missed etc)
+        if (forwards)
+            maxMult = MetaCore::Stats::GetMaxMultiplier();
     }
 
-    int mult = event->multiplier;
-    int maxMult = GetMaxMultiplier();
-
-    int score = Utils::ScoreForNote(note);
-    int max = Utils::ScoreForNote(note, true) * maxMult;
-
     SIDED_MOD_1(Score, score * mult);
-    SIDED_MOD_1(MaxScore, max);
+    SIDED_MOD_1(MaxScore, maxScore * maxMult);
     if (mistake) {
         if (fixed)
-            SIDED_MOD_1(MissedFixedScore, max);
+            SIDED_MOD_1(MissedFixedScore, maxScore * maxMult);
         else
-            SIDED_MOD_1(MissedMaxScore, max);
+            SIDED_MOD_1(MissedMaxScore, maxScore * maxMult);
     } else
         SIDED_MOD_1(MissedFixedScore, score * maxMult - score * mult);
 }
@@ -351,7 +338,7 @@ static void CalculateWallChanges(Replay::Events::Wall const& event, bool forward
     MODIFY(MetaCore::Internals::wallsHit, 1);
 }
 
-static void CalculateEventChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
+static void CalculateEventChanges(Replay::Data& replay, float time) {
     float current = MetaCore::Stats::GetSongTime();
     bool forwards = time > current;
 
@@ -361,7 +348,12 @@ static void CalculateEventChanges(Replay::Data& replay, float time, int& multipl
     auto event = FindNextEvent(events, current);
     auto stop = FindNextEvent(events, time);
 
+    if (event == stop)
+        return;
+
     while (event != stop) {
+        // if going forwards, we want to stop before the next event to be processed,
+        // but for going backwards, we want to include it in the calculations
         auto next = forwards ? event++ : --event;
         switch (next->eventType) {
             case Replay::Events::Reference::Note:
@@ -376,20 +368,22 @@ static void CalculateEventChanges(Replay::Data& replay, float time, int& multipl
     }
 
     // since stop is the next event to be processed whether forwards or backwards, we want to set these values to the "current" event instead
-    if (stop != events.events.begin()) {
+    if (stop != events.events.begin())
         stop--;
-        // precalculated because it's a pain going backwards
-        MetaCore::Internals::combo = stop->combo;
-        MetaCore::Internals::leftCombo = stop->leftCombo;
-        MetaCore::Internals::rightCombo = stop->rightCombo;
-        MetaCore::Internals::health = stop->energy;
-    } else {
-        MetaCore::Internals::combo = 0;
-        MetaCore::Internals::leftCombo = 0;
-        MetaCore::Internals::rightCombo = 0;
-        MetaCore::Internals::health = replay.info.modifiers.oneLife || replay.info.modifiers.fourLives ? 1 : 0.5;
-    }
 
+    // precalculated because it's a pain going backwards
+    MetaCore::Internals::combo = stop->combo;
+    MetaCore::Internals::leftCombo = stop->leftCombo;
+    MetaCore::Internals::rightCombo = stop->rightCombo;
+
+    MetaCore::Internals::highestCombo = stop->maxCombo;
+    MetaCore::Internals::highestLeftCombo = stop->maxLeftCombo;
+    MetaCore::Internals::highestRightCombo = stop->maxRightCombo;
+
+    MetaCore::Internals::multiplier = stop->multiplier;
+    MetaCore::Internals::multiplierProgress = stop->multiplierProgress;
+
+    MetaCore::Internals::health = stop->energy;
     bool nowFailed = MetaCore::Internals::health == 0;
 
     if (MetaCore::Internals::noFail) {
@@ -398,13 +392,9 @@ static void CalculateEventChanges(Replay::Data& replay, float time, int& multipl
         else if (!hadFailed && nowFailed)
             MetaCore::Internals::negativeMods -= 0.5;
     }
-
-    multiplier = stop->multiplier;
-    multiplierProgress = stop->multiplierProgress;
-    maxCombo = stop->maxCombo;
 }
 
-static void CalculateFrameChanges(Replay::Data& replay, float time, int& multiplier, int& multiplierProgress, int& maxCombo) {
+static void CalculateFrameChanges(Replay::Data& replay, float time) {
     auto& frames = *replay.frames;
     auto nextScore = std::lower_bound(frames.scores.begin(), frames.scores.end(), time, Replay::TimeSearcher<Replay::Frames::Score>());
     if (nextScore != frames.scores.begin())
@@ -423,11 +413,15 @@ static void CalculateFrameChanges(Replay::Data& replay, float time, int& multipl
     MetaCore::Internals::combo = nextScore->combo;
     MetaCore::Internals::leftCombo = nextScore->combo / 2;
     MetaCore::Internals::rightCombo = (nextScore->combo + 1) / 2;
+
+    MetaCore::Internals::highestCombo = nextScore->maxCombo;
+    MetaCore::Internals::highestLeftCombo = nextScore->maxCombo / 2;
+    MetaCore::Internals::highestRightCombo = (nextScore->maxCombo + 1) / 2;
+
     MetaCore::Internals::health = nextScore->energy;
 
-    multiplier = nextScore->multiplier;
-    multiplierProgress = nextScore->multiplierProgress;
-    maxCombo = nextScore->maxCombo;
+    MetaCore::Internals::multiplier = nextScore->multiplier;
+    MetaCore::Internals::multiplierProgress = nextScore->multiplierProgress;
 }
 
 static void ResetEnergyBar() {
@@ -463,7 +457,7 @@ static void FinishScoringElements() {
     scoreController->LateUpdate();
 }
 
-static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxCombo) {
+static void UpdateBaseGameState() {
     float time = MetaCore::Stats::GetSongTime();
 
     // remove currently spawned objects
@@ -501,13 +495,13 @@ static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxC
 
     // update score multipliers
     auto multiplierCounter = scoreController->_scoreMultiplierCounter;
-    multiplierCounter->_multiplier = multiplier;
-    multiplierCounter->_multiplierIncreaseProgress = multiplierProgress;
-    multiplierCounter->_multiplierIncreaseMaxProgress = multiplier * 2;
+    multiplierCounter->_multiplier = MetaCore::Stats::GetMultiplier();
+    multiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMultiplierProgress(false) * multiplierCounter->_multiplier * 2;
+    multiplierCounter->_multiplierIncreaseMaxProgress = multiplierCounter->_multiplier * 2;
 
     auto maxMultiplierCounter = scoreController->_maxScoreMultiplierCounter;
-    maxMultiplierCounter->_multiplier = GetMaxMultiplier();
-    maxMultiplierCounter->_multiplierIncreaseProgress = GetMaxMultiplierProgress();
+    maxMultiplierCounter->_multiplier = MetaCore::Stats::GetMaxMultiplier();
+    maxMultiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMaxMultiplierProgress(false) * maxMultiplierCounter->_multiplier * 2;
     maxMultiplierCounter->_multiplierIncreaseMaxProgress = maxMultiplierCounter->_multiplier * 2;
 
     // update score and max score
@@ -522,7 +516,7 @@ static void UpdateBaseGameState(int multiplier, int multiplierProgress, int maxC
 
     // update combo
     comboController->_combo = MetaCore::Stats::GetCombo(MetaCore::Stats::BothSabers);
-    comboController->_maxCombo = maxCombo;
+    comboController->_maxCombo = MetaCore::Stats::GetHighestCombo(MetaCore::Stats::BothSabers);
     if (!System::Object::Equals(comboController->comboDidChangeEvent, nullptr))
         comboController->comboDidChangeEvent->Invoke(comboController->_combo);
 
@@ -549,21 +543,17 @@ void Pause::SetTime(float value) {
 
     auto& replay = Manager::GetCurrentReplay();
 
-    // replace with MetaCore internal state when added
-    int multiplier;
-    int multiplierProgress;
-    int maxCombo;
     if (replay.events)
-        CalculateEventChanges(replay, value, multiplier, multiplierProgress, maxCombo);
+        CalculateEventChanges(replay, value);
     else if (replay.frames)
-        CalculateFrameChanges(replay, value, multiplier, multiplierProgress, maxCombo);
+        CalculateFrameChanges(replay, value);
 
     Playback::SeekTo(value);
 
     MetaCore::Internals::songTime = value;
 
     // would be extra cool if I could do lighting, but man that seems annoying, especially backwards
-    UpdateBaseGameState(multiplier, multiplierProgress, maxCombo);
+    UpdateBaseGameState();
 
     // technically not all guaranteed to have happened, but the idea is just to make stuff update
     MetaCore::Events::Broadcast(MetaCore::Events::ScoreChanged);

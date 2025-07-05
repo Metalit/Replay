@@ -105,6 +105,8 @@ namespace Replay {
             int leftCombo;
             int rightCombo;
             int maxCombo;
+            int maxLeftCombo;
+            int maxRightCombo;
             float energy;
             int multiplier;
             int multiplierProgress;

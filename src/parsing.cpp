@@ -174,6 +174,8 @@ static int combo;
 static int leftCombo;
 static int rightCombo;
 static int maxCombo;
+static int maxLeftCombo;
+static int maxRightCombo;
 static int multiplier;
 static int multiplierProgress;
 
@@ -182,6 +184,8 @@ static void ResetTrackers() {
     leftCombo = 0;
     rightCombo = 0;
     maxCombo = 0;
+    maxLeftCombo = 0;
+    maxRightCombo = 0;
     multiplier = 1;
     multiplierProgress = 0;
 }
@@ -193,6 +197,8 @@ static void GoodEvent(bool left, bool right) {
     if (right)
         rightCombo++;
     maxCombo = std::max(combo, maxCombo);
+    maxLeftCombo = std::max(leftCombo, maxLeftCombo);
+    maxRightCombo = std::max(rightCombo, maxRightCombo);
     if (multiplier == 8 || ++multiplierProgress < multiplier * 2)
         return;
     multiplier *= 2;
@@ -303,6 +309,8 @@ void Parsing::PreProcess(Replay::Data& replay) {
             const_cast<int&>(event->leftCombo) = leftCombo;
             const_cast<int&>(event->rightCombo) = rightCombo;
             const_cast<int&>(event->maxCombo) = maxCombo;
+            const_cast<int&>(event->maxLeftCombo) = maxLeftCombo;
+            const_cast<int&>(event->maxRightCombo) = maxRightCombo;
             const_cast<float&>(event->energy) = energy;
             const_cast<int&>(event->multiplier) = multiplier;
             const_cast<int&>(event->multiplierProgress) = multiplierProgress;

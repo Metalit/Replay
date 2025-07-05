@@ -378,7 +378,7 @@ void Playback::ProcessStart(GameplayModifiers*& modifiers, PracticeSettings*& pr
         roomAdjust->_settingsManager->settings.room.rotation = oldRotAdj;
     };
 
-    MetaCore::Events::AddCallback(MetaCore::Events::GameplaySceneEnded, resetChanges, true);
+    MetaCore::Events::AddCallback(MetaCore::Events::MapEnded, resetChanges, true);
 }
 
 void Playback::ProcessSaber(Saber* saber) {

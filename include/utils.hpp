@@ -31,7 +31,7 @@ namespace Utils {
 
     float EnergyForNote(Replay::Events::NoteInfo const& note);
     float AccuracyForDistance(float distance);
-    int ScoreForNote(Replay::Events::Note const& note, bool max = false);
+    std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool max = false);
 
     int BSORNoteID(GlobalNamespace::NoteData* note);
     int BSORNoteID(Replay::Events::NoteInfo const& note);

@@ -162,26 +162,33 @@ float Utils::EnergyForNote(Replay::Events::NoteInfo const& note) {
 }
 
 float Utils::AccuracyForDistance(float distance) {
-    return (1 - std::clamp(distance / (float) 0.3, (float) 0, (float) 1));
+    return 1 - std::clamp(distance / (float) 0.3, (float) 0, (float) 1);
 }
 
-int Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
+std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
     ScoreModel::NoteScoreDefinition* scoreDefinition;
     if (note.info.scoringType == -2)
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
     else
         scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
+
     if (max)
-        return scoreDefinition->maxCutScore;
+        return {
+            scoreDefinition->maxBeforeCutScore,
+            scoreDefinition->maxAfterCutScore,
+            scoreDefinition->maxCenterDistanceCutScore,
+            scoreDefinition->maxCutScore
+        };
 
     float before = std::clamp(note.noteCutInfo.beforeCutRating, (float) 0, (float) 1);
     float after = std::clamp(note.noteCutInfo.afterCutRating, (float) 0, (float) 1);
     float acc = AccuracyForDistance(note.noteCutInfo.cutDistanceToCenter);
 
-    // add 0.5 all over the place so it gets rounded
-    return scoreDefinition->fixedCutScore + int(std::lerp(scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, before) + 0.5) +
-           int(std::lerp(scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, after) + 0.5) +
-           int(scoreDefinition->maxCenterDistanceCutScore * acc + 0.5);
+    int multBefore = std::round(std::lerp(scoreDefinition->minBeforeCutScore, scoreDefinition->maxBeforeCutScore, before));
+    int multAfter = std::round(std::lerp(scoreDefinition->minAfterCutScore, scoreDefinition->maxAfterCutScore, after));
+    int multAcc = std::round(scoreDefinition->maxCenterDistanceCutScore * acc);
+
+    return {multBefore, multAfter, multAcc, scoreDefinition->fixedCutScore + multBefore + multAfter + multAcc};
 }
 
 int Utils::BSORNoteID(GlobalNamespace::NoteData* note) {
