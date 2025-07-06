@@ -23,6 +23,27 @@
 
 using namespace GlobalNamespace;
 
+bool Utils::LowerVersion(std::string version, std::string compare) {
+    while (true) {
+        auto versionPos = version.find(".");
+        auto comparePos = compare.find(".");
+        try {
+            int versionInt = std::stoi(version.substr(0, versionPos));
+            int compareInt = std::stoi(compare.substr(0, comparePos));
+            if (versionInt < compareInt)
+                return true;
+            else if (versionInt > compareInt)
+                return false;
+        } catch (std::exception const& e) {
+            return false;
+        }
+        if (versionPos == std::string::npos || comparePos == std::string::npos)
+            return versionPos == std::string::npos && comparePos != std::string::npos;
+        version = version.substr(versionPos + 1);
+        compare = compare.substr(comparePos + 1);
+    }
+}
+
 std::string Utils::GetDifficultyName(BeatmapDifficulty difficulty) {
     return BeatmapDifficultyMethods::Name(difficulty);
 }
@@ -142,22 +163,61 @@ NoteCutInfo Utils::GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-float Utils::EnergyForNote(Replay::Events::NoteInfo const& note) {
+enum OldScoringType { Ignore = -1, NoScore, Normal, ArcHead, ArcTail, ChainHead, ChainLink };
+
+bool Utils::ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType) {
+    if (replayType == -2)
+        return true;
+    if (!oldScoringType)
+        return replayType == (int) noteType;
+    switch (replayType) {
+        case OldScoringType::ArcHead:
+            return noteType == NoteData::ScoringType::ArcHead || noteType == NoteData::ScoringType::ArcHeadArcTail ||
+                   noteType == NoteData::ScoringType::ChainLinkArcHead;
+        case OldScoringType::ArcTail:
+            return noteType == NoteData::ScoringType::ArcTail || noteType == NoteData::ScoringType::ArcHeadArcTail ||
+                   noteType == NoteData::ScoringType::ChainHeadArcTail;
+        case OldScoringType::ChainHead:
+            return noteType == NoteData::ScoringType::ChainHead || noteType == NoteData::ScoringType::ChainHeadArcTail;
+        case OldScoringType::ChainLink:
+            return noteType == NoteData::ScoringType::ChainLink || noteType == NoteData::ScoringType::ChainLinkArcHead;
+        default:
+            return replayType == (int) noteType;
+    }
+}
+
+float Utils::EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoringType) {
     if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return -0.15;
     bool goodCut = note.eventType == Replay::Events::NoteInfo::Type::GOOD;
     bool miss = note.eventType == Replay::Events::NoteInfo::Type::MISS;
-    switch (note.scoringType) {
-        case -2:
-        case (int) NoteData::ScoringType::Normal:
-        case (int) NoteData::ScoringType::ChainHead:
-        case (int) NoteData::ScoringType::ChainHeadArcTail:
-            return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
-        case (int) NoteData::ScoringType::ChainLink:
-        case (int) NoteData::ScoringType::ChainLinkArcHead:
-            return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
-        default:
-            return 0;
+    if (oldScoringType) {
+        switch (note.scoringType) {
+            case -2:
+            case OldScoringType::Normal:
+            case OldScoringType::ChainHead:
+                return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
+            case OldScoringType::ChainLink:
+                return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
+            default:
+                return 0;
+        }
+    } else {
+        switch ((NoteData::ScoringType) note.scoringType) {
+            case NoteData::ScoringType::Normal:
+            case NoteData::ScoringType::ChainHead:
+            case NoteData::ScoringType::ChainHeadArcTail:
+            // thankfully, I don't think chain links can't get marked as any of these arc types
+            case NoteData::ScoringType::ArcHead:
+            case NoteData::ScoringType::ArcTail:
+            case NoteData::ScoringType::ArcHeadArcTail:
+                return goodCut ? 0.01 : (miss ? -0.15 : -0.1);
+            case NoteData::ScoringType::ChainLink:
+            case NoteData::ScoringType::ChainLinkArcHead:
+                return goodCut ? 0.002 : (miss ? -0.03 : -0.025);
+            default:
+                return 0;
+        }
     }
 }
 
@@ -165,20 +225,38 @@ float Utils::AccuracyForDistance(float distance) {
     return 1 - std::clamp(distance / (float) 0.3, (float) 0, (float) 1);
 }
 
-std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
-    ScoreModel::NoteScoreDefinition* scoreDefinition;
-    if (note.info.scoringType == -2)
-        scoreDefinition = ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
-    else
-        scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
+static ScoreModel::NoteScoreDefinition* GetScoreDefinition(int scoringType, bool oldScoringType) {
+    if (!oldScoringType)
+        return ScoreModel::GetNoteScoreDefinition(scoringType);
+    switch (scoringType) {
+        case -2:
+            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
+        case OldScoringType::ChainHead:
+            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::ChainHead);
+        case OldScoringType::ChainLink:
+            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::ChainLink);
+        default:
+            return ScoreModel::GetNoteScoreDefinition(scoringType);
+    }
+}
 
-    if (max)
+std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool oldScoringType, bool max) {
+    bool goodCut = note.info.eventType == Replay::Events::NoteInfo::Type::GOOD;
+    if (!goodCut && !max)
+        return {0};
+
+    auto scoreDefinition = GetScoreDefinition(note.info.scoringType, oldScoringType);
+
+    if (max && scoreDefinition)
         return {
             scoreDefinition->maxBeforeCutScore,
             scoreDefinition->maxAfterCutScore,
             scoreDefinition->maxCenterDistanceCutScore,
             scoreDefinition->maxCutScore
         };
+
+    if (!scoreDefinition || !goodCut)
+        return {0};
 
     float before = std::clamp(note.noteCutInfo.beforeCutRating, (float) 0, (float) 1);
     float after = std::clamp(note.noteCutInfo.afterCutRating, (float) 0, (float) 1);

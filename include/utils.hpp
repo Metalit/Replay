@@ -14,6 +14,8 @@
 #include "replay.hpp"
 
 namespace Utils {
+    bool LowerVersion(std::string version, std::string compare);
+
     std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
     std::string GetDifficultyName(int difficulty);
 
@@ -29,9 +31,11 @@ namespace Utils {
     GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, Replay::Events::CutInfo const& info);
     GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-    float EnergyForNote(Replay::Events::NoteInfo const& note);
+    bool ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType);
+
+    float EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoringType);
     float AccuracyForDistance(float distance);
-    std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool max = false);
+    std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool oldScoringType, bool max = false);
 
     int BSORNoteID(GlobalNamespace::NoteData* note);
     int BSORNoteID(Replay::Events::NoteInfo const& note);

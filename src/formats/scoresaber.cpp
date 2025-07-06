@@ -2,6 +2,7 @@
 #include "math.hpp"
 #include "metacore/shared/unity.hpp"
 #include "parsing.hpp"
+#include "utils.hpp"
 
 namespace SS {
 // scoresaber serializes field by field instead of whole structs at a time
@@ -94,6 +95,9 @@ namespace SS {
         float RoomRotation;
         Vector3 RoomCenter;
         float FailTime;
+        std::optional<std::string> GameVersion;
+        std::optional<std::string> PluginVersion;
+        std::optional<std::string> Platform;
     };
 
     namespace V3 {
@@ -135,6 +139,11 @@ static SS::Metadata ReadMetadata(std::stringstream& input) {
     READ_TO(ret.RoomRotation);
     READ_TO(ret.RoomCenter);
     READ_TO(ret.FailTime);
+    if (!Utils::LowerVersion(ret.Version, "3.1.0")) {
+        READ_STRING(ret.GameVersion.emplace());
+        READ_STRING(ret.PluginVersion.emplace());
+        READ_STRING(ret.Platform.emplace());
+    }
     return ret;
 }
 
@@ -395,11 +404,11 @@ Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     input.seekg(pointers.metadata);
     auto meta = ParseMetadata(input, replay);
 
-    bool v3 = false;
-    if (meta.Version == "3.0.0")
-        v3 = true;
-    else if (meta.Version != "2.0.0")
+    bool v3 = !Utils::LowerVersion(meta.Version, "3.0.0");
+    if (Utils::LowerVersion(meta.Version, "2.0.0"))
         throw Exception(fmt::format("Unsupported version {}", meta.Version));
+
+    replay.events->hasOldScoringTypes = !meta.GameVersion || Utils::LowerVersion(*meta.GameVersion, "1.40");
 
     input.seekg(pointers.poseKeyframes);
     ParsePoses(input, replay, meta.Characteristic.find("Degree") != std::string::npos);

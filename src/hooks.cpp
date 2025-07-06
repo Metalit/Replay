@@ -7,6 +7,7 @@
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
 #include "GlobalNamespace/DeactivateVRControllersOnFocusCapture.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
+#include "GlobalNamespace/ListExtensions.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/NoteBasicCutInfoHelper.hpp"
 #include "GlobalNamespace/ObstacleMaterialSetter.hpp"
@@ -22,6 +23,7 @@
 #include "playback.hpp"
 
 using namespace GlobalNamespace;
+using namespace il2cpp_utils::il2cpp_type_check;
 
 static bool disableObstacleEntry = false;
 
@@ -120,18 +122,42 @@ MAKE_AUTO_HOOK_MATCH(
 }
 
 // optionally only disable entry into obstacles
-#define HashSet_Contains_MInfo                                                                                                      \
-    il2cpp_utils::FindMethod(                                                                                                       \
-        il2cpp_utils::il2cpp_type_check::il2cpp_no_arg_class<System::Collections::Generic::HashSet_1<ObstacleController*>*>::get(), \
-        "Contains",                                                                                                                 \
-        std::span<Il2CppClass*>{},                                                                                                  \
-        std::array{il2cpp_utils::il2cpp_type_check::il2cpp_no_arg_type<ObstacleController*>::get()}                                 \
+#define HashSet_Contains_MInfo                                                                     \
+    il2cpp_utils::FindMethod(                                                                      \
+        il2cpp_no_arg_class<System::Collections::Generic::HashSet_1<ObstacleController*>*>::get(), \
+        "Contains",                                                                                \
+        std::array{ il2cpp_no_arg_type<ObstacleController*>::get() }                               \
     )
 
 MAKE_AUTO_HOOK_FIND(
     HashSet_Contains, HashSet_Contains_MInfo, bool, System::Collections::Generic::HashSet_1<ObstacleController*>* self, ObstacleController* item
 ) {
     return disableObstacleEntry ? true : HashSet_Contains(self, item);
+}
+
+// disable resorting for replayed events
+// (regular FindMethod still doesn't work for methods with a nested generic type)
+#define ListExtensions_InsertIntoSortedListFromEnd_MInfo          \
+    il2cpp_utils::MakeGenericMethod(                              \
+        il2cpp_utils::FindMethodUnsafe(                           \
+            il2cpp_no_arg_class<ListExtensions*>::get(),          \
+            "InsertIntoSortedListFromEnd",                        \
+            2                                                     \
+        ),                                                        \
+        std::array{ il2cpp_no_arg_class<ScoringElement*>::get() } \
+    )
+
+MAKE_AUTO_HOOK_FIND(
+    ListExtensions_InsertIntoSortedListFromEnd,
+    ListExtensions_InsertIntoSortedListFromEnd_MInfo,
+    void,
+    List<ScoringElement*>* list,
+    ScoringElement* item
+) {
+    if (!Playback::DisableListSorting())
+        ListExtensions_InsertIntoSortedListFromEnd(list, item);
+    else
+        list->Add(item);
 }
 
 // ensure energy changes for obstacles are accurate

@@ -295,7 +295,7 @@ void Parsing::PreProcess(Replay::Data& replay) {
                     wallSegmentStart = event->time;
                     wallSegmentEnd = events.walls[event->index].endTime;
                 } else if (note && energy > 0)
-                    energy += Utils::EnergyForNote(*noteInfo);
+                    energy += Utils::EnergyForNote(*noteInfo, events.hasOldScoringTypes);
             } else if (mistake)
                 energy -= 1 / (float) lives;
 

@@ -337,7 +337,7 @@ static void ParseWalls(std::ifstream& input, Replay::Data& replay, BSOR::Info co
         } else {
             // process all note events up to event time
             while (note != notes.end() && note->time < wallEvent.time) {
-                energy += Utils::EnergyForNote(note->info);
+                energy += Utils::EnergyForNote(note->info, replay.events->hasOldScoringTypes);
                 if (energy > 1)
                     energy = 1;
                 note++;
@@ -350,7 +350,7 @@ static void ParseWalls(std::ifstream& input, Replay::Data& replay, BSOR::Info co
             wall.endTime = wallEvent.time + seconds;
             // now we also correct for any cuts that happen during the wall...
             while (note != notes.end() && note->time < wall.endTime) {
-                wall.endTime += Utils::EnergyForNote(note->info) / 1.3;
+                wall.endTime += Utils::EnergyForNote(note->info, replay.events->hasOldScoringTypes) / 1.3;
                 note++;
             }
             energy = wallEvent.energy;
@@ -451,6 +451,8 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
     replay.events.emplace();
 
     auto info = ParseInfo(input, replay);
+
+    replay.events->hasOldScoringTypes = Utils::LowerVersion(info.gameVersion, "1.40");
 
     READ_TO(section);
     if (section != 1)

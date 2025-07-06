@@ -265,15 +265,15 @@ static EventsIterator FindNextEvent(Replay::Events::Data& events, float time) {
     return events.events.lower_bound(time);
 }
 
-static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
+static bool ShouldCountNote(Replay::Events::NoteInfo const& note, bool oldScoring) {
     if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return false;
-    return note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::Normal ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcHead ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcTail ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHead ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcHeadArcTail ||
-           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail || note.scoringType == -2;
+    return Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::Normal, oldScoring) ||
+           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcHead, oldScoring) ||
+           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcTail, oldScoring) ||
+           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcHeadArcTail, oldScoring) ||
+           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ChainHead, oldScoring) ||
+           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail, oldScoring);
 }
 
 #define MODIFY(var, num) \
@@ -292,10 +292,10 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
     bool mistake = note.info.eventType != Replay::Events::NoteInfo::Type::GOOD;
     bool fixed = note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLink ||
                  note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead;
-    bool count = ShouldCountNote(note.info);
+    bool count = ShouldCountNote(note.info, events.hasOldScoringTypes);
 
-    auto [pre, post, acc, score] = Utils::ScoreForNote(note);
-    auto [maxPre, maxPost, maxAcc, maxScore] = Utils::ScoreForNote(note, true);
+    auto [pre, post, acc, score] = Utils::ScoreForNote(note, events.hasOldScoringTypes);
+    auto [maxPre, maxPost, maxAcc, maxScore] = Utils::ScoreForNote(note, events.hasOldScoringTypes, true);
 
     // chains are set to full post swing for average calculations
     if (maxPost == 0 && !fixed)
@@ -318,6 +318,7 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
         SIDED_MOD_1(PreSwing, pre);
         SIDED_MOD_1(PostSwing, post);
         SIDED_MOD_1(Accuracy, acc);
+        SIDED_MOD_1(TimeDependence, acc);
         // the game uses the multipliers from after the cut, and we calculate it based on the notes cut (and missed etc)
         if (forwards)
             maxMult = MetaCore::Stats::GetMaxMultiplier();
@@ -371,19 +372,36 @@ static void CalculateEventChanges(Replay::Data& replay, float time) {
     if (stop != events.events.begin())
         stop--;
 
-    // precalculated because it's a pain going backwards
-    MetaCore::Internals::combo = stop->combo;
-    MetaCore::Internals::leftCombo = stop->leftCombo;
-    MetaCore::Internals::rightCombo = stop->rightCombo;
+    if (time >= stop->time) {
+        // precalculated because it's a pain going backwards
+        MetaCore::Internals::combo = stop->combo;
+        MetaCore::Internals::leftCombo = stop->leftCombo;
+        MetaCore::Internals::rightCombo = stop->rightCombo;
 
-    MetaCore::Internals::highestCombo = stop->maxCombo;
-    MetaCore::Internals::highestLeftCombo = stop->maxLeftCombo;
-    MetaCore::Internals::highestRightCombo = stop->maxRightCombo;
+        MetaCore::Internals::highestCombo = stop->maxCombo;
+        MetaCore::Internals::highestLeftCombo = stop->maxLeftCombo;
+        MetaCore::Internals::highestRightCombo = stop->maxRightCombo;
 
-    MetaCore::Internals::multiplier = stop->multiplier;
-    MetaCore::Internals::multiplierProgress = stop->multiplierProgress;
+        MetaCore::Internals::multiplier = stop->multiplier;
+        MetaCore::Internals::multiplierProgress = stop->multiplierProgress;
 
-    MetaCore::Internals::health = stop->energy;
+        MetaCore::Internals::health = stop->energy;
+    } else {
+        // the first event will often be the first cut, and therefore will have the values from after it
+        MetaCore::Internals::combo = 0;
+        MetaCore::Internals::leftCombo = 0;
+        MetaCore::Internals::rightCombo = 0;
+
+        MetaCore::Internals::highestCombo = 0;
+        MetaCore::Internals::highestLeftCombo = 0;
+        MetaCore::Internals::highestRightCombo = 0;
+
+        MetaCore::Internals::multiplier = 1;
+        MetaCore::Internals::multiplierProgress = 0;
+
+        MetaCore::Internals::health = replay.info.modifiers.oneLife || replay.info.modifiers.fourLives ? 1 : 0.5;
+    }
+
     bool nowFailed = MetaCore::Internals::health == 0;
 
     if (MetaCore::Internals::noFail) {

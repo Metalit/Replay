@@ -132,6 +132,7 @@ namespace Replay {
             std::set<Reference, Reference::Comparer> events;
             bool needsRecalculation;
             bool cutInfoMissingOKs;
+            bool hasOldScoringTypes;
         };
     }
 

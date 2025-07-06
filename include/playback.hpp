@@ -16,6 +16,7 @@ namespace Playback {
     Replay::Pose const& GetPose();
 
     bool DisableRealEvent(bool bad);
+    bool DisableListSorting();
 
     void AddNoteController(GlobalNamespace::NoteController* note);
     void RemoveNoteController(GlobalNamespace::NoteController* note);

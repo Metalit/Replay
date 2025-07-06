@@ -71,7 +71,7 @@ namespace Frames {
             return false;
         if (score->percent >= 0)
             return true;
-        // fix scoresaber replays having incorrect max score before cut finishes
+        // fix scoresaber replays having incorrect max score before cut finishes (from the original play)
         return MetaCore::Stats::GetSongTime() - lastCutTime > 0.4;
     }
 
@@ -98,29 +98,29 @@ namespace Events {
     static PlayerHeadAndObstacleInteraction* obstacles;
 
     static bool Matches(NoteData* data, Replay::Events::NoteInfo const& info) {
-        return ((int) data->scoringType == info.scoringType || info.scoringType == -2) && (int) data->lineIndex == info.lineIndex &&
-               (int) data->noteLineLayer == info.lineLayer && (int) data->colorType == info.colorType &&
+        return Utils::ScoringTypeMatches(info.scoringType, data->scoringType, events->hasOldScoringTypes) &&
+               (int) data->lineIndex == info.lineIndex && (int) data->noteLineLayer == info.lineLayer && (int) data->colorType == info.colorType &&
                (int) data->cutDirection == info.cutDirection;
     }
 
-    static void RunNoteEvent(Replay::Events::Note const& event, NoteController* controller) {
+    static void RunNoteEvent(Replay::Events::Note const& noteEvent, NoteController* controller) {
         static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
 
-        bool isLeftSaber = event.noteCutInfo.saberType == (int) SaberType::SaberA;
+        bool isLeftSaber = noteEvent.noteCutInfo.saberType == (int) SaberType::SaberA;
         auto sabers = MetaCore::Internals::saberManager;
         auto saber = isLeftSaber ? sabers->_leftSaber : sabers->_rightSaber;
 
-        switch (event.info.eventType) {
+        switch (noteEvent.info.eventType) {
             case Replay::Events::NoteInfo::Type::GOOD:
             case Replay::Events::NoteInfo::Type::BAD: {
-                auto cutInfo = Utils::GetNoteCutInfo(controller, saber, event.noteCutInfo);
+                auto cutInfo = Utils::GetNoteCutInfo(controller, saber, noteEvent.noteCutInfo);
                 if (events->cutInfoMissingOKs) {
                     cutInfo.speedOK = cutInfo.saberSpeed > 2;
                     bool isLeftColor = controller->noteData->colorType == ColorType::ColorA;
                     cutInfo.saberTypeOK = isLeftColor == isLeftSaber;
-                    cutInfo.timeDeviation = controller->noteData->time - event.time;
+                    cutInfo.timeDeviation = controller->noteData->time - noteEvent.time;
                 }
-                Frames::lastCutTime = event.time;
+                Frames::lastCutTime = noteEvent.time;
                 il2cpp_utils::RunMethod<void, false>(controller, sendCut, byref(cutInfo));
             }
             case Replay::Events::NoteInfo::Type::BOMB: {
@@ -134,30 +134,30 @@ namespace Events {
         }
     }
 
-    static void ProcessNoteEvent(Replay::Events::Note const& event) {
-        auto& info = event.info;
+    static void ProcessNoteEvent(Replay::Events::Note const& noteEvent) {
+        auto& info = noteEvent.info;
 
         for (auto iter = notes.begin(); iter != notes.end(); iter++) {
             auto controller = *iter;
             auto data = controller->noteData;
             if (!Matches(data, info))
                 continue;
-            RunNoteEvent(event, controller);
+            RunNoteEvent(noteEvent, controller);
             if (info.eventType == Replay::Events::NoteInfo::Type::MISS)
                 notes.erase(iter);  // note will despawn and be removed in the other cases
             return;
         }
 
-        int bsorID = (event.info.scoringType + 2) * 10000 + event.info.lineIndex * 1000 + event.info.lineLayer * 100 + event.info.colorType * 10 +
-                     event.info.cutDirection;
-        logger.error("Could not find note for event! time: {}, bsor id: {}", event.time, bsorID);
+        int bsorID = (noteEvent.info.scoringType + 2) * 10000 + noteEvent.info.lineIndex * 1000 + noteEvent.info.lineLayer * 100 +
+                     noteEvent.info.colorType * 10 + noteEvent.info.cutDirection;
+        logger.error("Could not find note for event! time: {}, bsor id: {}", noteEvent.time, bsorID);
     }
 
-    static void ProcessWallEvent(Replay::Events::Wall const& event) {
+    static void ProcessWallEvent(Replay::Events::Wall const& wallEvent) {
         obstacles->headDidEnterObstacleEvent->Invoke(nullptr);
         obstacles->headDidEnterObstaclesEvent->Invoke();
-        float diffStartTime = std::max(wallEndTime, event.time);
-        wallEndTime = std::max(wallEndTime, event.endTime);
+        float diffStartTime = std::max(wallEndTime, wallEvent.time);
+        wallEndTime = std::max(wallEndTime, wallEvent.endTime);
         wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
     }
 
@@ -276,6 +276,10 @@ bool Playback::DisableRealEvent(bool bad) {
     if (bad && !Frames::AllowComboDrop())
         return true;
     return false;
+}
+
+bool Playback::DisableListSorting() {
+    return Manager::Replaying() && Events::events;
 }
 
 void Playback::AddNoteController(NoteController* note) {
