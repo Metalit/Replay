@@ -7,6 +7,7 @@
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
 #include "GlobalNamespace/DeactivateVRControllersOnFocusCapture.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
+#include "GlobalNamespace/GameSongController.hpp"
 #include "GlobalNamespace/ListExtensions.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/NoteBasicCutInfoHelper.hpp"
@@ -380,9 +381,10 @@ MAKE_AUTO_HOOK_MATCH(PauseController_get_canPause, &PauseController::get_canPaus
     return Manager::Rendering() ? getConfig().Pauses.GetValue() : PauseController_get_canPause(self);
 }
 
-// delay ending of replays by one second
-MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_get_songEndTime, &AudioTimeSyncController::get_songEndTime, float, AudioTimeSyncController* self) {
-    return (Manager::Replaying() ? 1 : 0) + AudioTimeSyncController_get_songEndTime(self);
+// prevent replays ending in pause menu
+MAKE_AUTO_HOOK_MATCH(GameSongController_LateUpdate, &GameSongController::LateUpdate, void, GameSongController* self) {
+    if (!Manager::Paused())
+        GameSongController_LateUpdate(self);
 }
 
 // fix distortions in renders
