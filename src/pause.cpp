@@ -318,7 +318,7 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
         SIDED_MOD_1(PreSwing, pre);
         SIDED_MOD_1(PostSwing, post);
         SIDED_MOD_1(Accuracy, acc);
-        SIDED_MOD_1(TimeDependence, acc);
+        SIDED_MOD_1(TimeDependence, std::abs(note.noteCutInfo.cutNormal.z));
         // the game uses the multipliers from after the cut, and we calculate it based on the notes cut (and missed etc)
         if (forwards)
             maxMult = MetaCore::Stats::GetMaxMultiplier();
