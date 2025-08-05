@@ -182,7 +182,8 @@ void Manager::CameraFinished() {
         return;
     if (getConfig().LevelsToSelect.GetValue().empty()) {
         MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
-        Utils::PlayDing();
+        if (getConfig().Ding.GetValue())
+            Utils::PlayDing();
     } else
         SelectFromConfig(0, true);
 }
