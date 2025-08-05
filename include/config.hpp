@@ -56,7 +56,7 @@ DECLARE_CONFIG(Config) {
     CONFIG_VALUE(AntiAlias, int, "Anti-Aliasing", 3, "Anti-Aliasing level for the rendering output");
     CONFIG_VALUE(ShockwavesOn, bool, "Shockwaves Enabled", true);
     CONFIG_VALUE(Shockwaves, int, "Shockwaves", 1, "Whether to show shockwaves when rendering");
-    CONFIG_VALUE(Resolution, int, "Resolution", 2, "The resolution to use when rendering");
+    CONFIG_VALUE(Resolution, int, "Resolution", 2, "The resolution to use when rendering (width x height)");
     CONFIG_VALUE(Bitrate, int, "Bitrate", 10000, "The bitrate in kbps to use when rendering");
     CONFIG_VALUE(FOV, float, "FOV", 70, "Only applies during renders");
     CONFIG_VALUE(FPS, int, "FPS", 60, "Only applies during renders");

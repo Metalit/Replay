@@ -40,7 +40,7 @@ static std::vector<std::string_view> const ButtonNames = {
     "None", "Side Trigger", "Front Trigger", "A/X Button", "B/Y Button", "Joystick Up", "Joystick Down", "Joystick Left", "Joystick Right"
 };
 static std::vector<std::string_view> const ControllerNames = {"Left", "Right", "Both"};
-static std::vector<std::string> const ResolutionStrings = {"480 x 640", "720 x 1280", "1080 x 1920", "1440 x 2560", "2160 x 3840"};
+static std::vector<std::string> const ResolutionStrings = {"640 x 480", "1280 x 720", "1920 x 1080", "2560 x 1440", "3840 x 2160"};
 static std::vector<std::string> const WallStrings = {"Transparent", "Textured", "Distorted"};
 static std::vector<std::string> const MirrorStrings = {"Off", "Low", "Medium", "High"};
 static std::vector<std::string> const AAStrings = {"0", "2", "4", "8"};
