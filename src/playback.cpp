@@ -95,7 +95,6 @@ namespace Events {
     static decltype(events->events)::const_iterator event;
     static float wallEndTime;
     static float wallEnergyLoss;
-    static PlayerHeadAndObstacleInteraction* obstacles;
 
     static bool Matches(NoteData* data, Replay::Events::NoteInfo const& info) {
         return Utils::ScoringTypeMatches(info.scoringType, data->scoringType, events->hasOldScoringTypes) &&
@@ -154,6 +153,7 @@ namespace Events {
     }
 
     static void ProcessWallEvent(Replay::Events::Wall const& wallEvent) {
+        auto obstacles = MetaCore::Internals::gameEnergyCounter->_playerHeadAndObstacleInteraction;
         obstacles->headDidEnterObstacleEvent->Invoke(nullptr);
         obstacles->headDidEnterObstaclesEvent->Invoke();
         float diffStartTime = std::max(wallEndTime, wallEvent.time);
