@@ -216,25 +216,30 @@ static Replay::Transform Lerp(Replay::Transform const& start, Replay::Transform 
     return {Vector3::Lerp(start.position, end.position, t), Quaternion::Lerp(start.rotation, end.rotation, t)};
 }
 
-static void UpdateInterpolatedPose(std::vector<Replay::Pose> const& poses, float time) {
-    if (index < poses.size() - 1) {
-        auto const& current = poses[index];
-        auto const& next = poses[index + 1];
+static Replay::Pose GetInterpolatedPose(std::vector<Replay::Pose> const& poses, float time) {
+    if (index == 0)
+        return poses.front();
+    if (index >= poses.size())
+        return poses.back();
 
-        float progress = time - current.time;
-        float poseDuration = next.time - current.time;
-        float lerpAmount = progress / poseDuration;
+    int prevIndex = index - 1;
+    while (prevIndex > 0 && poses[prevIndex].time > time)
+        prevIndex--;
+    auto const& prev = poses[prevIndex];
+    auto const& next = poses[index];
 
-        if (poseDuration != 0) {
-            interpolatedPose.time = time;
-            interpolatedPose.fps = current.fps;
-            interpolatedPose.head = Lerp(current.head, next.head, lerpAmount);
-            interpolatedPose.leftHand = Lerp(current.leftHand, next.leftHand, lerpAmount);
-            interpolatedPose.rightHand = Lerp(current.rightHand, next.rightHand, lerpAmount);
-        } else
-            interpolatedPose = current;
-    } else
-        interpolatedPose = poses.back();
+    float poseDuration = next.time - prev.time;
+    if (poseDuration == 0)
+        return prev;
+
+    float lerpAmount = (time - prev.time) / poseDuration;
+    return {
+        time,
+        (int) std::lerp(prev.fps, next.fps, lerpAmount),
+        Lerp(prev.head, next.head, lerpAmount),
+        Lerp(prev.leftHand, next.leftHand, lerpAmount),
+        Lerp(prev.rightHand, next.rightHand, lerpAmount)
+    };
 }
 
 void Playback::UpdateTime() {
@@ -249,7 +254,7 @@ void Playback::UpdateTime() {
 
     while (index < poses.size() && poses[index].time < time)
         index++;
-    UpdateInterpolatedPose(poses, time);
+    interpolatedPose = GetInterpolatedPose(poses, time);
 }
 
 void Playback::SeekTo(float time) {
@@ -261,7 +266,7 @@ void Playback::SeekTo(float time) {
 
     auto& poses = Manager::GetCurrentReplay().poses;
     index = std::distance(poses.begin(), std::lower_bound(poses.begin(), poses.end(), time, Replay::TimeSearcher<Replay::Pose>()));
-    UpdateInterpolatedPose(poses, time);
+    interpolatedPose = GetInterpolatedPose(poses, time);
 }
 
 Replay::Pose const& Playback::GetPose() {
