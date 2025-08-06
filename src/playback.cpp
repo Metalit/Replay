@@ -186,22 +186,23 @@ namespace Events {
     }
 
     static void ProcessEnergy(GameEnergyCounter* counter) {
-        if (!events || wallEnergyLoss == 0)
+        if (!events)
             return;
-        bool battery = counter->energyType == GameplayModifiers::EnergyType::Battery;
-        float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
+        if (wallEnergyLoss != 0) {
+            bool battery = counter->energyType == GameplayModifiers::EnergyType::Battery;
+            float gameEnergyLoss = UnityEngine::Time::get_deltaTime() * 1.3;
 
-        if (battery) {
-            counter->ProcessEnergyChange(-1);
-            wallEnergyLoss = 0;
-        } else if (gameEnergyLoss >= wallEnergyLoss) {
-            counter->ProcessEnergyChange(-wallEnergyLoss);
-            wallEnergyLoss = 0;
-        } else {
-            counter->ProcessEnergyChange(-gameEnergyLoss);
-            wallEnergyLoss -= gameEnergyLoss;
+            if (battery) {
+                counter->ProcessEnergyChange(-1);
+                wallEnergyLoss = 0;
+            } else if (gameEnergyLoss >= wallEnergyLoss) {
+                counter->ProcessEnergyChange(-wallEnergyLoss);
+                wallEnergyLoss = 0;
+            } else {
+                counter->ProcessEnergyChange(-gameEnergyLoss);
+                wallEnergyLoss -= gameEnergyLoss;
+            }
         }
-
         if (counter->_nextFrameEnergyChange != 0) {
             counter->ProcessEnergyChange(counter->_nextFrameEnergyChange);
             counter->_nextFrameEnergyChange = 0;
