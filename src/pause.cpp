@@ -101,9 +101,11 @@ CreateCube(UnityEngine::GameObject* parent, UnityEngine::Material* mat, Vector3 
 }
 
 static UnityEngine::GameObject* CreateCameraModel() {
-    auto shader = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Shader*>()->First([](auto s) {
-        return (std::string) s->name == "Custom/SimpleLit";
-    });
+    auto shader = UnityEngine::Shader::Find("Hidden/Internal-Colored");
+    if (!shader) {
+        logger.error("Failed to find Hidden/Internal-Colored shader!");
+        return UnityEngine::GameObject::New_ctor("ReplayFailedCameraModel");
+    }
     auto mat = UnityEngine::Material::New_ctor(shader);
     mat->color = UnityEngine::Color::get_white();
     auto ret = CreateCube(nullptr, mat, {0, 0, 0}, {0, 0, 0}, {0.075, 0.075, 0.075}, "ReplayCameraModel");
