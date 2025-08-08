@@ -49,16 +49,9 @@
 static bool inited = false;
 
 static GlobalNamespace::PauseMenuManager* pauseMenu;
-static GlobalNamespace::ScoreController* scoreController;
-static GlobalNamespace::AudioTimeSyncController* audioController;
-static GlobalNamespace::BeatmapObjectManager* objectManager;
-static GlobalNamespace::PlayerHeadAndObstacleInteraction* obstacleInteraction;
-static GlobalNamespace::BeatmapCallbacksController* callbackController;
-static GlobalNamespace::ComboController* comboController;
 static GlobalNamespace::ComboUIController* comboPanel;
 static GlobalNamespace::NoteCutSoundEffectManager* soundManager;
 static GlobalNamespace::AudioManagerSO* audioManager;
-static GlobalNamespace::GameEnergyCounter* energyCounter;
 static GlobalNamespace::GameEnergyUIPanel* energyPanel;
 
 static UnityEngine::GameObject* cameraModel;
@@ -117,6 +110,8 @@ static UnityEngine::GameObject* CreateCameraModel() {
 }
 
 static void UpdateCameraActive() {
+    if (!inited)
+        return;
     SetCameraModelToThirdPerson();
     cameraModel->active = !Manager::Rendering() && Manager::Paused() && getConfig().CamMode.GetValue() == (int) CameraMode::ThirdPerson;
 }
@@ -197,25 +192,18 @@ static void UpdateUI() {
     if (!inited)
         return;
     timeSlider->set_Value(MetaCore::Stats::GetSongTime());
-    speedSlider->set_Value(audioController->_timeScale);
+    speedSlider->set_Value(MetaCore::Internals::audioTimeSyncController->_timeScale);
 }
 
-static void LazyInit() {
-    if (inited)
-        return;
+static bool LazyInit() {
+    if (inited || !MetaCore::Internals::referencesValid)
+        return inited;
     inited = true;
 
     pauseMenu = UnityEngine::Object::FindObjectOfType<GlobalNamespace::PauseMenuManager*>(true);
-    scoreController = UnityEngine::Object::FindObjectOfType<GlobalNamespace::ScoreController*>(true);
-    audioController = scoreController->_audioTimeSyncController;
-    objectManager = scoreController->_beatmapObjectManager;
-    obstacleInteraction = scoreController->_playerHeadAndObstacleInteraction;
-    callbackController = UnityEngine::Object::FindObjectOfType<GlobalNamespace::BeatmapCallbacksUpdater*>(true)->_beatmapCallbacksController;
-    comboController = UnityEngine::Object::FindObjectOfType<GlobalNamespace::ComboController*>(true);
     comboPanel = UnityEngine::Object::FindObjectOfType<GlobalNamespace::ComboUIController*>(true);
     soundManager = UnityEngine::Object::FindObjectOfType<GlobalNamespace::NoteCutSoundEffectManager*>(true);
     audioManager = soundManager->_audioManager;
-    energyCounter = il2cpp_utils::try_cast<GlobalNamespace::GameEnergyCounter>(scoreController->_gameEnergyCounter).value_or(nullptr);
     energyPanel = UnityEngine::Object::FindObjectOfType<GlobalNamespace::GameEnergyUIPanel*>(true);
 
     CreateUI();
@@ -223,6 +211,8 @@ static void LazyInit() {
     cameraModel->AddComponent<Replay::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
     MetaCore::Engine::SetOnDestroy(cameraModel, []() { inited = false; });
     UpdateCameraActive();
+
+    return true;
 }
 
 static void StopSounds() {
@@ -234,7 +224,8 @@ static void StopSounds() {
 }
 
 void Pause::OnPause() {
-    LazyInit();
+    if (!LazyInit())
+        return;
     UpdateCameraActive();
     UpdateUI();
     StopSounds();
@@ -245,11 +236,13 @@ void Pause::OnUnpause() {
         return;
     cameraModel->active = false;
     SetThirdPersonToCameraModel();
-    audioController->_inBetweenDSPBufferingTimeEstimate = 0;
+    MetaCore::Internals::audioTimeSyncController->_inBetweenDSPBufferingTimeEstimate = 0;
 }
 
 void Pause::SetSpeed(float value) {
-    LazyInit();
+    if (!LazyInit())
+        return;
+    auto audioController = MetaCore::Internals::audioTimeSyncController;
     audioController->_timeScale = value;
     audioController->_audioSource->pitch = value;
     audioController->_audioStartTimeOffsetSinceStart =
@@ -456,28 +449,28 @@ static void ResetEnergyBar() {
     fullIcon->GetComponent<HMUI::ImageView*>()->color = opacityColor;
     energyPanel->transform->Find("Laser")->gameObject->active = false;
     // prevent recreation of battery energy UI
-    auto energyType = energyCounter->energyType;
-    energyCounter->energyType = -1;
+    auto energyType = MetaCore::Internals::gameEnergyCounter->energyType;
+    MetaCore::Internals::gameEnergyCounter->energyType = -1;
     // reregister HandleGameEnergyDidChange
     energyPanel->Init();
-    energyCounter->energyType = energyType;
+    MetaCore::Internals::gameEnergyCounter->energyType = energyType;
 }
 
 static void FinishScoringElements() {
-    scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
-    scoreController->LateUpdate();
-    for (auto element : ListW<GlobalNamespace::ScoringElement*>(scoreController->_scoringElementsWithMultiplier)) {
+    MetaCore::Internals::scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
+    MetaCore::Internals::scoreController->LateUpdate();
+    for (auto element : ListW<GlobalNamespace::ScoringElement*>(MetaCore::Internals::scoreController->_scoringElementsWithMultiplier)) {
         if (auto goodElement = il2cpp_utils::try_cast<GlobalNamespace::GoodCutScoringElement>(element).value_or(nullptr))
             goodElement->_cutScoreBuffer->_saberSwingRatingCounter->Finish();
     }
-    scoreController->LateUpdate();
+    MetaCore::Internals::scoreController->LateUpdate();
 }
 
 static void UpdateBaseGameState() {
     float time = MetaCore::Stats::GetSongTime();
 
     // remove currently spawned objects
-    ListW<GlobalNamespace::IBeatmapObjectController*> objects = objectManager->_allBeatmapObjects;
+    ListW<GlobalNamespace::IBeatmapObjectController*> objects = MetaCore::Internals::beatmapObjectManager->_allBeatmapObjects;
     for (auto object : objects) {
         object->Hide(false);
         object->Pause(false);
@@ -485,30 +478,32 @@ static void UpdateBaseGameState() {
         // scoresaber does all the above, is it necessary?
         object->Dissolve(0);
     }
-    obstacleInteraction->_intersectingObstacles->Clear();
+    MetaCore::Internals::scoreController->_playerHeadAndObstacleInteraction->_intersectingObstacles->Clear();
 
     // (effectively) clear all current callbacks
-    auto callbacks = callbackController->_callbacksInTimes;
+    auto callbacks = MetaCore::Internals::beatmapCallbacksController->_callbacksInTimes;
     for (auto callback : DictionaryW(callbacks).values())
         callback->lastProcessedNode = nullptr;
-    callbackController->_prevSongTime = time - 0.01;
-    callbackController->_songTime = time;
-    callbackController->_startFilterTime = time;
+    MetaCore::Internals::beatmapCallbacksController->_prevSongTime = time - 0.01;
+    MetaCore::Internals::beatmapCallbacksController->_songTime = time;
+    MetaCore::Internals::beatmapCallbacksController->_startFilterTime = time;
 
     // update song time
-    float controllerTime = (time - audioController->_startSongTime) / audioController->timeScale;
-    audioController->SeekTo(controllerTime);
+    float controllerTime =
+        (time - MetaCore::Internals::audioTimeSyncController->_startSongTime) / MetaCore::Internals::audioTimeSyncController->timeScale;
+    MetaCore::Internals::audioTimeSyncController->SeekTo(controllerTime);
 
     // update energy and its ui
     float health = MetaCore::Stats::GetHealth();
-    energyCounter->_energy_k__BackingField = health;
-    energyCounter->_nextFrameEnergyChange = 0;
-    energyCounter->_didReach0Energy = health == 0;
+    MetaCore::Internals::gameEnergyCounter->_energy_k__BackingField = health;
+    MetaCore::Internals::gameEnergyCounter->_nextFrameEnergyChange = 0;
+    MetaCore::Internals::gameEnergyCounter->_didReach0Energy = health == 0;
     if (health > 0 && !energyPanel->_energyBar->enabled)
         ResetEnergyBar();
-    if (!System::Object::Equals(energyCounter->gameEnergyDidChangeEvent, nullptr))
-        energyCounter->gameEnergyDidChangeEvent->Invoke(health);
+    if (!System::Object::Equals(MetaCore::Internals::gameEnergyCounter->gameEnergyDidChangeEvent, nullptr))
+        MetaCore::Internals::gameEnergyCounter->gameEnergyDidChangeEvent->Invoke(health);
 
+    auto scoreController = MetaCore::Internals::scoreController;
     // update score multipliers
     auto multiplierCounter = scoreController->_scoreMultiplierCounter;
     multiplierCounter->_multiplier = MetaCore::Stats::GetMultiplier();
@@ -531,10 +526,10 @@ static void UpdateBaseGameState() {
     scoreController->scoreDidChangeEvent->Invoke(scoreController->_multipliedScore, scoreController->_modifiedScore);
 
     // update combo
-    comboController->_combo = MetaCore::Stats::GetCombo(MetaCore::Stats::BothSabers);
-    comboController->_maxCombo = MetaCore::Stats::GetHighestCombo(MetaCore::Stats::BothSabers);
-    if (!System::Object::Equals(comboController->comboDidChangeEvent, nullptr))
-        comboController->comboDidChangeEvent->Invoke(comboController->_combo);
+    MetaCore::Internals::comboController->_combo = MetaCore::Stats::GetCombo(MetaCore::Stats::BothSabers);
+    MetaCore::Internals::comboController->_maxCombo = MetaCore::Stats::GetHighestCombo(MetaCore::Stats::BothSabers);
+    if (!System::Object::Equals(MetaCore::Internals::comboController->comboDidChangeEvent, nullptr))
+        MetaCore::Internals::comboController->comboDidChangeEvent->Invoke(MetaCore::Internals::comboController->_combo);
 
     bool full = MetaCore::Stats::GetFullCombo(MetaCore::Stats::BothSabers);
     if (full && comboPanel->_fullComboLost)
@@ -545,12 +540,10 @@ static void UpdateBaseGameState() {
 }
 
 void Pause::SetTime(float value) {
-    if (!Manager::Replaying() || MetaCore::Stats::GetSongTime() == value)
+    if (!Manager::Replaying() || MetaCore::Stats::GetSongTime() == value || !LazyInit())
         return;
 
     logger.info("Setting replay time to {}", value);
-
-    LazyInit();
 
     // I don't fully understand it, but there is some weirdness with the score calculation if any elements are left unfinished
     // this function is *probably* unnecessary, since the custom saber movement data finishes everything within the frame,
@@ -589,5 +582,5 @@ void Pause::UpdateInputs() {
 
     int speed = Utils::IsButtonDown(getConfig().SpeedButton.GetValue());
     if (speed)
-        SetSpeed(audioController->_timeScale + speed * 0.05);
+        SetSpeed(MetaCore::Internals::audioTimeSyncController->_timeScale + speed * 0.05);
 }
