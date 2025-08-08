@@ -76,14 +76,12 @@ static void SetCameraModelToThirdPerson() {
 }
 
 static void SetThirdPersonToCameraModel() {
-    auto trans = cameraModel->transform;
-    Quaternion rot = trans->rotation;
+    Quaternion rot = cameraModel->transform->rotation;
     // model points upwards
     auto offset = Quaternion::AngleAxis(-90, {1, 0, 0});
     rot = rot * offset;
     getConfig().ThirdPerRot.SetValue(rot.eulerAngles);
-    auto pos = trans->position;
-    getConfig().ThirdPerPos.SetValue(pos);
+    getConfig().ThirdPerPos.SetValue(cameraModel->transform->position);
 }
 
 static UnityEngine::GameObject*
@@ -114,15 +112,13 @@ static UnityEngine::GameObject* CreateCameraModel() {
     CreateCube(ret, mat, {1.461, 1.08, -1.08}, {-45, 0, -45}, {0.133, 4, 0.133}, "Camera Pillar 2");
     CreateCube(ret, mat, {-1.461, 1.08, -1.08}, {-45, 0, 45}, {0.133, 4, 0.133}, "Camera Pillar 3");
     CreateCube(ret, mat, {0, 2.08, 0}, {0, 0, 0}, {5.845, 0.07, 4.322}, "Camera Screen");
+    ret->active = false;
     return ret;
 }
 
 static void UpdateCameraActive() {
-    if (!Manager::Rendering() && getConfig().CamMode.GetValue() == (int) CameraMode::ThirdPerson) {
-        SetCameraModelToThirdPerson();
-        cameraModel->active = true;
-    } else
-        cameraModel->active = false;
+    SetCameraModelToThirdPerson();
+    cameraModel->active = !Manager::Rendering() && Manager::Paused() && getConfig().CamMode.GetValue() == (int) CameraMode::ThirdPerson;
 }
 
 static BSML::SliderSetting* TextlessSlider(
@@ -226,7 +222,6 @@ static void LazyInit() {
     cameraModel = CreateCameraModel();
     cameraModel->AddComponent<Replay::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
     MetaCore::Engine::SetOnDestroy(cameraModel, []() { inited = false; });
-
     UpdateCameraActive();
 }
 
@@ -240,6 +235,7 @@ static void StopSounds() {
 
 void Pause::OnPause() {
     LazyInit();
+    UpdateCameraActive();
     UpdateUI();
     StopSounds();
 }
@@ -592,8 +588,6 @@ void Pause::UpdateInputs() {
         SetTime(MetaCore::Stats::GetSongTime() + getConfig().TimeSkip.GetValue() * skip);
 
     int speed = Utils::IsButtonDown(getConfig().SpeedButton.GetValue());
-    if (speed) {
-        LazyInit();
+    if (speed)
         SetSpeed(audioController->_timeScale + speed * 0.05);
-    }
 }

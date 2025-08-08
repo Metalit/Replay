@@ -294,6 +294,7 @@ void Camera::SetupCamera() {
 
     cameraRig = Replay::CameraRig::Create(mainCamera->transform);
     ResetBasePosition();
+    moving = false;
 }
 
 static void FinishMux() {
