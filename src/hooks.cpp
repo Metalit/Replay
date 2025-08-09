@@ -5,6 +5,7 @@
 #include "GlobalNamespace/BeatmapObjectManager.hpp"
 #include "GlobalNamespace/BombNoteController.hpp"
 #include "GlobalNamespace/BurstSliderGameNoteController.hpp"
+#include "GlobalNamespace/ConditionalActivation.hpp"
 #include "GlobalNamespace/DeactivateVRControllersOnFocusCapture.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
 #include "GlobalNamespace/GameSongController.hpp"
@@ -357,6 +358,19 @@ MAKE_AUTO_HOOK_MATCH(
         renderer->sharedMaterial = getConfig().Walls.GetValue() == 0 ? self->_fakeGlowLWMaterial : self->_fakeGlowTexturedMaterial;
     else
         ObstacleMaterialSetter_SetFakeGlowMaterial(self, renderer, obstacleQuality);
+}
+
+// not sure why this doesn't seem to get done by setting mainEffect in SetGraphicsSettings
+MAKE_AUTO_HOOK_MATCH(ConditionalActivation_Awake, &ConditionalActivation::Awake, void, ConditionalActivation* self) {
+    if (Manager::Rendering()) {
+        if (self->name == "ObstacleFrame")
+            self->gameObject->active = getConfig().Bloom.GetValue();
+        else if (self->name == "ObstacleFakeGlow")
+            self->gameObject->active = !getConfig().Bloom.GetValue();
+        else
+            ConditionalActivation_Awake(self);
+    } else
+        ConditionalActivation_Awake(self);
 }
 
 // override shockwaves too
