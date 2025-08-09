@@ -199,8 +199,6 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
 
     AddConfigValueIncrementVector3(transform, getConfig().Offset, 1, 0.1);
 
-    AddConfigValueToggle(transform, getConfig().Relative);
-
     AddConfigValueToggle(transform, getConfig().HideText);
 
     AddConfigValueIncrementFloat(transform, getConfig().TextHeight, 1, 0.1, 1, 5);

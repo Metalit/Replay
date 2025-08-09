@@ -411,7 +411,7 @@ static Vector3 GetCameraPosition() {
     if (GetMode() != CameraMode::Smooth)
         return baseCameraPosition;
     auto offset = getConfig().Offset.GetValue();
-    if (getConfig().Relative.GetValue())
+    if (Manager::HasRotations())
         offset = Sombrero::QuaternionMultiply(GetCameraRotation(), offset);
     return baseCameraPosition + offset;
 }

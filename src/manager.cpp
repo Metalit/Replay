@@ -24,6 +24,7 @@ static std::vector<std::pair<std::string, Replay::Data>> replays;
 static bool local = true;
 
 static bool restarting = false;
+static bool hasRotations = false;
 static bool cancelPresentation = false;
 
 std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Manager::customDataCallbacks;
@@ -231,6 +232,10 @@ bool Manager::Paused() {
     return paused;
 }
 
+bool Manager::HasRotations() {
+    return hasRotations;
+}
+
 bool Manager::CancelPresentation() {
     bool ret = cancelPresentation;
     cancelPresentation = false;
@@ -246,8 +251,10 @@ ON_EVENT(MetaCore::Events::Update) {
 }
 
 ON_EVENT(MetaCore::Events::MapSelected) {
-    replays = Parsing::GetReplays(MetaCore::Songs::GetSelectedKey());
+    auto map = MetaCore::Songs::GetSelectedKey();
+    replays = Parsing::GetReplays(map);
     local = true;
+    hasRotations = map.beatmapCharacteristic->_containsRotationEvents;
     Replay::MenuView::CreateShortcut();
     Replay::MenuView::SetEnabled(!replays.empty());
 }

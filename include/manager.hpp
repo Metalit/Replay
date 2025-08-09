@@ -28,5 +28,6 @@ namespace Manager {
     bool Rendering();
     bool Paused();
 
+    bool HasRotations();
     bool CancelPresentation();
 }
