@@ -128,14 +128,13 @@ static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::p
     std::string diffName = GlobalNamespace::BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
     std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
     std::string levelHash = beatmap.levelId;
-    std::string songName = MetaCore::Songs::FindLevel(beatmap)->songName;
 
     if (levelHash.find("custom_level_") == std::string::npos)
         levelHash = "ost_" + levelHash;
     else
         levelHash = levelHash.substr(13);
 
-    std::string ending = fmt::format("-{}-{}-{}-{}", songName, diffName, characteristic, levelHash);
+    std::string ending = fmt::format("-{}-{}-{}", diffName, characteristic, levelHash);
     logger.debug("searching for ss replays with string {}", ending);
 
     for (auto const& entry : std::filesystem::directory_iterator(GetSSReplaysPath())) {
