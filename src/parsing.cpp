@@ -217,6 +217,9 @@ static void BadEvent(bool left, bool right) {
 }
 
 void Parsing::PreProcess(Replay::Data& replay) {
+    if (replay.frames && replay.frames->scores.empty())
+        replay.frames.reset();
+
     if (replay.frames) {
         auto& frames = *replay.frames;
         ResetTrackers();

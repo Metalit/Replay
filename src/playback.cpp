@@ -38,6 +38,8 @@ namespace Frames {
             return;
         while (score != frames->scores.end() && score->time < time)
             score++;
+        if (score == frames->scores.end())
+            score--;
     }
 
     static void SeekTo(float time) {
