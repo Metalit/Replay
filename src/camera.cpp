@@ -52,7 +52,7 @@ int uiCullingMask = 1 << 5;
 static bool moving = false;
 
 Hollywood::AudioCapture* audioCapture = nullptr;
-UnityEngine::Camera* customCamera = nullptr;
+Hollywood::CameraCapture* videoCapture = nullptr;
 std::fstream videoOutput;
 
 static void SetGraphicsSettings() {
@@ -114,7 +114,7 @@ static void SetupRecording() {
     Hollywood::SetScreenOn(true);
 
     logger.info("Beginning video capture");
-    customCamera = UnityEngine::Object::Instantiate(mainCamera);
+    auto customCamera = UnityEngine::Object::Instantiate(mainCamera);
     customCamera->tag = "Untagged";
     customCamera->gameObject->active = false;
     customCamera->enabled = true;
@@ -156,13 +156,13 @@ static void SetupRecording() {
     if (height <= 0)
         height = Resolutions[getConfig().Resolution.GetValue()].second;
 
-    auto video = customCamera->gameObject->AddComponent<Hollywood::CameraCapture*>();
+    videoCapture = customCamera->gameObject->AddComponent<Hollywood::CameraCapture*>();
     videoOutput.open(TmpVidPath, std::ios::out | std::ios::binary);
-    video->onOutputUnit = [](uint8_t* data, size_t len) {
+    videoCapture->onOutputUnit = [](uint8_t* data, size_t len) {
         videoOutput.write((char*) data, len);
     };
     int bitMult = getConfig().HEVC.GetValue() ? 1000 : 2000;
-    video->Init(
+    videoCapture->Init(
         width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * bitMult, getConfig().FOV.GetValue(), getConfig().HEVC.GetValue()
     );
 
@@ -355,9 +355,9 @@ void Camera::FinishReplay() {
     if (audioCapture)
         UnityEngine::Object::DestroyImmediate(audioCapture);
     audioCapture = nullptr;
-    if (customCamera)
-        UnityEngine::Object::DestroyImmediate(customCamera->gameObject);
-    customCamera = nullptr;
+    if (videoCapture)
+        UnityEngine::Object::DestroyImmediate(videoCapture->gameObject);
+    videoCapture = nullptr;
     if (cameraRig)
         UnityEngine::Object::DestroyImmediate(cameraRig);
     cameraRig = nullptr;
@@ -416,7 +416,8 @@ static Vector3 GetCameraPosition() {
     return baseCameraPosition + offset;
 }
 
-static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
+static void UpdateDSPOffset(GlobalNamespace::AudioTimeSyncController* self) {
+    // default dsp time offset calculation
     float estimatedTimeIncrease = UnityEngine::Time::get_deltaTime() * self->_timeScale;
 
     int timeSamples = self->_audioSource->timeSamples;
@@ -428,42 +429,19 @@ static void RunDefaultTimeSync(GlobalNamespace::AudioTimeSyncController* self) {
         self->_inBetweenDSPBufferingTimeEstimate = 0;
     self->_prevAudioSamplePos = timeSamples;
 
-    // add regular delta time after audio ends
-    float audioSourceTime = self->_songTime + estimatedTimeIncrease;
-    if (self->_audioSource->isPlaying)
-        audioSourceTime = self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length / self->_timeScale +
-                          self->_inBetweenDSPBufferingTimeEstimate;
-    float unityClockTime = self->timeSinceStart - self->_audioStartTimeOffsetSinceStart;
-
-    self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - audioSourceTime / self->_timeScale;
-    float timeDifference = std::abs(unityClockTime - audioSourceTime);
-    if (timeDifference > self->_forcedSyncDeltaTime) {
-        self->_audioStartTimeOffsetSinceStart = self->timeSinceStart - audioSourceTime;
-        unityClockTime = audioSourceTime;
-    } else {
-        if (self->_fixingAudioSyncError) {
-            if (timeDifference < self->_stopSyncDeltaTime)
-                self->_fixingAudioSyncError = false;
-        } else if (timeDifference > self->_startSyncDeltaTime)
-            self->_fixingAudioSyncError = true;
-
-        if (self->_fixingAudioSyncError)
-            self->_audioStartTimeOffsetSinceStart = std::lerp(
-                self->_audioStartTimeOffsetSinceStart, self->timeSinceStart - audioSourceTime, estimatedTimeIncrease * self->_audioSyncLerpSpeed
-            );
-    }
-
-    // ignore songTimeOffset and audioLatency
-    float time = std::max(self->_songTime, unityClockTime);
-    self->_lastFrameDeltaSongTime = time - self->_songTime;
-    self->_songTime = time;
-    self->_isReady = true;
+    float time = self->_audioSource->time + self->_playbackLoopIndex * self->_audioSource->clip->length / self->_timeScale;
+    // move estimate subtraction here so it's not affected by timeScale
+    self->_dspTimeOffset = UnityEngine::AudioSettings::get_dspTime() - time / self->_timeScale - self->_inBetweenDSPBufferingTimeEstimate;
 }
 
 bool Camera::UpdateTime(GlobalNamespace::AudioTimeSyncController* controller) {
-    if (!Manager::Rendering() || Manager::Paused())
+    if (!videoCapture || !Manager::Rendering() || Manager::Paused())
         return true;
-    RunDefaultTimeSync(controller);
+    UpdateDSPOffset(controller);
+    float time = std::max(controller->_songTime, videoCapture->GetRenderTime() * controller->_timeScale);
+    controller->_lastFrameDeltaSongTime = time - controller->_songTime;
+    controller->_songTime = time;
+    controller->_isReady = true;
     return false;
 }
 
@@ -488,8 +466,8 @@ static void UpdateCameraTransform(GlobalNamespace::PlayerTransforms* player) {
     }
     if (cameraRig)
         cameraRig->SetPositionAndRotation(cameraPosition, cameraRotation);
-    if (customCamera)
-        customCamera->transform->SetPositionAndRotation(cameraPosition, cameraRotation);
+    if (videoCapture)
+        videoCapture->transform->SetPositionAndRotation(cameraPosition, cameraRotation);
 }
 
 void Camera::UpdateCamera(GlobalNamespace::PlayerTransforms* player) {
