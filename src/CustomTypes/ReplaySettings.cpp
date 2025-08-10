@@ -21,6 +21,7 @@
 #include "main.hpp"
 #include "manager.hpp"
 #include "metacore/shared/delegates.hpp"
+#include "metacore/shared/songs.hpp"
 #include "metacore/shared/ui.hpp"
 #include "utils.hpp"
 
@@ -269,7 +270,7 @@ void RenderSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bo
     });
 
     clearQueueButton = CreateSmallButton(horizontal, "Clear Queue", [this]() {
-        getConfig().LevelsToSelect.SetValue({});
+        Manager::ClearLevelsFromConfig();
         OnEnable();
     });
 
@@ -306,7 +307,7 @@ void RenderSettings::GetCover(BeatmapLevel* level) {
 void RenderSettings::UpdateCover(BeatmapLevel* level, UnityEngine::Sprite* cover) {
     if (!queueList || !enabled)
         return;
-    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto levels = getConfig().RenderQueue.GetValue();
     for (int i = 0; i < levels.size(); i++) {
         if (levels[i].ID == level->levelID)
             queueList->data[i]->icon = cover;
@@ -321,14 +322,17 @@ static void AddCoverlessCell(BSML::CustomListTableData* list, LevelSelection con
     std::string toptext = "<voffset=0.1em>" + name + "  <size=75%><color=#D6D6D6>" + characteristic + " " + difficulty;
     std::string author = beatmap->songAuthorName;
     std::string mapper = "";
+    std::string desc = "";
     if (!beatmap->allMappers.Empty())
         mapper = fmt::format(" [{}]", beatmap->allMappers->First());
-    std::string subtext = fmt::format("{}{} - Replay Index {}", author, mapper, level.ReplayIndex + 1);
+    if (!level.ReplayDesc.empty())
+        desc = fmt::format(" - {}", level.ReplayDesc);
+    std::string subtext = fmt::format("{}{}{}", author, mapper, desc);
     list->data->Add(BSML::CustomCellInfo::construct(toptext, subtext, nullptr));
 }
 
 void RenderSettings::OnEnable() {
-    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto levels = getConfig().RenderQueue.GetValue();
     bool empty = levels.empty();
     if (beginQueueButton)
         beginQueueButton->interactable = !empty;
@@ -337,7 +341,7 @@ void RenderSettings::OnEnable() {
     if (queueList) {
         queueList->data->Clear();
         for (auto& level : levels) {
-            auto beatmap = BSML::Helpers::GetMainFlowCoordinator()->_beatmapLevelsModel->GetBeatmapLevel(level.ID);
+            auto beatmap = MetaCore::Songs::FindLevel(level.ID);
             if (!beatmap) {
                 queueList->data->Add(BSML::CustomCellInfo::construct("Couldn't load level", "Exit and reopen settings to try again", nullptr));
                 continue;

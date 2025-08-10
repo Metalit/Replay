@@ -155,6 +155,7 @@ namespace Replay {
     };
 
     struct Info {
+        std::string hash;
         Modifiers modifiers;
         long timestamp;
         int score;

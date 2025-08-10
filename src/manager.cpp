@@ -21,6 +21,7 @@ static bool rendering = false;
 static bool paused = false;
 
 static std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> replays;
+static std::map<std::string, std::shared_ptr<Replay::Data>> tempReplays;
 static bool local = true;
 
 static bool restarting = false;
@@ -32,31 +33,34 @@ std::map<std::string, std::vector<std::function<void(char const*, size_t)>>> Man
 static void SelectFromConfig(int index, bool render) {
     logger.debug("selecting level, render: {}, index: {}", render, index);
 
-    auto replays = getConfig().LevelsToSelect.GetValue();
-    if (index >= replays.size() || index < 0)
+    auto queue = getConfig().RenderQueue.GetValue();
+    if (index >= queue.size() || index < 0)
         return;
-    auto replay = replays[index];
+    auto level = queue[index];
 
     if (render) {
-        replays.erase(replays.begin() + index);
-        getConfig().LevelsToSelect.SetValue(replays);
+        queue.erase(queue.begin() + index);
+        getConfig().RenderQueue.SetValue(queue);
     }
 
     auto main = MetaCore::Game::GetMainFlowCoordinator();
-    auto level = main->_beatmapLevelsModel->GetBeatmapLevel(replay.ID);
-    auto pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(replay.ID);
-    if (!level) {
-        logger.debug("level id {} not found", replay.ID);
+    auto map = main->_beatmapLevelsModel->GetBeatmapLevel(level.ID);
+    auto pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(level.ID);
+    if (!map) {
+        logger.debug("level id {} not found", level.ID);
         // if we're going through the render queue, go ahead and try to do the next one
         if (render)
             SelectFromConfig(index, render);
         return;
     }
-    logger.debug("found level {} ({}) for id {}", fmt::ptr(level), level->songName, replay.ID);
+    logger.debug("found level {} ({}) for id {}", fmt::ptr(map), map->songName, level.ID);
 
-    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(replay.Characteristic), replay.Difficulty, replay.ID}, pack);
+    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(level.Characteristic), level.Difficulty, level.ID}, pack);
 
-    getConfig().LastReplayIdx.SetValue(replay.ReplayIndex);
+    if (tempReplays.contains(level.ReplayHash))
+        Manager::SetExternalReplay("", tempReplays[level.ReplayHash]);
+    else
+        getConfig().LastReplayHash.SetValue(level.ReplayHash);
 
     if (render) {
         Manager::StartReplay(true);
@@ -73,37 +77,25 @@ void Manager::BeginQueue() {
     SelectFromConfig(0, true);
 }
 
-static std::optional<LevelSelection> GetCurrentLevel() {
-    std::optional<LevelSelection> ret = std::nullopt;
-
-    auto map = MetaCore::Songs::GetSelectedKey();
-    if (!map.IsValid())
-        return ret;
-
-    ret.emplace();
-    ret->ID = (std::string) map.levelId;
-    ret->Difficulty = (int) map.difficulty;
-    ret->Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
-
-    ret->ReplayIndex = getConfig().LastReplayIdx.GetValue();
-    return ret;
-}
-
 void Manager::SaveCurrentLevelInConfig() {
     auto map = MetaCore::Songs::GetSelectedKey();
     if (!map.IsValid())
         return;
+    auto const& info = GetCurrentInfo();
 
-    auto levels = getConfig().LevelsToSelect.GetValue();
-    auto& added = levels.emplace_back();
+    auto levels = getConfig().RenderQueue.GetValue();
+    auto& level = levels.emplace_back();
 
-    added.ID = (std::string) map.levelId;
-    added.Difficulty = (int) map.difficulty;
-    added.Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+    level.ID = (std::string) map.levelId;
+    level.Difficulty = (int) map.difficulty;
+    level.Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+    level.ReplayHash = info.hash;
+    level.ReplayDesc = fmt::format("{} {}", info.source, Utils::GetStatusString(info));
+    level.Temporary = !AreReplaysLocal();
+    if (level.Temporary)
+        tempReplays[level.ReplayHash] = replays[0].second;
 
-    added.ReplayIndex = getConfig().LastReplayIdx.GetValue();
-
-    getConfig().LevelsToSelect.SetValue(levels);
+    getConfig().RenderQueue.SetValue(levels);
 }
 
 static std::vector<LevelSelection>::iterator FindCurrentLevel(std::vector<LevelSelection>& levels) {
@@ -112,24 +104,29 @@ static std::vector<LevelSelection>::iterator FindCurrentLevel(std::vector<LevelS
         return levels.end();
     for (auto level = levels.begin(); level != levels.end(); level++) {
         if (level->ID == current.levelId && level->Characteristic == current.beatmapCharacteristic->_serializedName &&
-            level->Difficulty == (int) current.difficulty && level->ReplayIndex == getConfig().LastReplayIdx.GetValue())
+            level->Difficulty == (int) current.difficulty && level->ReplayHash == Manager::GetCurrentInfo().hash)
             return level;
     }
     return levels.end();
 }
 
 void Manager::RemoveCurrentLevelFromConfig() {
-    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto levels = getConfig().RenderQueue.GetValue();
     auto level = FindCurrentLevel(levels);
     if (level == levels.end())
         return;
     levels.erase(level);
-    getConfig().LevelsToSelect.SetValue(levels);
+    getConfig().RenderQueue.SetValue(levels);
 }
 
 bool Manager::IsCurrentLevelInConfig() {
-    auto levels = getConfig().LevelsToSelect.GetValue();
+    auto levels = getConfig().RenderQueue.GetValue();
     return FindCurrentLevel(levels) != levels.end();
+}
+
+void Manager::ClearLevelsFromConfig() {
+    getConfig().RenderQueue.SetValue({});
+    tempReplays.clear();
 }
 
 void Manager::SetExternalReplay(std::string path, std::shared_ptr<Replay::Data> replay) {
@@ -144,6 +141,22 @@ bool Manager::AreReplaysLocal() {
 
 int Manager::GetReplaysCount() {
     return replays.size();
+}
+
+void Manager::SelectReplay(int index) {
+    getConfig().LastReplayHash.SetValue(replays[index].second->info.hash);
+}
+
+int Manager::GetSelectedIndex() {
+    if (!AreReplaysLocal())
+        return 0;
+    // should never be called with empty replays vector
+    std::string hash = getConfig().LastReplayHash.GetValue();
+    for (int i = 0; i < replays.size(); i++) {
+        if (replays[i].second->info.hash == hash)
+            return i;
+    }
+    return 0;
 }
 
 void Manager::StartReplay(bool render) {
@@ -181,7 +194,7 @@ void Manager::StartReplay(bool render) {
 void Manager::CameraFinished() {
     if (!rendering)
         return;
-    if (getConfig().LevelsToSelect.GetValue().empty()) {
+    if (getConfig().RenderQueue.GetValue().empty()) {
         MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
         if (getConfig().Ding.GetValue())
             Utils::PlayDing();
@@ -189,30 +202,19 @@ void Manager::CameraFinished() {
         SelectFromConfig(0, true);
 }
 
-static int GetCurrentIndex() {
-    // should never be called with empty replays vector
-    int idx = getConfig().LastReplayIdx.GetValue();
-    if (idx >= replays.size()) {
-        idx = replays.size() - 1;
-        if (local)
-            getConfig().LastReplayIdx.SetValue(idx);
-    }
-    return idx;
-}
-
 Replay::Data& Manager::GetCurrentReplay() {
-    return *replays[GetCurrentIndex()].second;
+    return *replays[GetSelectedIndex()].second;
 }
 
 void Manager::DeleteCurrentReplay() {
-    auto replay = replays.begin() + GetCurrentIndex();
+    auto replay = replays.begin() + GetSelectedIndex();
     try {
         std::filesystem::remove(replay->first);
     } catch (std::exception const& e) {
-        logger.error("Failed to delete replay: {}", e.what());
+        logger.error("Failed to delete replay at {}: {}", replay->first, e.what());
         return;
     }
-    replays.erase(replays.begin());
+    replays.erase(replay);
     Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 

@@ -75,7 +75,7 @@ static void OnSettingsButtonClick() {
 }
 
 static void OnIncrementChanged(float value) {
-    getConfig().LastReplayIdx.SetValue(value - 1);
+    Manager::SelectReplay(value - 1);
     Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
@@ -173,7 +173,6 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
 
     auto queueText = QueueButtonText();
     queueButton = BSML::Lite::CreateUIButton(horizontal4, queueText, Vector2(), {33, 8}, OnQueueButtonClick);
-    queueButton->interactable = Manager::AreReplaysLocal();
     RemoveFit(queueButton);
 
     auto settingsButton = BSML::Lite::CreateUIButton(transform, "", {32, -62}, {10, 10}, OnSettingsButtonClick);
@@ -191,9 +190,7 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
     deleteButton->gameObject->SetActive(Manager::AreReplaysLocal());
     SetPreferred(deleteIcon, 8, 8);
 
-    increment = BSML::Lite::CreateIncrementSetting(
-        mainLayout, "", 0, 1, getConfig().LastReplayIdx.GetValue() + 1, 1, Manager::GetReplaysCount(), OnIncrementChanged
-    );
+    increment = BSML::Lite::CreateIncrementSetting(mainLayout, "", 0, 1, 1, 1, Manager::GetReplaysCount(), OnIncrementChanged);
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
     increment->transform->GetChild(1)->GetComponent<RectTransform*>()->anchoredPosition = {-20, 0};
 
@@ -246,37 +243,18 @@ void Replay::MenuView::UpdateUI(bool getData) {
         percent = fmt::format("{:.2f}", num);
     }
     std::string score = fmt::format("{} <size=80%>(<color=#1dbcd1>{}%</color>)</size>", info.score, percent);
-    std::string status = info.failed ? "<color=#cc1818>Failed</color>" : "<color=#2adb44>Passed</color>";
-    if (info.failed && info.failTime >= 0)
-        status = fmt::format(
-            "<color=#cc1818>Failed at {}</color> / {}",
-            MetaCore::Strings::SecondsToString(info.failTime),
-            MetaCore::Strings::SecondsToString(songLength)
-        );
-    else if (info.quit)
-        status = fmt::format(
-            "<color=#cc7818>Quit at {}</color> / {}",
-            MetaCore::Strings::SecondsToString(info.quitTime),
-            MetaCore::Strings::SecondsToString(songLength)
-        );
-    else if (info.practice)
-        status = fmt::format(
-            "<color=#66ebff>Practice from {}</color> / {}",
-            MetaCore::Strings::SecondsToString(info.startTime),
-            MetaCore::Strings::SecondsToString(songLength)
-        );
+    std::string status = Utils::GetStatusString(info, true, songLength);
 
     dateText->text = GetLayeredText("Date Played", date);
     modifiersText->text = GetLayeredText("Modifiers", modifiers);
     scoreText->text = GetLayeredText("Score", score);
     statusText->text = GetLayeredText("Status", status);
 
-    queueButton->interactable = Manager::AreReplaysLocal();
     BSML::Lite::SetButtonText(queueButton, QueueButtonText());
 
     deleteButton->gameObject->SetActive(Manager::AreReplaysLocal());
 
-    int selectedReplay = getConfig().LastReplayIdx.GetValue() + 1;
+    int selectedReplay = Manager::GetSelectedIndex() + 1;
     increment->set_Value(selectedReplay);
     increment->maxValue = Manager::GetReplaysCount();
     auto buttons = increment->transform->GetChild(1)->GetComponentsInChildren<UI::Button*>();
@@ -287,10 +265,8 @@ void Replay::MenuView::UpdateUI(bool getData) {
 }
 
 void Replay::MenuView::OnEnable() {
-    if (queueButton) {
-        queueButton->interactable = Manager::AreReplaysLocal();
+    if (queueButton)
         BSML::Lite::SetButtonText(queueButton, QueueButtonText());
-    }
 }
 
 void Replay::MenuView::OnDestroy() {

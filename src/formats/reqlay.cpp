@@ -105,10 +105,7 @@ Replay::Transform ConvertTransform(EulerTransform& euler) {
     return ret;
 }
 
-std::shared_ptr<Replay::Data> ReadFromV1(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV1(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     V1Modifiers modifiers;
     READ_TO(modifiers);
     replay->info.modifiers = ConvertModifiers(modifiers);
@@ -129,10 +126,7 @@ std::shared_ptr<Replay::Data> ReadFromV1(std::ifstream& input) {
 }
 
 // changed modifier order, added version header, added jump offset to keyframes
-std::shared_ptr<Replay::Data> ReadFromV2(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV2(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     V2Modifiers modifiers;
     READ_TO(modifiers);
     replay->info.modifiers = ConvertModifiers(modifiers);
@@ -152,10 +146,7 @@ std::shared_ptr<Replay::Data> ReadFromV2(std::ifstream& input) {
 }
 
 // added info for fails in replays (different from reaching 0 energy with no fail)
-std::shared_ptr<Replay::Data> ReadFromV3(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV3(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
 
@@ -177,10 +168,7 @@ std::shared_ptr<Replay::Data> ReadFromV3(std::ifstream& input) {
 }
 
 // explicitly added reached 0 energy bool and time to the replay
-std::shared_ptr<Replay::Data> ReadFromV4(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV4(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
 
@@ -204,10 +192,7 @@ std::shared_ptr<Replay::Data> ReadFromV4(std::ifstream& input) {
 }
 
 // added energy to keyframes
-std::shared_ptr<Replay::Data> ReadFromV5(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV5(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
 
@@ -231,10 +216,7 @@ std::shared_ptr<Replay::Data> ReadFromV5(std::ifstream& input) {
 }
 
 // reordered modifiers again and added the new ones
-std::shared_ptr<Replay::Data> ReadFromV6(std::ifstream& input) {
-    auto replay = std::make_shared<Replay::Data>();
-    replay->frames.emplace();
-
+std::shared_ptr<Replay::Data> ReadFromV6(std::shared_ptr<Replay::Data> replay, std::ifstream& input) {
     READ_TO(replay->info.failed);
     READ_TO(replay->info.failTime);
 
@@ -266,13 +248,18 @@ std::shared_ptr<Replay::Data> ReadVersionedReqlay(std::string const& path) {
     if (!input.is_open())
         throw Parsing::Exception("Failure opening file");
 
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
+
+    replay->info.hash = Parsing::GetFullHash(input);
+
     unsigned char headerBytes[3];
     for (int i = 0; i < 3; i++) {
         READ_TO(headerBytes[i]);
         if (headerBytes[i] != fileHeader[i]) {
             input.seekg(0);
             logger.info("Reading reqlay file with version 1");
-            return ReadFromV1(input);
+            return ReadFromV1(replay, input);
         }
     }
 
@@ -282,15 +269,15 @@ std::shared_ptr<Replay::Data> ReadVersionedReqlay(std::string const& path) {
 
     switch (version) {
         case 2:
-            return ReadFromV2(input);
+            return ReadFromV2(replay, input);
         case 3:
-            return ReadFromV3(input);
+            return ReadFromV3(replay, input);
         case 4:
-            return ReadFromV4(input);
+            return ReadFromV4(replay, input);
         case 5:
-            return ReadFromV5(input);
+            return ReadFromV5(replay, input);
         case 6:
-            return ReadFromV6(input);
+            return ReadFromV6(replay, input);
         default:
             throw Parsing::Exception(fmt::format("Unsupported version {}", version));
     }

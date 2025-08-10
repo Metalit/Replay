@@ -7,30 +7,42 @@
 #include "System/Collections/Generic/LinkedListNode_1.hpp"
 #include "System/Collections/Generic/LinkedList_1.hpp"
 #include "config.hpp"
+#include "md5.hpp"
 #include "metacore/shared/songs.hpp"
 #include "utils.hpp"
 
-template <class T>
-static std::string ReadStringGeneric(T& input) {
-    int length;
-    READ_TO(length);
+static std::string ReadLength(std::istream& input, int length) {
     std::string str;
     str.resize(length);
     input.read(str.data(), length);
     return str;
 }
 
-std::string Parsing::ReadString(std::stringstream& input) {
-    return ReadStringGeneric(input);
+std::string Parsing::GetFullHash(std::istream& input) {
+    static constexpr int READ_BLOCK = joyee::BLOCK_SIZE * 256;
+    input.seekg(0, std::ios::end);
+    size_t length = input.tellg();
+    input.seekg(0, std::ios::beg);
+    joyee::MD5 md5;
+    size_t read = 0;
+    for (; read < length - READ_BLOCK; read += READ_BLOCK)
+        md5.update(ReadLength(input, READ_BLOCK));
+    int remaining = length - read;
+    if (remaining > 0)
+        md5.update(ReadLength(input, remaining));
+    input.seekg(0, std::ios::beg);
+    return md5.finalize().toString();
 }
 
-std::string Parsing::ReadString(std::ifstream& input) {
-    return ReadStringGeneric(input);
+std::string Parsing::ReadString(std::istream& input) {
+    int length;
+    READ_TO(length);
+    return ReadLength(input, length);
 }
 
 // Some strings like name, mapper or song name may contain incorrectly encoded UTF16 symbols
 // Contributed by NSGolova
-std::string Parsing::ReadStringUTF16(std::ifstream& input) {
+std::string Parsing::ReadStringUTF16(std::istream& input) {
     int length;
     READ_TO(length);
 
@@ -48,11 +60,7 @@ std::string Parsing::ReadStringUTF16(std::ifstream& input) {
         input.seekg(-length - 4, input.cur);
     }
 
-    std::string str;
-    str.resize(length);
-    input.read(str.data(), length);
-
-    return str;
+    return ReadLength(input, length);
 }
 
 static std::string const ReqlaySuffix1 = ".reqlay";

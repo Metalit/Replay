@@ -442,6 +442,7 @@ static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
         try {
             READ_TO(section);
         } catch (...) {
+            input.clear();
             return;
         }
         if (section == 6)
@@ -501,6 +502,8 @@ std::shared_ptr<Replay::Data> Parsing::ReadBSOR(std::string const& path) {
     replay->info.quit = flags.contains("quit");
     // set so we know that having quit is possible, since older replays won't have the file name
     replay->info.quitTime = replay->poses.back().time;
+
+    replay->info.hash = GetFullHash(input);
 
     PreProcess(*replay);
     return replay;

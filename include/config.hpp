@@ -25,7 +25,9 @@ DECLARE_JSON_STRUCT(LevelSelection) {
     VALUE(std::string, ID);
     VALUE(int, Difficulty);
     VALUE(std::string, Characteristic);
-    VALUE(int, ReplayIndex);
+    VALUE(std::string, ReplayDesc);
+    VALUE(std::string, ReplayHash);
+    VALUE(bool, Temporary);
 };
 
 DECLARE_JSON_STRUCT(ThirdPerPreset) {
@@ -34,10 +36,10 @@ DECLARE_JSON_STRUCT(ThirdPerPreset) {
 };
 
 DECLARE_CONFIG(Config) {
-    CONFIG_VALUE(Version, int, "Config Version", 1);
+    CONFIG_VALUE(Version, int, "Config Version", 2);
     CONFIG_VALUE(CamMode, int, "Camera Mode", 0);
-    CONFIG_VALUE(LevelsToSelect, std::vector<LevelSelection>, "Select Level On Start", {});
-    CONFIG_VALUE(LastReplayIdx, int, "Last Selected Replay Index", 0);
+    CONFIG_VALUE(RenderQueue, std::vector<LevelSelection>, "Render Queue", {});
+    CONFIG_VALUE(LastReplayHash, std::string, "Last Selected Replay Hash", "");
     CONFIG_VALUE(OverrideWidth, int, "Override Resolution Width", -1);
     CONFIG_VALUE(OverrideHeight, int, "Override Resolution Height", -1);
 
@@ -46,7 +48,7 @@ DECLARE_CONFIG(Config) {
     CONFIG_VALUE(TargetTilt, float, "Target Tilt", 10, "The degrees to tilt the camera (as if looking up/down) after correction");
     CONFIG_VALUE(Offset, UnityEngine::Vector3, "Position Offset", UnityEngine::Vector3(0, 0, -0.5), "The offset of the camera in smooth camera mode");
     CONFIG_VALUE(HideText, bool, "Hide Player Text", true, "Whether to hide the REPLAY player text for your own replays");
-    CONFIG_VALUE(TextHeight, float, "Player Text Height", 7, "The height of the REPLAY player text when visible");
+    CONFIG_VALUE(TextHeight, float, "Player Text Height", 3.5, "The height of the REPLAY player text when visible");
     CONFIG_VALUE(Avatar, bool, "Enable Avatar", true, "Shows avatar when in third person camera mode");
 
     CONFIG_VALUE(Walls, int, "Wall Style", 0, "What kind of walls to display when rendering");

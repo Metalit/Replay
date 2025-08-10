@@ -22,6 +22,7 @@
 #include "metacore/shared/game.hpp"
 #include "metacore/shared/maps.hpp"
 #include "metacore/shared/songs.hpp"
+#include "metacore/shared/strings.hpp"
 #include "web-utils/shared/WebUtils.hpp"
 
 using namespace GlobalNamespace;
@@ -106,6 +107,31 @@ std::string Utils::GetMapString() {
     std::string characteristic = GetCharacteristicName(MetaCore::Songs::GetSelectedKey().beatmapCharacteristic);
     std::string difficulty = GetDifficultyName(MetaCore::Songs::GetSelectedKey().difficulty);
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
+}
+
+std::string Utils::GetStatusString(Replay::Info const& info, bool color, float songLength) {
+    std::string hex = "#2adb44";
+    float time = -1;
+    std::string status = songLength >= 0 ? "Passed" : "Pass";
+    if (info.failed) {
+        hex = "#cc1818";
+        time = info.failTime;
+        status = songLength >= 0 ? "Failed at" : "Fail";
+    } else if (info.quit) {
+        hex = "#cc7818";
+        time = info.quitTime;
+        status = songLength >= 0 ? "Quit at" : "Quit";
+    } else if (info.practice) {
+        hex = "#66ebff";
+        time = info.startTime;
+        status = songLength >= 0 ? "Practice from" : "Practice";
+    }
+    bool useTime = songLength >= 0 && time >= 0;
+    std::string time1 = useTime ? " " + MetaCore::Strings::SecondsToString(time) : "";
+    std::string time2 = useTime ? " / " + MetaCore::Strings::SecondsToString(songLength) : "";
+    if (!color)
+        return fmt::format("{}{}{}", status, time1, time2);
+    return fmt::format("<color={}>{}{}</color>{}", hex, status, time1, time2);
 }
 
 std::string Utils::GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail) {

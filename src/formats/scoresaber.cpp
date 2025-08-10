@@ -454,6 +454,8 @@ std::shared_ptr<Replay::Data> Parsing::ReadScoresaber(std::string const& path) {
     info.positionsAreLocal = false;
     replay->events->cutInfoMissingOKs = true;
 
+    replay->info.hash = GetFullHash(input);
+
     PreProcess(*replay);
     return replay;
 }

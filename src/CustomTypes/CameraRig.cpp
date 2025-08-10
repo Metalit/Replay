@@ -41,7 +41,7 @@ void CameraRig::UpdateProgress() {
     std::string time = MetaCore::Strings::SecondsToString(MetaCore::Stats::GetSongTime());
     std::string total = MetaCore::Strings::SecondsToString(MetaCore::Stats::GetSongLength());
     std::string queue = "";
-    int len = getConfig().LevelsToSelect.GetValue().size();
+    int len = getConfig().RenderQueue.GetValue().size();
     if (len > 0)
         queue = fmt::format("\n{} in queue", len);
     std::string label = fmt::format("{}\nRendering...\nSong Time: {} / {}{}", mapString, time, total, queue);

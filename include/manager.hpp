@@ -12,10 +12,13 @@ namespace Manager {
     void SaveCurrentLevelInConfig();
     void RemoveCurrentLevelFromConfig();
     bool IsCurrentLevelInConfig();
+    void ClearLevelsFromConfig();
 
     void SetExternalReplay(std::string path, std::shared_ptr<Replay::Data> replay);
     bool AreReplaysLocal();
     int GetReplaysCount();
+    void SelectReplay(int index);
+    int GetSelectedIndex();
 
     void StartReplay(bool render);
     void CameraFinished();

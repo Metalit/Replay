@@ -15,9 +15,10 @@ namespace Parsing {
     std::shared_ptr<Replay::Data> ReadScoresaber(std::string const& path);
     std::shared_ptr<Replay::Data> ReadBSOR(std::string const& path);
 
-    std::string ReadString(std::stringstream& input);
-    std::string ReadString(std::ifstream& input);
-    std::string ReadStringUTF16(std::ifstream& input);
+    std::string GetFullHash(std::istream& input);
+
+    std::string ReadString(std::istream& input);
+    std::string ReadStringUTF16(std::istream& input);
 
     std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 

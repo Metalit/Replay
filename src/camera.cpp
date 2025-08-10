@@ -306,7 +306,7 @@ static void FinishMux() {
     }
 
     logger.info("Removing screen on");
-    if (MetaCore::Internals::mapWasQuit || getConfig().LevelsToSelect.GetValue().empty())
+    if (MetaCore::Internals::mapWasQuit || getConfig().RenderQueue.GetValue().empty())
         Hollywood::SetScreenOn(false);
 
     Manager::CameraFinished();

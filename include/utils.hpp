@@ -27,6 +27,8 @@ namespace Utils {
 
     std::string GetMapString();
 
+    std::string GetStatusString(Replay::Info const& info, bool color = false, float songLength = -1);
+
     std::string GetModifierString(Replay::Modifiers const& modifiers, bool includeNoFail);
 
     GlobalNamespace::NoteCutInfo

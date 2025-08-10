@@ -6,7 +6,6 @@
 #include "custom-types/shared/register.hpp"
 #include "hollywood/shared/hollywood.hpp"
 #include "hooks.hpp"
-#include "config.hpp"
 
 using namespace GlobalNamespace;
 
@@ -60,6 +59,10 @@ extern "C" void late_load() {
         getConfig().TextHeight.SetValue(5);
     if (getConfig().TextHeight.GetValue() < 1)
         getConfig().TextHeight.SetValue(1);
+
+    auto queue = getConfig().RenderQueue.GetValue();
+    if (std::erase_if(queue, [](LevelSelection level) { return level.Temporary; }) > 0)
+        getConfig().RenderQueue.SetValue(queue);
 
     CModInfo beatleader{.id = "bl"};
     CModInfo scoresaber{.id = "ScoreSaber"};
