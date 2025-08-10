@@ -249,7 +249,7 @@ void Replay::MenuView::UpdateUI(bool getData) {
     std::string status = info.failed ? "<color=#cc1818>Failed</color>" : "<color=#2adb44>Passed</color>";
     if (info.failed && info.failTime >= 0)
         status = fmt::format(
-            "<color=#cc1818>Fail at {}</color> / {}",
+            "<color=#cc1818>Failed at {}</color> / {}",
             MetaCore::Strings::SecondsToString(info.failTime),
             MetaCore::Strings::SecondsToString(songLength)
         );
@@ -257,6 +257,12 @@ void Replay::MenuView::UpdateUI(bool getData) {
         status = fmt::format(
             "<color=#cc7818>Quit at {}</color> / {}",
             MetaCore::Strings::SecondsToString(info.quitTime),
+            MetaCore::Strings::SecondsToString(songLength)
+        );
+    else if (info.practice)
+        status = fmt::format(
+            "<color=#66ebff>Practice from {}</color> / {}",
+            MetaCore::Strings::SecondsToString(info.startTime),
             MetaCore::Strings::SecondsToString(songLength)
         );
 
