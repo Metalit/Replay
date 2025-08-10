@@ -74,8 +74,9 @@ std::set<std::string> GetFilenameFlags(std::string filename) {
         if (start == std::string::npos)
             break;
         // skip first four sections from end (name, diff, mode, hash)
+        // if the name has a dash in it then rip I guess
         if (i > 3)
-            flags.emplace(filename.substr(start + 1, pos));
+            flags.emplace(filename.substr(start + 1, pos - start - 1));
         i++;
         pos = start;
     }
