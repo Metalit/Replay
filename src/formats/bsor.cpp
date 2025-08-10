@@ -63,6 +63,25 @@ static bool IsLikelyValidCutInfo(Replay::Events::CutInfo& info) {
     return true;
 }
 
+std::set<std::string> GetFilenameFlags(std::string filename) {
+    int pos = filename.size();
+    int i = 0;
+    std::set<std::string> flags = {};
+    while (true) {
+        // split filename on "-" characters
+        int start = filename.rfind("-", pos - 1);
+        // skip last section from end (player id)
+        if (start == std::string::npos)
+            break;
+        // skip first four sections from end (name, diff, mode, hash)
+        if (i > 3)
+            flags.emplace(filename.substr(start + 1, pos));
+        i++;
+        pos = start;
+    }
+    return flags;
+}
+
 static Replay::Modifiers ParseModifierString(std::string const& modifiers) {
     Replay::Modifiers ret;
     ret.disappearingArrows = modifiers.find("DA") != std::string::npos;
@@ -113,32 +132,26 @@ static BSOR::Info ReadInfo(std::ifstream& input) {
     return info;
 }
 
-static bool ParseMetadata(std::ifstream& input, std::string const& path) {
+static bool ParseMetadata(std::ifstream& input) {
     int header;
     READ_TO(header);
-    if (header != 0x442d3d69) {
-        logger.error("Invalid header bytes in bsor file {}", path);
-        return false;
-    }
+    if (header != 0x442d3d69)
+        throw Parsing::Exception("Invalid header bytes");
 
     int8_t version;
     READ_TO(version);
-    if (version > 1) {
-        logger.error("Unsupported version in bsor file {}", path);
-        return false;
-    }
+    if (version > 1)
+        throw Parsing::Exception("Unsupported version");
 
     int8_t section;
     READ_TO(section);
-    if (section != 0) {
-        logger.error("Invalid beginning section in bsor file {}", path);
-        return false;
-    }
+    if (section != 0)
+        throw Parsing::Exception("Invalid beginning section");
 
     return true;
 }
 
-static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay) {
+static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay, bool practice, bool failed) {
     auto info = ReadInfo(input);
     replay.info.modifiers = ParseModifierString(info.modifiers);
     replay.info.modifiers.leftHanded = info.leftHanded;
@@ -171,15 +184,13 @@ static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay) {
     // infer reached 0 energy because no fail is only listed if it did
     replay.info.reached0Energy = replay.info.modifiers.noFail;
     replay.info.jumpDistance = info.jumpDistance;
-    // infer practice because these values are only non 0 (defaults) when it is
-    replay.info.practice = info.speed > 0 && info.startTime > 0;
-    if (replay.info.practice) {
+    replay.info.practice = practice;
+    if (practice) {
         replay.info.startTime = info.startTime;
         replay.info.speed = info.speed;
     }
-    // infer whether or not the player failed
-    replay.info.failed = info.failTime > 0;
-    if (replay.info.failed)
+    replay.info.failed = failed;
+    if (failed)
         replay.info.failTime = info.failTime;
 
     return info;
@@ -446,14 +457,15 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
     if (!input.is_open())
         throw Exception("Failure opening file");
 
-    if (!ParseMetadata(input, path))
+    if (!ParseMetadata(input))
         return {};
 
     int8_t section;
     Replay::Data replay;
     replay.events.emplace();
 
-    auto info = ParseInfo(input, replay);
+    auto flags = GetFilenameFlags(std::filesystem::path(path).filename());
+    auto info = ParseInfo(input, replay, flags.contains("practice"), flags.contains("fail"));
 
     replay.events->hasOldScoringTypes = Utils::LowerVersion(info.gameVersion, "1.40");
 
@@ -484,7 +496,8 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
 
     ParseOptionalSections(input, replay);
 
-    replay.info.quit = std::filesystem::path(path).filename().string().find("quit") != std::string::npos;
+    // need to do after parsing poses
+    replay.info.quit = flags.contains("quit");
     // set so we know that having quit is possible, since older replays won't have the file name
     replay.info.quitTime = replay.poses.back().time;
 
