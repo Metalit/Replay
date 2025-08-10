@@ -154,7 +154,10 @@
         "id": "metacore",
         "versionRange": "=1.5.0",
         "additionalData": {
+          "soLink": "https://github.com/Metalit/MetaCore/releases/download/v1.5.0/libmetacore.so",
           "overrideSoName": "libmetacore.so",
+          "modLink": "https://github.com/Metalit/MetaCore/releases/download/v1.5.0/MetaCore.qmod",
+          "branchName": "version/v1_5_0",
           "cmake": true
         }
       },
@@ -355,7 +358,10 @@
         "id": "hollywood",
         "versionRange": "=1.2.2",
         "additionalData": {
-          "overrideSoName": "libhollywood.so"
+          "soLink": "https://github.com/Fernthedev/HollywoodQuest/releases/download/v1.2.2/libhollywood.so",
+          "overrideSoName": "libhollywood.so",
+          "modLink": "https://github.com/Fernthedev/HollywoodQuest/releases/download/v1.2.2/Hollywood.qmod",
+          "branchName": "version/v1_2_2"
         }
       },
       "version": "1.2.2"
