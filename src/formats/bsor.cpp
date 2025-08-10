@@ -392,7 +392,7 @@ static void ParsePauses(std::ifstream& input, Replay::Data& replay) {
     for (int i = 0; i < count; i++) {
         auto& pause = pauses.emplace_back();
         READ_TO(pause);
-        events.emplace(pause.time, Replay::Events::Reference::Height, pauses.size() - 1);
+        events.emplace(pause.time, Replay::Events::Reference::Pause, pauses.size() - 1);
     }
 }
 
