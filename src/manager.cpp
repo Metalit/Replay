@@ -20,7 +20,7 @@ static bool replaying = false;
 static bool rendering = false;
 static bool paused = false;
 
-static std::vector<std::pair<std::string, Replay::Data>> replays;
+static std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> replays;
 static bool local = true;
 
 static bool restarting = false;
@@ -132,7 +132,7 @@ bool Manager::IsCurrentLevelInConfig() {
     return FindCurrentLevel(levels) != levels.end();
 }
 
-void Manager::SetExternalReplay(std::string path, Replay::Data replay) {
+void Manager::SetExternalReplay(std::string path, std::shared_ptr<Replay::Data> replay) {
     replays = {{path, replay}};
     local = false;
     Replay::MenuView::GetInstance()->UpdateUI(false);
@@ -142,8 +142,8 @@ bool Manager::AreReplaysLocal() {
     return local;
 }
 
-std::vector<std::pair<std::string, Replay::Data>>& Manager::GetReplays() {
-    return replays;
+int Manager::GetReplaysCount() {
+    return replays.size();
 }
 
 void Manager::StartReplay(bool render) {
@@ -201,7 +201,7 @@ static int GetCurrentIndex() {
 }
 
 Replay::Data& Manager::GetCurrentReplay() {
-    return replays[GetCurrentIndex()].second;
+    return *replays[GetCurrentIndex()].second;
 }
 
 void Manager::DeleteCurrentReplay() {
@@ -265,6 +265,7 @@ ON_EVENT(MetaCore::Events::MapStarted) {
     logger.debug("replay started");
     Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData->i___GlobalNamespace__IReadonlyBeatmapData());
     Camera::SetupCamera();
+    Camera::CreateReplayText();
 }
 
 ON_EVENT(MetaCore::Events::MapPaused) {

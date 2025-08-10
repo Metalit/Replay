@@ -75,7 +75,7 @@ static std::string GetSSReplaysPath() {
     return path;
 }
 
-static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, Replay::Data>>& replays) {
+static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>>& replays) {
     std::vector<std::string> tests;
 
     std::string hash = MetaCore::Songs::GetHash(beatmap);
@@ -97,7 +97,7 @@ static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pai
     }
 }
 
-static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, Replay::Data>>& replays) {
+static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>>& replays) {
     std::string diffName = GlobalNamespace::BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
     if (diffName == "Unknown")
         diffName = "Error";
@@ -124,7 +124,7 @@ static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<
     }
 }
 
-static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, Replay::Data>>& replays) {
+static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>>& replays) {
     std::string diffName = GlobalNamespace::BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
     std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
     std::string levelHash = beatmap.levelId;
@@ -150,12 +150,12 @@ static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::p
     }
 }
 
-std::vector<std::pair<std::string, Replay::Data>> Parsing::GetReplays(GlobalNamespace::BeatmapKey beatmap) {
+std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> Parsing::GetReplays(GlobalNamespace::BeatmapKey beatmap) {
     if (!beatmap.IsValid())
         return {};
     logger.debug("search replays {}", beatmap.SerializedName());
 
-    std::vector<std::pair<std::string, Replay::Data>> replays;
+    std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> replays;
 
     if (std::filesystem::exists(GetReqlaysPath()))
         GetReqlays(beatmap, replays);

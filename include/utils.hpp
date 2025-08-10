@@ -16,6 +16,8 @@
 namespace Utils {
     bool LowerVersion(std::string version, std::string compare);
 
+    void GetSSPlayerName(std::string id, std::function<void(std::optional<std::string>)> callback);
+
     std::string GetDifficultyName(GlobalNamespace::BeatmapDifficulty difficulty);
     std::string GetDifficultyName(int difficulty);
 

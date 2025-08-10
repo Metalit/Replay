@@ -103,7 +103,12 @@
       },
       {
         "id": "metacore",
-        "versionRange": "^1.4.1",
+        "versionRange": "^1.5.0",
+        "additionalData": {}
+      },
+      {
+        "id": "web-utils",
+        "versionRange": "^0.6.7",
         "additionalData": {}
       }
     ]
@@ -147,13 +152,13 @@
     {
       "dependency": {
         "id": "metacore",
-        "versionRange": "=1.4.1",
+        "versionRange": "=1.5.0",
         "additionalData": {
           "overrideSoName": "libmetacore.so",
           "cmake": true
         }
       },
-      "version": "1.4.1"
+      "version": "1.5.0"
     },
     {
       "dependency": {
@@ -188,6 +193,21 @@
         }
       },
       "version": "11.0.2"
+    },
+    {
+      "dependency": {
+        "id": "web-utils",
+        "versionRange": "=0.6.7",
+        "additionalData": {
+          "soLink": "https://github.com/RedBrumbler/WebUtils/releases/download/v0.6.7/libweb-utils.so",
+          "debugSoLink": "https://github.com/RedBrumbler/WebUtils/releases/download/v0.6.7/debug_libweb-utils.so",
+          "overrideSoName": "libweb-utils.so",
+          "modLink": "https://github.com/RedBrumbler/WebUtils/releases/download/v0.6.7/WebUtils.qmod",
+          "branchName": "version/v0_6_7",
+          "cmake": false
+        }
+      },
+      "version": "0.6.7"
     },
     {
       "dependency": {

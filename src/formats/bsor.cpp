@@ -450,7 +450,7 @@ static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
     }
 }
 
-Replay::Data Parsing::ReadBSOR(std::string const& path) {
+std::shared_ptr<Replay::Data> Parsing::ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
 
@@ -461,46 +461,46 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
         return {};
 
     int8_t section;
-    Replay::Data replay;
-    replay.events.emplace();
+    auto replay = std::make_shared<Replay::Data>();
+    replay->events.emplace();
 
     auto flags = GetFilenameFlags(std::filesystem::path(path).filename());
-    auto info = ParseInfo(input, replay, flags.contains("practice"), flags.contains("fail"));
+    auto info = ParseInfo(input, *replay, flags.contains("practice"), flags.contains("fail"));
 
-    replay.events->hasOldScoringTypes = Utils::LowerVersion(info.gameVersion, "1.40");
+    replay->events->hasOldScoringTypes = Utils::LowerVersion(info.gameVersion, "1.40");
 
     READ_TO(section);
     if (section != 1)
         throw Exception("Invalid section 1 header");
-    ParsePoses(input, replay, info.mode.find("Degree") != std::string::npos);
+    ParsePoses(input, *replay, info.mode.find("Degree") != std::string::npos);
 
     READ_TO(section);
     if (section != 2)
         throw Exception("Invalid section 2 header");
-    ParseNotes(input, replay);
+    ParseNotes(input, *replay);
 
     READ_TO(section);
     if (section != 3)
         throw Exception("Invalid section 3 header");
-    ParseWalls(input, replay, info);
+    ParseWalls(input, *replay, info);
 
     READ_TO(section);
     if (section != 4)
         throw Exception("Invalid section 4 header");
-    ParseHeights(input, replay);
+    ParseHeights(input, *replay);
 
     READ_TO(section);
     if (section != 5)
         throw Exception("Invalid section 5 header");
-    ParsePauses(input, replay);
+    ParsePauses(input, *replay);
 
-    ParseOptionalSections(input, replay);
+    ParseOptionalSections(input, *replay);
 
     // need to do after parsing poses
-    replay.info.quit = flags.contains("quit");
+    replay->info.quit = flags.contains("quit");
     // set so we know that having quit is possible, since older replays won't have the file name
-    replay.info.quitTime = replay.poses.back().time;
+    replay->info.quitTime = replay->poses.back().time;
 
-    PreProcess(replay);
+    PreProcess(*replay);
     return replay;
 }

@@ -192,7 +192,7 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
     SetPreferred(deleteIcon, 8, 8);
 
     increment = BSML::Lite::CreateIncrementSetting(
-        mainLayout, "", 0, 1, getConfig().LastReplayIdx.GetValue() + 1, 1, Manager::GetReplays().size(), OnIncrementChanged
+        mainLayout, "", 0, 1, getConfig().LastReplayIdx.GetValue() + 1, 1, Manager::GetReplaysCount(), OnIncrementChanged
     );
     Object::Destroy(increment->GetComponent<UI::HorizontalLayoutGroup*>());
     increment->transform->GetChild(1)->GetComponent<RectTransform*>()->anchoredPosition = {-20, 0};
@@ -278,7 +278,7 @@ void Replay::MenuView::UpdateUI(bool getData) {
 
     int selectedReplay = getConfig().LastReplayIdx.GetValue() + 1;
     increment->set_Value(selectedReplay);
-    increment->maxValue = Manager::GetReplays().size();
+    increment->maxValue = Manager::GetReplaysCount();
     auto buttons = increment->transform->GetChild(1)->GetComponentsInChildren<UI::Button*>();
     buttons->First()->interactable = selectedReplay != increment->minValue;
     buttons->Last()->interactable = selectedReplay != increment->maxValue;

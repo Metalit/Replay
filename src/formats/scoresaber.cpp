@@ -379,7 +379,7 @@ static void ParseEnergy(std::stringstream& input, std::map<float, Replay::Frames
     }
 }
 
-Replay::Data Parsing::ReadScoresaber(std::string const& path) {
+std::shared_ptr<Replay::Data> Parsing::ReadScoresaber(std::string const& path) {
     std::ifstream inputCompressed(path, std::ios::binary);
 
     if (!inputCompressed.is_open())
@@ -393,35 +393,40 @@ Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
     input.write(decompressed.data(), decompressed.size());
 
-    Replay::Data replay;
-    auto& info = replay.info;
+    auto replay = std::make_shared<Replay::Data>();
+    auto& info = replay->info;
 
-    replay.events.emplace();
-    replay.frames.emplace();
+    replay->events.emplace();
+    replay->frames.emplace();
 
     SS::Pointers pointers;
     READ_TO(pointers);
 
     input.seekg(pointers.metadata);
-    auto meta = ParseMetadata(input, replay);
+    auto meta = ParseMetadata(input, *replay);
+
+    std::string filename = std::filesystem::path(path).filename();
+    std::string playerId = filename.substr(0, filename.find("-"));
+    Utils::GetSSPlayerName(playerId, [replay](std::optional<std::string> name) { replay->info.playerName = name; });
+    replay->info.playerOk = true;  // for now, it should be ok to assume SS replays are legit, since they can't be downloaded like beatleader
 
     bool v3 = !Utils::LowerVersion(meta.Version, "3.0.0");
     if (Utils::LowerVersion(meta.Version, "2.0.0"))
         throw Exception(fmt::format("Unsupported version {}", meta.Version));
 
-    replay.events->hasOldScoringTypes = !meta.GameVersion || Utils::LowerVersion(*meta.GameVersion, "1.40");
+    replay->events->hasOldScoringTypes = !meta.GameVersion || Utils::LowerVersion(*meta.GameVersion, "1.40");
 
     input.seekg(pointers.poseKeyframes);
-    ParsePoses(input, replay, meta.Characteristic.find("Degree") != std::string::npos);
+    ParsePoses(input, *replay, meta.Characteristic.find("Degree") != std::string::npos);
 
     input.seekg(pointers.heightKeyframes);
-    ParseHeights(input, replay);
+    ParseHeights(input, *replay);
 
     input.seekg(pointers.noteKeyframes);
     if (v3)
-        ParseNotes<3>(input, replay);
+        ParseNotes<3>(input, *replay);
     else
-        ParseNotes<2>(input, replay);
+        ParseNotes<2>(input, *replay);
 
     // use map to sort and merge frames as possible
     std::map<float, Replay::Frames::Score> frames = {};
@@ -441,14 +446,14 @@ Replay::Data Parsing::ReadScoresaber(std::string const& path) {
     ParseEnergy(input, frames);
 
     for (auto& [_, frame] : frames)
-        replay.frames->scores.emplace_back(std::move(frame));
+        replay->frames->scores.emplace_back(std::move(frame));
 
     auto modified = std::filesystem::last_write_time(path);
     info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
     info.source = "ScoreSaber";
     info.positionsAreLocal = false;
-    replay.events->cutInfoMissingOKs = true;
+    replay->events->cutInfoMissingOKs = true;
 
-    PreProcess(replay);
+    PreProcess(*replay);
     return replay;
 }

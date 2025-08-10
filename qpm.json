@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/QuestPackageManager/QPM.Package/refs/heads/main/qpm.schema.json",
   "version": "0.1.0",
   "sharedDir": "shared",
   "dependenciesDir": "extern",
@@ -101,7 +102,12 @@
     },
     {
       "id": "metacore",
-      "versionRange": "^1.4.1",
+      "versionRange": "^1.5.0",
+      "additionalData": {}
+    },
+    {
+      "id": "web-utils",
+      "versionRange": "^0.6.7",
       "additionalData": {}
     }
   ]

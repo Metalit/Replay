@@ -11,15 +11,15 @@ namespace Parsing {
         char const* what() const noexcept override { return message.c_str(); }
     };
 
-    Replay::Data ReadReqlay(std::string const& path);
-    Replay::Data ReadScoresaber(std::string const& path);
-    Replay::Data ReadBSOR(std::string const& path);
+    std::shared_ptr<Replay::Data> ReadReqlay(std::string const& path);
+    std::shared_ptr<Replay::Data> ReadScoresaber(std::string const& path);
+    std::shared_ptr<Replay::Data> ReadBSOR(std::string const& path);
 
     std::string ReadString(std::stringstream& input);
     std::string ReadString(std::ifstream& input);
     std::string ReadStringUTF16(std::ifstream& input);
 
-    std::vector<std::pair<std::string, Replay::Data>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
+    std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 
     void PreProcess(Replay::Data& replay);
     void CheckForQuit(Replay::Info& info, float songLength);

@@ -19,9 +19,13 @@
 #include "UnityEngine/Resources.hpp"
 #include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "metacore/shared/maps.hpp"
 #include "metacore/shared/songs.hpp"
+#include "web-utils/shared/WebUtils.hpp"
 
 using namespace GlobalNamespace;
+
+static MetaCore::CacheMap<std::string, std::optional<std::string>, 50> ssPlayerNames;
 
 bool Utils::LowerVersion(std::string version, std::string compare) {
     while (true) {
@@ -42,6 +46,34 @@ bool Utils::LowerVersion(std::string version, std::string compare) {
         version = version.substr(versionPos + 1);
         compare = compare.substr(comparePos + 1);
     }
+}
+
+void Utils::GetSSPlayerName(std::string id, std::function<void(std::optional<std::string>)> callback) {
+    if (ssPlayerNames.contains(id)) {
+        auto name = ssPlayerNames[id];
+        logger.debug("using cached player name {} for {}", name ? "\"" + *name + "\"" : "nullopt", id);
+        callback(name);
+        return;
+    }
+    // this function hopefully won't be called quickly enough to make a ton of requests for the same id
+    logger.info("Requesting scoresaber name for {}", id);
+    std::string url = fmt::format("https://scoresaber.com/api/player/{}/basic", id);
+    WebUtils::GetAsync<WebUtils::JsonResponse>({url}, [id, callback](WebUtils::JsonResponse response) {
+        std::optional<std::string> name;
+        if (response.DataParsedSuccessful()) {
+            try {
+                name = response.GetParsedData()["name"].GetString();
+                logger.debug("got player name \"{}\" for {}", *name, id);
+            } catch (std::exception const& e) {
+                logger.error("Failed to get name from response for scoresaber player id {}", id);
+            }
+        } else
+            logger.error("Web request for scoresaber player id {} failed: http {} curl {}", id, response.httpCode, response.curlStatus);
+        BSML::MainThreadScheduler::Schedule([id, name, callback]() {
+            ssPlayerNames.push(id, name);
+            callback(name);
+        });
+    });
 }
 
 std::string Utils::GetDifficultyName(BeatmapDifficulty difficulty) {

@@ -105,161 +105,161 @@ Replay::Transform ConvertTransform(EulerTransform& euler) {
     return ret;
 }
 
-Replay::Data ReadFromV1(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV1(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
     V1Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = ConvertModifiers(modifiers);
-    replay.info.reached0Energy = modifiers.noFail;
-    replay.info.failed = false;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
+    replay->info.failed = false;
 
     V1KeyFrame frame;
     while (READ_TO(frame)) {
         frame.head.rotation = frame.head.rotation * 90;
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, -1, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, -1, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = false;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = false;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 // changed modifier order, added version header, added jump offset to keyframes
-Replay::Data ReadFromV2(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV2(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
     V2Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = ConvertModifiers(modifiers);
-    replay.info.reached0Energy = modifiers.noFail;
-    replay.info.failed = false;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
+    replay->info.failed = false;
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = true;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = true;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 // added info for fails in replays (different from reaching 0 energy with no fail)
-Replay::Data ReadFromV3(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV3(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
-    READ_TO(replay.info.failed);
-    READ_TO(replay.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
 
     V2Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = ConvertModifiers(modifiers);
-    replay.info.reached0Energy = modifiers.noFail;
+    replay->info.modifiers = ConvertModifiers(modifiers);
+    replay->info.reached0Energy = modifiers.noFail;
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = true;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = true;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 // explicitly added reached 0 energy bool and time to the replay
-Replay::Data ReadFromV4(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV4(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
-    READ_TO(replay.info.failed);
-    READ_TO(replay.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
 
     V2Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = ConvertModifiers(modifiers);
+    replay->info.modifiers = ConvertModifiers(modifiers);
 
-    READ_TO(replay.info.reached0Energy);
-    READ_TO(replay.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
     V2KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = true;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = true;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 // added energy to keyframes
-Replay::Data ReadFromV5(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV5(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
-    READ_TO(replay.info.failed);
-    READ_TO(replay.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
 
     V2Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = ConvertModifiers(modifiers);
+    replay->info.modifiers = ConvertModifiers(modifiers);
 
-    READ_TO(replay.info.reached0Energy);
-    READ_TO(replay.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
     V5KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = true;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = true;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 // reordered modifiers again and added the new ones
-Replay::Data ReadFromV6(std::ifstream& input) {
-    Replay::Data replay;
-    replay.frames.emplace();
+std::shared_ptr<Replay::Data> ReadFromV6(std::ifstream& input) {
+    auto replay = std::make_shared<Replay::Data>();
+    replay->frames.emplace();
 
-    READ_TO(replay.info.failed);
-    READ_TO(replay.info.failTime);
+    READ_TO(replay->info.failed);
+    READ_TO(replay->info.failTime);
 
     V6Modifiers modifiers;
     READ_TO(modifiers);
-    replay.info.modifiers = modifiers;
+    replay->info.modifiers = modifiers;
 
-    READ_TO(replay.info.reached0Energy);
-    READ_TO(replay.info.reached0Time);
+    READ_TO(replay->info.reached0Energy);
+    READ_TO(replay->info.reached0Time);
 
     V5KeyFrame frame;
     while (READ_TO(frame)) {
-        replay.frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
-        replay.poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
+        replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
+        replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
 
-    replay.info.hasYOffset = true;
-    replay.info.score = frame.score;
+    replay->info.hasYOffset = true;
+    replay->info.score = frame.score;
 
     return replay;
 }
 
 unsigned char fileHeader[3] = {0xa1, 0xd2, 0x45};
 
-Replay::Data ReadVersionedReqlay(std::string const& path) {
+std::shared_ptr<Replay::Data> ReadVersionedReqlay(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
     input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
 
@@ -296,22 +296,22 @@ Replay::Data ReadVersionedReqlay(std::string const& path) {
     }
 }
 
-Replay::Data Parsing::ReadReqlay(std::string const& path) {
+std::shared_ptr<Replay::Data> Parsing::ReadReqlay(std::string const& path) {
     auto replay = ReadVersionedReqlay(path);
 
     auto modified = std::filesystem::last_write_time(path);
-    replay.info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
-    replay.info.source = "Replay Mod (Legacy)";
-    replay.info.positionsAreLocal = false;
+    replay->info.timestamp = std::chrono::duration_cast<std::chrono::seconds>(modified.time_since_epoch()).count();
+    replay->info.source = "Replay Mod (Legacy)";
+    replay->info.positionsAreLocal = false;
 
     bool hasRotation = path.find("Degree") != std::string::npos || path.find("degree") != std::string::npos;
     MetaCore::Engine::QuaternionAverage averageCalc(Quaternion::identity(), hasRotation);
 
-    for (auto& pose : replay.poses)
+    for (auto& pose : replay->poses)
         averageCalc.AddRotation(pose.head.rotation);
 
-    replay.info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
+    replay->info.averageOffset = UnityEngine::Quaternion::Inverse(averageCalc.GetAverage());
 
-    PreProcess(replay);
+    PreProcess(*replay);
     return replay;
 }

@@ -163,7 +163,7 @@ namespace Replay {
         float jumpDistance = -1;
         bool hasYOffset = false;
         std::optional<std::string> playerName;
-        bool playerOk = false;
+        bool playerOk = false;  // if the player that set the replay is logged in
 
         Quaternion averageOffset;  // inverse of the average difference from looking forward
 
