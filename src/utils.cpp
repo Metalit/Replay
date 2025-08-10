@@ -19,6 +19,7 @@
 #include "UnityEngine/Resources.hpp"
 #include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
+#include "metacore/shared/game.hpp"
 #include "metacore/shared/maps.hpp"
 #include "metacore/shared/songs.hpp"
 #include "web-utils/shared/WebUtils.hpp"
@@ -85,12 +86,7 @@ std::string Utils::GetDifficultyName(int difficulty) {
 }
 
 BeatmapCharacteristicSO* Utils::GetCharacteristic(std::string serializedName) {
-    auto chars = UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO*>()->First();
-    for (auto characteristic : chars->_beatmapCharacteristics) {
-        if (characteristic->serializedName == serializedName)
-            return characteristic;
-    }
-    return nullptr;
+    return MetaCore::Game::GetCharacteristics()->GetBeatmapCharacteristicBySerializedName(serializedName);
 }
 
 std::string Utils::GetCharacteristicName(BeatmapCharacteristicSO* characteristic) {

@@ -6,6 +6,7 @@
 #include "UnityEngine/Transform.hpp"
 #include "VRUIControls/VRPointer.hpp"
 #include "main.hpp"
+#include "metacore/shared/input.hpp"
 
 DEFINE_TYPE(Replay, Grabbable);
 
@@ -18,7 +19,7 @@ void Grabbable::Update() {
         transform->position = {pos.x, 0, pos.z};
     }
     if (!inputModule)
-        inputModule = Object::FindObjectOfType<VRUIControls::VRInputModule*>();
+        inputModule = MetaCore::Input::GetCurrentInputModule();
 
     auto pointer = inputModule->_vrPointer;
 
