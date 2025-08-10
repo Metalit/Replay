@@ -170,10 +170,12 @@ namespace Replay {
         bool practice = false;
         float startTime = 0;
         float speed = 0;
+        bool quit = false;
+        float quitTime = -1;
         bool failed = false;
-        float failTime = 0;
+        float failTime = -1;
         bool reached0Energy = false;  // failed, but with no fail enabled
-        float reached0Time = 0;
+        float reached0Time = -1;
     };
 
     struct Transform {

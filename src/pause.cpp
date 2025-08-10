@@ -165,8 +165,10 @@ static void CreateUI() {
     auto& info = Manager::GetCurrentInfo();
     if (info.practice)
         startTime = info.startTime;
-    if (info.failed)
+    if (info.failed && info.failTime >= 0)
         endTime = info.failTime;
+    else if (info.quit)
+        endTime = info.quitTime;
     if (endTime < startTime + 1)
         endTime = startTime + 1;
 

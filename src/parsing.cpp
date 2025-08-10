@@ -320,6 +320,11 @@ void Parsing::PreProcess(Replay::Data& replay) {
     }
 }
 
+void Parsing::CheckForQuit(Replay::Info& info, float songLength) {
+    if (!info.quit && info.quitTime >= 0 && info.quitTime < songLength - 0.5)
+        info.quit = true;
+}
+
 void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData) {
     if (!replay.events)
         return;

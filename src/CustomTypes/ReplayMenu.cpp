@@ -19,6 +19,7 @@
 #include "metacore/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
 #include "metacore/shared/unity.hpp"
+#include "parsing.hpp"
 #include "utils.hpp"
 
 DEFINE_TYPE(Replay, MenuView);
@@ -153,7 +154,7 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
     auto horizontal2 = BSML::Lite::CreateHorizontalLayoutGroup(mainLayout);
 
     scoreText = CreateCenteredText(horizontal2);
-    failText = CreateCenteredText(horizontal2);
+    statusText = CreateCenteredText(horizontal2);
 
     auto horizontal3 = BSML::Lite::CreateHorizontalLayoutGroup(mainLayout);
     horizontal3->spacing = 5;
@@ -233,7 +234,8 @@ void Replay::MenuView::UpdateUI(bool getData) {
     levelBar->Setup(level, beatmap.difficulty, beatmap.beatmapCharacteristic);
     float songLength = level->songDuration;
 
-    auto info = Manager::GetCurrentInfo();
+    auto& info = Manager::GetCurrentInfo();
+    Parsing::CheckForQuit(info, songLength);
 
     sourceText->text = GetLayeredText("Replay Source:  ", info.source, false);
     std::string date = MetaCore::Strings::TimeAgoString(info.timestamp);
@@ -244,16 +246,24 @@ void Replay::MenuView::UpdateUI(bool getData) {
         percent = fmt::format("{:.2f}", num);
     }
     std::string score = fmt::format("{} <size=80%>(<color=#1dbcd1>{}%</color>)</size>", info.score, percent);
-    std::string fail = info.failed ? "<color=#cc1818>True</color>" : "<color=#2adb44>False</color>";
-    if (info.failed && info.failTime > 0.001)
-        fail = fmt::format(
-            "<color=#cc1818>{}</color> / {}", MetaCore::Strings::SecondsToString(info.failTime), MetaCore::Strings::SecondsToString(songLength)
+    std::string status = info.failed ? "<color=#cc1818>Failed</color>" : "<color=#2adb44>Passed</color>";
+    if (info.failed && info.failTime >= 0)
+        status = fmt::format(
+            "<color=#cc1818>Fail at {}</color> / {}",
+            MetaCore::Strings::SecondsToString(info.failTime),
+            MetaCore::Strings::SecondsToString(songLength)
+        );
+    else if (info.quit)
+        status = fmt::format(
+            "<color=#cc7818>Quit at {}</color> / {}",
+            MetaCore::Strings::SecondsToString(info.quitTime),
+            MetaCore::Strings::SecondsToString(songLength)
         );
 
     dateText->text = GetLayeredText("Date Played", date);
     modifiersText->text = GetLayeredText("Modifiers", modifiers);
     scoreText->text = GetLayeredText("Score", score);
-    failText->text = GetLayeredText("Failed", fail);
+    statusText->text = GetLayeredText("Status", status);
 
     queueButton->interactable = Manager::AreReplaysLocal();
     BSML::Lite::SetButtonText(queueButton, QueueButtonText());

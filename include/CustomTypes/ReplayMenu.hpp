@@ -35,7 +35,7 @@ DECLARE_CLASS_CODEGEN(Replay, MenuView, HMUI::ViewController) {
     TMPro::TextMeshProUGUI* dateText;
     TMPro::TextMeshProUGUI* modifiersText;
     TMPro::TextMeshProUGUI* scoreText;
-    TMPro::TextMeshProUGUI* failText;
+    TMPro::TextMeshProUGUI* statusText;
     UnityEngine::UI::Button* watchButton;
     UnityEngine::UI::Button* renderButton;
     UnityEngine::UI::Button* queueButton;

@@ -172,12 +172,15 @@ static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay) {
     replay.info.reached0Energy = replay.info.modifiers.noFail;
     replay.info.jumpDistance = info.jumpDistance;
     // infer practice because these values are only non 0 (defaults) when it is
-    replay.info.practice = info.speed > 0.001 && info.startTime > 0.001;
-    replay.info.startTime = info.startTime;
-    replay.info.speed = info.speed;
+    replay.info.practice = info.speed > 0 && info.startTime > 0;
+    if (replay.info.practice) {
+        replay.info.startTime = info.startTime;
+        replay.info.speed = info.speed;
+    }
     // infer whether or not the player failed
-    replay.info.failed = info.failTime > 0.001;
-    replay.info.failTime = info.failTime;
+    replay.info.failed = info.failTime > 0;
+    if (replay.info.failed)
+        replay.info.failTime = info.failTime;
 
     return info;
 }
@@ -480,6 +483,10 @@ Replay::Data Parsing::ReadBSOR(std::string const& path) {
     ParsePauses(input, replay);
 
     ParseOptionalSections(input, replay);
+
+    replay.info.quit = std::filesystem::path(path).filename().string().find("quit") != std::string::npos;
+    // set so we know that having quit is possible, since older replays won't have the file name
+    replay.info.quitTime = replay.poses.back().time;
 
     PreProcess(replay);
     return replay;

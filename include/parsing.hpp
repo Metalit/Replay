@@ -22,6 +22,7 @@ namespace Parsing {
     std::vector<std::pair<std::string, Replay::Data>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 
     void PreProcess(Replay::Data& replay);
+    void CheckForQuit(Replay::Info& info, float songLength);
     void RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);
 }
 

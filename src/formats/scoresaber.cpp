@@ -198,8 +198,9 @@ static SS::Metadata ParseMetadata(std::stringstream& input, Replay::Data& replay
 
     info.modifiers = ParseModifiers(meta.Modifiers);
     info.modifiers.leftHanded = meta.LeftHanded;
-    info.failed = meta.FailTime > 0.001;
-    info.failTime = meta.FailTime;
+    info.failed = meta.FailTime > 0;
+    if (info.failed)
+        info.failTime = meta.FailTime;
     info.modifiers.noFail = info.modifiers.noFail && info.failed;
     info.reached0Energy = info.modifiers.noFail;
     info.jumpDistance = meta.NoteSpawnOffset;
@@ -250,7 +251,7 @@ static void ParseNote(std::stringstream& input, Replay::Events::Note& note) {
     note.info.lineLayer = ssNoteID.LineLayer;
     note.info.colorType = ssNoteID.ColorType;
     note.info.cutDirection = ssNoteID.CutDirection;
-    note.info.eventType = (Replay::Events::NoteInfo::Type)(((int) ssNote.EventType) - 1);
+    note.info.eventType = (Replay::Events::NoteInfo::Type) (((int) ssNote.EventType) - 1);
 
     if (note.info.HasCut()) {
         note.noteCutInfo.directionOK = ssNote.DirectionOK;
