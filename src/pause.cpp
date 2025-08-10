@@ -211,7 +211,6 @@ static bool LazyInit() {
     CreateUI();
     cameraModel = CreateCameraModel();
     cameraModel->AddComponent<Replay::Grabbable*>()->onRelease = SetThirdPersonToCameraModel;
-    MetaCore::Engine::SetOnDestroy(cameraModel, []() { inited = false; });
     UpdateCameraActive();
 
     return true;
@@ -239,6 +238,10 @@ void Pause::OnUnpause() {
     cameraModel->active = false;
     SetThirdPersonToCameraModel();
     MetaCore::Internals::audioTimeSyncController->_inBetweenDSPBufferingTimeEstimate = 0;
+}
+
+void Pause::SceneEnded() {
+    inited = false;
 }
 
 void Pause::SetSpeed(float value) {

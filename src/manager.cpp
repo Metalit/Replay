@@ -309,6 +309,8 @@ ON_EVENT(MetaCore::Events::MapEnded) {
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
+    Pause::SceneEnded();
+
     if (restarting) {
         restarting = false;
         return;
