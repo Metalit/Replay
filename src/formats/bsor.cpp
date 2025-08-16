@@ -67,7 +67,7 @@ std::set<std::string> GetFilenameFlags(std::string filename) {
     int pos = filename.size();
     int i = 0;
     std::set<std::string> flags = {};
-    while (true) {
+    while (pos > 0) {
         // split filename on "-" characters
         int start = filename.rfind("-", pos - 1);
         // skip last section from end (player id)
