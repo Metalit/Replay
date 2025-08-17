@@ -194,12 +194,11 @@ void Manager::StartReplay(bool render) {
 void Manager::CameraFinished() {
     if (!rendering)
         return;
-    if (getConfig().RenderQueue.GetValue().empty()) {
-        MetaCore::Game::SetCameraFadeOut(MOD_ID, false);
-        if (getConfig().Ding.GetValue())
-            Utils::PlayDing();
-    } else
+    MetaCore::Game::SetCameraFadeOut(MOD_ID, false, 0.5);
+    if (!getConfig().RenderQueue.GetValue().empty())
         SelectFromConfig(0, true);
+    else if (getConfig().Ding.GetValue())
+        Utils::PlayDing();
 }
 
 Replay::Data& Manager::GetCurrentReplay() {
