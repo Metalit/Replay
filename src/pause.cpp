@@ -285,9 +285,12 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
     auto& note = events.notes[event->index];
 
     bool left = note.info.colorType == 0;
+    if (note.info.HasCut())
+        left = note.noteCutInfo.saberType == (int) GlobalNamespace::SaberType::SaberA;
     bool mistake = note.info.eventType != Replay::Events::NoteInfo::Type::GOOD;
-    bool fixed = note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLink ||
-                 note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead;
+    bool fixed =
+        Utils::ScoringTypeMatches(note.info.scoringType, GlobalNamespace::NoteData::ScoringType::ChainLink, events.hasOldScoringTypes) ||
+        Utils::ScoringTypeMatches(note.info.scoringType, GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead, events.hasOldScoringTypes);
     bool count = ShouldCountNote(note.info, events.hasOldScoringTypes);
 
     auto [pre, post, acc, score] = Utils::ScoreForNote(note, events.hasOldScoringTypes);

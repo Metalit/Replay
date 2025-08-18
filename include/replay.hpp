@@ -67,7 +67,7 @@ namespace Replay {
             short cutDirection;
             Type eventType = Type::GOOD;
 
-            bool HasCut() const { return eventType == Type::GOOD || eventType == Type::BAD; }
+            bool HasCut() const { return eventType != Type::MISS; }
         };
 
         struct Note {

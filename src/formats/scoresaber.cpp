@@ -253,20 +253,18 @@ static void ParseNote(std::stringstream& input, Replay::Events::Note& note) {
     note.info.cutDirection = ssNoteID.CutDirection;
     note.info.eventType = (Replay::Events::NoteInfo::Type) (((int) ssNote.EventType) - 1);
 
-    if (note.info.HasCut()) {
-        note.noteCutInfo.directionOK = ssNote.DirectionOK;
-        note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
-        note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
-        note.noteCutInfo.saberDir = ssNote.SaberDirection;
-        note.noteCutInfo.saberType = ssNote.SaberType;
-        note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
-        note.noteCutInfo.cutPoint = ssNote.CutPoint;
-        note.noteCutInfo.cutNormal = ssNote.CutNormal;
-        note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
-        note.noteCutInfo.cutAngle = ssNote.CutAngle;
-        note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
-        note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
-    }
+    note.noteCutInfo.directionOK = ssNote.DirectionOK;
+    note.noteCutInfo.wasCutTooSoon = false;  // they do this in their replayer
+    note.noteCutInfo.saberSpeed = ssNote.SaberSpeed;
+    note.noteCutInfo.saberDir = ssNote.SaberDirection;
+    note.noteCutInfo.saberType = ssNote.SaberType;
+    note.noteCutInfo.cutDirDeviation = ssNote.CutDirectionDeviation;
+    note.noteCutInfo.cutPoint = ssNote.CutPoint;
+    note.noteCutInfo.cutNormal = ssNote.CutNormal;
+    note.noteCutInfo.cutDistanceToCenter = ssNote.CutDistanceToCenter;
+    note.noteCutInfo.cutAngle = ssNote.CutAngle;
+    note.noteCutInfo.beforeCutRating = ssNote.BeforeCutRating;
+    note.noteCutInfo.afterCutRating = ssNote.AfterCutRating;
 
     if constexpr (V == 3)
         note.info.scoringType = ssNoteID.ScoringType;
