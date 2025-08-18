@@ -25,42 +25,60 @@ std::string Parsing::GetFullHash(std::istream& input) {
     input.seekg(0, std::ios::beg);
     joyee::MD5 md5;
     size_t read = 0;
-    for (; read < length - READ_BLOCK; read += READ_BLOCK)
+    for (; read < length - READ_BLOCK; read += READ_BLOCK) {
         md5.update(ReadLength(input, READ_BLOCK));
+        Parsing::CheckErrorState(input, "hashing");
+    }
     int remaining = length - read;
-    if (remaining > 0)
+    if (remaining > 0) {
         md5.update(ReadLength(input, remaining));
+        Parsing::CheckErrorState(input, "hashing");
+    }
     input.seekg(0, std::ios::beg);
     return md5.finalize().toString();
 }
 
 std::string Parsing::ReadString(std::istream& input) {
-    int length;
-    READ_TO(length);
-    return ReadLength(input, length);
+    try {
+        int length;
+        READ_TO(length);
+        return ReadLength(input, length);
+    } catch (...) {
+        return "";
+    }
 }
 
 // Some strings like name, mapper or song name may contain incorrectly encoded UTF16 symbols
 // Contributed by NSGolova
 std::string Parsing::ReadStringUTF16(std::istream& input) {
-    int length;
-    READ_TO(length);
+    try {
+        int length;
+        READ_TO(length);
 
-    if (length > 0) {
-        input.seekg(length, input.cur);
-        int nextLength;
-        READ_TO(nextLength);
-
-        // This code will search for the next valid string length
-        while (nextLength < 0 || nextLength > 100) {
-            input.seekg(-3, input.cur);
-            length++;
+        if (length > 0) {
+            input.seekg(length, input.cur);
+            int nextLength;
             READ_TO(nextLength);
-        }
-        input.seekg(-length - 4, input.cur);
-    }
 
-    return ReadLength(input, length);
+            // This code will search for the next valid string length
+            while (nextLength < 0 || nextLength > 100) {
+                input.seekg(-3, input.cur);
+                length++;
+                READ_TO(nextLength);
+            }
+            input.seekg(-length - 4, input.cur);
+        }
+        return ReadLength(input, length);
+    } catch (...) {
+        return "";
+    }
+}
+
+void Parsing::CheckErrorState(std::istream& input, std::string hint) {
+    if (input.eof())
+        throw Exception(fmt::format("End of input at <{}>", hint));
+    else if (input.fail())
+        throw Exception(fmt::format("Input error at <{}>: {}", hint, strerror(errno)));
 }
 
 static std::string const ReqlaySuffix1 = ".reqlay";

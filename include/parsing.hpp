@@ -20,6 +20,8 @@ namespace Parsing {
     std::string ReadString(std::istream& input);
     std::string ReadStringUTF16(std::istream& input);
 
+    void CheckErrorState(std::istream& input, std::string hint = "unspecified");
+
     std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> GetReplays(GlobalNamespace::BeatmapKey beatmap);
 
     void PreProcess(Replay::Data& replay);
@@ -27,11 +29,14 @@ namespace Parsing {
     void RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyBeatmapData* beatmapData);
 }
 
-#define READ_TO(name) \
-    input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name)))
+#define READ_TO(name)                                                   \
+    input.read(reinterpret_cast<char*>(&name), sizeof(decltype(name))); \
+    Parsing::CheckErrorState(input, #name)
 
-#define READ_STRING(name) \
-    name = Parsing::ReadString(input)
+#define READ_STRING(name)              \
+    name = Parsing::ReadString(input); \
+    Parsing::CheckErrorState(input, #name)
 
-#define READ_UTF16(name) \
-    name = Parsing::ReadStringUTF16(input)
+#define READ_UTF16(name)                    \
+    name = Parsing::ReadStringUTF16(input); \
+    Parsing::CheckErrorState(input, #name)

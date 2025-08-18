@@ -133,25 +133,6 @@ static BSOR::Info ReadInfo(std::ifstream& input) {
     return info;
 }
 
-static bool ParseMetadata(std::ifstream& input) {
-    int header;
-    READ_TO(header);
-    if (header != 0x442d3d69)
-        throw Parsing::Exception("Invalid header bytes");
-
-    int8_t version;
-    READ_TO(version);
-    if (version > 1)
-        throw Parsing::Exception("Unsupported version");
-
-    int8_t section;
-    READ_TO(section);
-    if (section != 0)
-        throw Parsing::Exception("Invalid beginning section");
-
-    return true;
-}
-
 static BSOR::Info ParseInfo(std::ifstream& input, Replay::Data& replay, bool practice, bool failed) {
     auto info = ReadInfo(input);
     replay.info.modifiers = ParseModifierString(info.modifiers);
@@ -454,15 +435,23 @@ static void ParseOptionalSections(std::ifstream& input, Replay::Data& replay) {
 
 std::shared_ptr<Replay::Data> Parsing::ReadBSOR(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
-    input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
+    CheckErrorState(input);
 
-    if (!input.is_open())
-        throw Exception("Failure opening file");
+    int header;
+    READ_TO(header);
+    if (header != 0x442d3d69)
+        throw Exception("Invalid header bytes");
 
-    if (!ParseMetadata(input))
-        return {};
+    int8_t version;
+    READ_TO(version);
+    if (version > 1)
+        throw Exception("Unsupported version");
 
     int8_t section;
+    READ_TO(section);
+    if (section != 0)
+        throw Exception("Invalid section 0 header");
+
     auto replay = std::make_shared<Replay::Data>();
     replay->events.emplace();
 

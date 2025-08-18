@@ -131,8 +131,10 @@ static SS::Metadata ReadMetadata(std::stringstream& input) {
     READ_STRING(ret.Environment);
     int modifiersLength;
     READ_TO(modifiersLength);
-    for (int i = 0; i < modifiersLength; i++)
+    for (int i = 0; i < modifiersLength; i++) {
         ret.Modifiers.emplace_back(Parsing::ReadString(input));
+        Parsing::CheckErrorState(input, "modifier");
+    }
     READ_TO(ret.NoteSpawnOffset);
     READ_TO(ret.LeftHanded);
     READ_TO(ret.InitialHeight);
@@ -379,16 +381,13 @@ static void ParseEnergy(std::stringstream& input, std::map<float, Replay::Frames
 
 std::shared_ptr<Replay::Data> Parsing::ReadScoresaber(std::string const& path) {
     std::ifstream inputCompressed(path, std::ios::binary);
-
-    if (!inputCompressed.is_open())
-        throw Exception("Failure opening file");
+    Parsing::CheckErrorState(inputCompressed, "open");
 
     std::vector<char> compressed(std::istreambuf_iterator<char>{inputCompressed}, std::istreambuf_iterator<char>{});
     std::vector<char> decompressed = {};
     DecompressReplay(compressed, decompressed);
 
     std::stringstream input;
-    input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
     input.write(decompressed.data(), decompressed.size());
 
     auto replay = std::make_shared<Replay::Data>();

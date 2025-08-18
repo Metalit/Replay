@@ -113,7 +113,12 @@ std::shared_ptr<Replay::Data> ReadFromV1(std::shared_ptr<Replay::Data> replay, s
     replay->info.failed = false;
 
     V1KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         frame.head.rotation = frame.head.rotation * 90;
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, -1, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
@@ -134,7 +139,12 @@ std::shared_ptr<Replay::Data> ReadFromV2(std::shared_ptr<Replay::Data> replay, s
     replay->info.failed = false;
 
     V2KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
@@ -156,7 +166,12 @@ std::shared_ptr<Replay::Data> ReadFromV3(std::shared_ptr<Replay::Data> replay, s
     replay->info.reached0Energy = modifiers.noFail;
 
     V2KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
@@ -180,7 +195,12 @@ std::shared_ptr<Replay::Data> ReadFromV4(std::shared_ptr<Replay::Data> replay, s
     READ_TO(replay->info.reached0Time);
 
     V2KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, -1, frame.jumpYOffset, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
@@ -204,7 +224,12 @@ std::shared_ptr<Replay::Data> ReadFromV5(std::shared_ptr<Replay::Data> replay, s
     READ_TO(replay->info.reached0Time);
 
     V5KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
@@ -228,7 +253,12 @@ std::shared_ptr<Replay::Data> ReadFromV6(std::shared_ptr<Replay::Data> replay, s
     READ_TO(replay->info.reached0Time);
 
     V5KeyFrame frame;
-    while (READ_TO(frame)) {
+    while (true) {
+        try {
+            READ_TO(frame);
+        } catch (...) {
+            break;
+        }
         replay->frames->scores.emplace_back(frame.time, frame.score, frame.percent, frame.combo, frame.energy, frame.jumpYOffset, -1, -1);
         replay->poses.emplace_back(ConvertTransform(frame.head), ConvertTransform(frame.leftSaber), ConvertTransform(frame.rightSaber));
     }
@@ -243,10 +273,7 @@ unsigned char fileHeader[3] = {0xa1, 0xd2, 0x45};
 
 std::shared_ptr<Replay::Data> ReadVersionedReqlay(std::string const& path) {
     std::ifstream input(path, std::ios::binary);
-    input.exceptions(std::ios::eofbit | std::ios::failbit | std::ios::badbit);
-
-    if (!input.is_open())
-        throw Parsing::Exception("Failure opening file");
+    Parsing::CheckErrorState(input, "open");
 
     auto replay = std::make_shared<Replay::Data>();
     replay->frames.emplace();
