@@ -9,6 +9,7 @@
 #include "GlobalNamespace/DeactivateVRControllersOnFocusCapture.hpp"
 #include "GlobalNamespace/GameNoteController.hpp"
 #include "GlobalNamespace/GameSongController.hpp"
+#include "GlobalNamespace/LevelCompletionResults.hpp"
 #include "GlobalNamespace/ListExtensions.hpp"
 #include "GlobalNamespace/MenuTransitionsHelper.hpp"
 #include "GlobalNamespace/NoteBasicCutInfoHelper.hpp"
@@ -260,6 +261,71 @@ MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::U
         self->_state = AudioTimeSyncController::State::Stopped;
     AudioTimeSyncController_Update(self);
     self->_state = state;
+}
+
+// prevent replays from adding to stats
+MAKE_AUTO_HOOK_MATCH(
+    LevelCompletionResults_ctor,
+    &LevelCompletionResults::_ctor,
+    void,
+    LevelCompletionResults* self,
+    GameplayModifiers* gameplayModifiers,
+    int modifiedScore,
+    int multipliedScore,
+    RankModel::Rank rank,
+    bool fullCombo,
+    float leftSaberMovementDistance,
+    float rightSaberMovementDistance,
+    float leftHandMovementDistance,
+    float rightHandMovementDistance,
+    LevelCompletionResults::LevelEndStateType levelEndStateType,
+    LevelCompletionResults::LevelEndAction levelEndAction,
+    float energy,
+    int goodCutsCount,
+    int badCutsCount,
+    int missedCount,
+    int notGoodCount,
+    int okCount,
+    int maxCutScore,
+    int totalCutScore,
+    int goodCutsCountForNotesWithFullScoreScoringType,
+    float averageCenterDistanceCutScoreForNotesWithFullScoreScoringType,
+    float averageCutScoreForNotesWithFullScoreScoringType,
+    int maxCombo,
+    float endSongTime,
+    bool invalidated
+) {
+    if (Manager::Replaying())
+        invalidated = true;
+
+    LevelCompletionResults_ctor(
+        self,
+        gameplayModifiers,
+        modifiedScore,
+        multipliedScore,
+        rank,
+        fullCombo,
+        leftSaberMovementDistance,
+        rightSaberMovementDistance,
+        leftHandMovementDistance,
+        rightHandMovementDistance,
+        levelEndStateType,
+        levelEndAction,
+        energy,
+        goodCutsCount,
+        badCutsCount,
+        missedCount,
+        notGoodCount,
+        okCount,
+        maxCutScore,
+        totalCutScore,
+        goodCutsCountForNotesWithFullScoreScoringType,
+        averageCenterDistanceCutScoreForNotesWithFullScoreScoringType,
+        averageCutScoreForNotesWithFullScoreScoringType,
+        maxCombo,
+        endSongTime,
+        invalidated
+    );
 }
 
 // disable results view controller for replays
