@@ -27,6 +27,7 @@ DECLARE_CLASS_CODEGEN(Replay, MenuView, HMUI::ViewController) {
     DECLARE_STATIC_METHOD(void, CheckMultiplayer);
     DECLARE_STATIC_METHOD(void, Present);
     DECLARE_STATIC_METHOD(void, Dismiss);
+    DECLARE_STATIC_METHOD(bool, Presented);
     DECLARE_STATIC_METHOD(MenuView*, GetInstance);
 
    private:

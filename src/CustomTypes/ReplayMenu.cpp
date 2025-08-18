@@ -350,6 +350,8 @@ void Replay::MenuView::CheckMultiplayer() {
 }
 
 void Replay::MenuView::Present() {
+    if (Presented())
+        return;
     auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
     flowCoordinator->showBackButton = true;
     flowCoordinator->PresentViewController(GetInstance(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false);
@@ -357,10 +359,14 @@ void Replay::MenuView::Present() {
 }
 
 void Replay::MenuView::Dismiss() {
-    if (GetInstance()->isInViewControllerHierarchy && !GetInstance()->childViewController) {
+    if (Presented() && !GetInstance()->childViewController) {
         auto flowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
         flowCoordinator->DismissViewController(GetInstance(), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
     }
+}
+
+bool Replay::MenuView::Presented() {
+    return instance && instance->isInViewControllerHierarchy;
 }
 
 Replay::MenuView* Replay::MenuView::GetInstance() {

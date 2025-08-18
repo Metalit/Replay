@@ -252,6 +252,8 @@ ON_EVENT(MetaCore::Events::Update) {
 }
 
 ON_EVENT(MetaCore::Events::MapSelected) {
+    if (Replay::MenuView::Presented())  // happens on level end
+        return;
     auto map = MetaCore::Songs::GetSelectedKey();
     replays = Parsing::GetReplays(map);
     local = true;
