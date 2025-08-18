@@ -4,6 +4,7 @@
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/MenuLightsManager.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "camera.hpp"
 #include "config.hpp"
 #include "metacore/shared/events.hpp"
@@ -323,7 +324,7 @@ ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
     logger.debug("replay scene ended");
     auto main = MetaCore::Game::GetMainFlowCoordinator();
     if (replaying && !MetaCore::Internals::mapWasQuit)
-        main->_menuLightsManager->SetColorPreset(main->_defaultLightsPreset, false, 0);
+        BSML::MainThreadScheduler::ScheduleNextFrame([main]() { main->_menuLightsManager->SetColorPreset(main->_defaultLightsPreset, false, 0); });
 
     if (!replaying && !MetaCore::Internals::mapWasQuit && !recorderInstalled)
         Replay::MenuView::DisableWithRecordingHint();
