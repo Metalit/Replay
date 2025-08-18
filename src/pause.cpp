@@ -284,9 +284,7 @@ static bool ShouldCountNote(Replay::Events::NoteInfo const& note, bool oldScorin
 static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator event, bool forwards) {
     auto& note = events.notes[event->index];
 
-    bool left = note.info.colorType == 0;
-    if (note.info.HasCut())
-        left = note.noteCutInfo.saberType == (int) GlobalNamespace::SaberType::SaberA;
+    bool left = Utils::IsLeft(note, events.hasBombCutInfo);
     bool mistake = note.info.eventType != Replay::Events::NoteInfo::Type::GOOD;
     bool fixed =
         Utils::ScoringTypeMatches(note.info.scoringType, GlobalNamespace::NoteData::ScoringType::ChainLink, events.hasOldScoringTypes) ||

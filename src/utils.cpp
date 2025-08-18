@@ -240,6 +240,14 @@ bool Utils::ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::Scorin
     }
 }
 
+bool Utils::IsLeft(Replay::Events::Note const& note, bool hasBombCutInfo) {
+    if (note.info.eventType == Replay::Events::NoteInfo::Type::MISS)
+        return note.info.colorType == (int) GlobalNamespace::ColorType::ColorA;
+    else if (note.info.eventType == Replay::Events::NoteInfo::Type::BOMB && !hasBombCutInfo)
+        return note.info.lineIndex < 2;
+    return note.noteCutInfo.saberType == (int) GlobalNamespace::SaberType::SaberA;
+}
+
 float Utils::EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoringType) {
     if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return -0.15;

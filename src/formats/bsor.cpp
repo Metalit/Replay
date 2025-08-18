@@ -257,7 +257,7 @@ static void ParseNotes(std::ifstream& input, Replay::Data& replay) {
         note.time = noteInfo.eventTime;
         note.info.eventType = noteInfo.eventType;
 
-        if (note.info.HasCut()) {
+        if (note.info.eventType == Replay::Events::NoteInfo::Type::GOOD || note.info.eventType == Replay::Events::NoteInfo::Type::BAD) {
             READ_TO(note.noteCutInfo);
 
             // encoding bug in the beatleader qmod made this value be messed with
@@ -459,6 +459,7 @@ std::shared_ptr<Replay::Data> Parsing::ReadBSOR(std::string const& path) {
     auto info = ParseInfo(input, *replay, flags.contains("practice"), flags.contains("fail"));
 
     replay->events->hasOldScoringTypes = Utils::LowerVersion(info.gameVersion, "1.40");
+    replay->events->hasBombCutInfo = false;
 
     READ_TO(section);
     if (section != 1)

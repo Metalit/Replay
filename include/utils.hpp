@@ -37,6 +37,8 @@ namespace Utils {
 
     bool ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType);
 
+    bool IsLeft(Replay::Events::Note const& note, bool hasBombCutInfo);
+
     float EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoringType);
     float AccuracyForDistance(float distance);
     std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool oldScoringType, bool max = false);

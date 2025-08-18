@@ -108,10 +108,9 @@ namespace Events {
     static void RunNoteEvent(Replay::Events::Note const& noteEvent, NoteController* controller) {
         static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
 
-        // may be wrong on old replays that didn't record bomb cut info, but oh well
-        bool isLeftSaber = noteEvent.noteCutInfo.saberType == (int) SaberType::SaberA;
+        bool left = Utils::IsLeft(noteEvent, events->hasBombCutInfo);
         auto sabers = MetaCore::Internals::saberManager;
-        auto saber = isLeftSaber ? sabers->_leftSaber : sabers->_rightSaber;
+        auto saber = left ? sabers->_leftSaber : sabers->_rightSaber;
 
         switch (noteEvent.info.eventType) {
             case Replay::Events::NoteInfo::Type::GOOD:
@@ -119,8 +118,7 @@ namespace Events {
                 auto cutInfo = Utils::GetNoteCutInfo(controller, saber, noteEvent.noteCutInfo);
                 if (events->cutInfoMissingOKs) {
                     cutInfo.speedOK = cutInfo.saberSpeed > 2;
-                    bool isLeftColor = controller->noteData->colorType == ColorType::ColorA;
-                    cutInfo.saberTypeOK = isLeftColor == isLeftSaber;
+                    cutInfo.saberTypeOK = (controller->noteData->colorType == ColorType::ColorA) == left;
                     cutInfo.timeDeviation = controller->noteData->time - noteEvent.time;
                 }
                 Frames::lastCutTime = noteEvent.time;

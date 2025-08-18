@@ -66,8 +66,6 @@ namespace Replay {
             short colorType;
             short cutDirection;
             Type eventType = Type::GOOD;
-
-            bool HasCut() const { return eventType != Type::MISS; }
         };
 
         struct Note {
@@ -130,9 +128,10 @@ namespace Replay {
             std::vector<Height> heights;
             std::vector<Pause> pauses;
             std::set<Reference, Reference::Comparer> events;
-            bool needsRecalculation;
-            bool cutInfoMissingOKs;
-            bool hasOldScoringTypes;
+            bool needsRecalculation = false;
+            bool cutInfoMissingOKs = false;
+            bool hasBombCutInfo = true;
+            bool hasOldScoringTypes = false;
         };
     }
 
