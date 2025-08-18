@@ -1,6 +1,7 @@
 #include "playback.hpp"
 
 #include "GlobalNamespace/GameplayModifiersModelSO.hpp"
+#include "GlobalNamespace/PauseController.hpp"
 #include "GlobalNamespace/PlayerHeadAndObstacleInteraction.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/SettingsManager.hpp"
@@ -252,6 +253,10 @@ void Playback::UpdateTime() {
     float time = MetaCore::Stats::GetSongTime();
     Frames::UpdateTime(time);
     Events::UpdateTime(time);
+
+    auto& info = Manager::GetCurrentInfo();
+    if (info.quit && time > info.quitTime)
+        UnityEngine::Object::FindObjectOfType<PauseController*>()->HandlePauseMenuManagerDidPressMenuButton();
 
     auto& poses = Manager::GetCurrentReplay().poses;
 
