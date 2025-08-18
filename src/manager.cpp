@@ -25,7 +25,6 @@ static std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> replay
 static std::map<std::string, std::shared_ptr<Replay::Data>> tempReplays;
 static bool local = true;
 
-static bool restarting = false;
 static bool hasRotations = false;
 static bool cancelPresentation = false;
 
@@ -297,7 +296,6 @@ ON_EVENT(MetaCore::Events::MapRestarted) {
         return;
     logger.debug("replay restarted");
     paused = false;
-    restarting = true;
     Camera::OnRestart();
     Pause::OnUnpause();
     Playback::SeekTo(0);
@@ -316,10 +314,8 @@ ON_EVENT(MetaCore::Events::MapEnded) {
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
     Pause::SceneEnded();
 
-    if (restarting) {
-        restarting = false;
+    if (MetaCore::Internals::mapWasRestarted)
         return;
-    }
 
     logger.debug("replay scene ended");
     auto main = MetaCore::Game::GetMainFlowCoordinator();
