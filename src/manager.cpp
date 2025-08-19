@@ -214,9 +214,10 @@ void Manager::DeleteCurrentReplay() {
         return;
     }
     replays.erase(replay);
-    if (replays.empty())
+    if (replays.empty()) {
         Replay::MenuView::Dismiss();
-    else
+        Replay::MenuView::SetEnabled(false);
+    } else
         Replay::MenuView::GetInstance()->UpdateUI(false);
 }
 
