@@ -18,7 +18,6 @@ DECLARE_CLASS_CODEGEN(Replay, MainSettings, HMUI::ViewController) {
     DECLARE_OVERRIDE_METHOD_MATCH(
         void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling
     );
-    DECLARE_INSTANCE_METHOD(void, OnDestroy);
 
     DECLARE_STATIC_METHOD(MainSettings*, GetInstance);
 
@@ -34,7 +33,6 @@ DECLARE_CLASS_CODEGEN(Replay, RenderSettings, HMUI::ViewController) {
     );
     DECLARE_INSTANCE_METHOD(void, OnEnable);
     DECLARE_INSTANCE_METHOD(void, OnDisable);
-    DECLARE_INSTANCE_METHOD(void, OnDestroy);
 
     DECLARE_INSTANCE_METHOD(void, GetCover, GlobalNamespace::BeatmapLevel* level);
     DECLARE_INSTANCE_METHOD(void, UpdateCover, GlobalNamespace::BeatmapLevel* level, UnityEngine::Sprite* cover);
@@ -58,7 +56,6 @@ DECLARE_CLASS_CODEGEN(Replay, InputSettings, HMUI::ViewController) {
     );
     DECLARE_INSTANCE_METHOD(void, OnEnable);
     DECLARE_INSTANCE_METHOD(void, OnDisable);
-    DECLARE_INSTANCE_METHOD(void, OnDestroy);
 
     DECLARE_STATIC_METHOD(InputSettings*, GetInstance);
 

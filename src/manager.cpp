@@ -316,8 +316,6 @@ ON_EVENT(MetaCore::Events::MapEnded) {
 }
 
 ON_EVENT(MetaCore::Events::GameplaySceneEnded) {
-    Pause::SceneEnded();
-
     if (MetaCore::Internals::mapWasRestarted)
         return;
 

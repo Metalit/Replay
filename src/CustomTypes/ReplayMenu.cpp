@@ -269,10 +269,6 @@ void Replay::MenuView::OnEnable() {
         BSML::Lite::SetButtonText(queueButton, QueueButtonText());
 }
 
-void Replay::MenuView::OnDestroy() {
-    instance = nullptr;
-}
-
 static void MatchRequirements(UI::Button* replayButton) {
     bool interactable = levelView->actionButton->interactable || levelView->practiceButton->interactable;
     replayButton->interactable = interactable && replayButton->interactable;
@@ -373,6 +369,7 @@ Replay::MenuView* Replay::MenuView::GetInstance() {
     if (!instance) {
         instance = BSML::Helpers::CreateViewController<Replay::MenuView*>();
         instance->name = "ReplayMenuViewController";
+        MetaCore::Engine::SetOnDestroy(instance, []() { instance = nullptr; });
     }
     return instance;
 }

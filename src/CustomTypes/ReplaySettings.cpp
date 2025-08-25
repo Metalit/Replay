@@ -23,6 +23,7 @@
 #include "metacore/shared/delegates.hpp"
 #include "metacore/shared/songs.hpp"
 #include "metacore/shared/ui.hpp"
+#include "metacore/shared/unity.hpp"
 #include "utils.hpp"
 
 DEFINE_TYPE(Replay, MainSettings)
@@ -51,6 +52,7 @@ static inline T* LazyCreate(T*& instance, char const* name) {
     if (!instance) {
         instance = BSML::Helpers::CreateViewController<T*>();
         instance->name = name;
+        MetaCore::Engine::SetOnDestroy(instance, [&instance]() { instance = nullptr; });
     }
     return instance;
 }
@@ -207,10 +209,6 @@ void MainSettings::DidActivate(bool firstActivation, bool addedToHierarchy, bool
     AddConfigValueToggle(transform, getConfig().Avatar);
 }
 
-void MainSettings::OnDestroy() {
-    instance = nullptr;
-}
-
 MainSettings* MainSettings::GetInstance() {
     return LazyCreate(instance, "ReplayMainSettings");
 }
@@ -355,10 +353,6 @@ void RenderSettings::OnEnable() {
 
 void RenderSettings::OnDisable() {
     StopAllCoroutines();
-}
-
-void RenderSettings::OnDestroy() {
-    instance = nullptr;
 }
 
 RenderSettings* RenderSettings::GetInstance() {
@@ -510,10 +504,6 @@ void InputSettings::OnDisable() {
     auto presets = getConfig().ThirdPerPresets.GetValue();
     presets[getConfig().CurrentThirdPerPreset.GetValue()] = preset;
     getConfig().ThirdPerPresets.SetValue(presets);
-}
-
-void InputSettings::OnDestroy() {
-    instance = nullptr;
 }
 
 InputSettings* InputSettings::GetInstance() {

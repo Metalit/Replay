@@ -50,7 +50,7 @@
   "dependencies": [
     {
       "id": "beatsaber-hook",
-      "versionRange": "^6.4.0",
+      "versionRange": "^6.4.2",
       "additionalData": {}
     },
     {
@@ -67,17 +67,17 @@
     },
     {
       "id": "paper2_scotland2",
-      "versionRange": "^4.4.2",
+      "versionRange": "^4.6.4",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.18.0",
+      "versionRange": "^0.18.3",
       "additionalData": {}
     },
     {
       "id": "sombrero",
-      "versionRange": "^0.1.40",
+      "versionRange": "^0.1.43",
       "additionalData": {}
     },
     {
@@ -87,27 +87,27 @@
     },
     {
       "id": "hollywood",
-      "versionRange": "^1.2.0",
+      "versionRange": "^1.2.2",
       "additionalData": {}
     },
     {
       "id": "config-utils",
-      "versionRange": "^2.0.2",
+      "versionRange": "^2.0.3",
       "additionalData": {}
     },
     {
       "id": "bsml",
-      "versionRange": "^0.4.47",
+      "versionRange": "^0.4.55",
       "additionalData": {}
     },
     {
       "id": "metacore",
-      "versionRange": "^1.5.0",
+      "versionRange": "^1.5.1",
       "additionalData": {}
     },
     {
       "id": "web-utils",
-      "versionRange": "^0.6.7",
+      "versionRange": "^0.6.8",
       "additionalData": {}
     }
   ]
