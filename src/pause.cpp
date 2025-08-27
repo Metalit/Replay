@@ -58,6 +58,9 @@ static UnityEngine::GameObject* cameraModel;
 static BSML::SliderSetting* timeSlider;
 static BSML::SliderSetting* speedSlider;
 
+static bool skipDown = false;
+static bool speedDown = false;
+
 static void SetCameraModelToThirdPerson() {
     auto trans = cameraModel->transform;
     Quaternion rot = Quaternion::Euler(getConfig().ThirdPerRot.GetValue());
@@ -575,15 +578,16 @@ void Pause::SetTime(float value) {
     MetaCore::Events::Broadcast(MetaCore::Events::NoteMissed);
     MetaCore::Events::Broadcast(MetaCore::Events::BombCut);
     MetaCore::Events::Broadcast(MetaCore::Events::WallHit);
-    MetaCore::Events::Broadcast(MetaCore::Events::Update);
 }
 
 void Pause::UpdateInputs() {
     int skip = Utils::IsButtonDown(getConfig().TimeButton.GetValue());
-    if (skip)
+    if (skip && !skipDown)
         SetTime(MetaCore::Stats::GetSongTime() + getConfig().TimeSkip.GetValue() * skip);
+    skipDown = skip != 0;
 
     int speed = Utils::IsButtonDown(getConfig().SpeedButton.GetValue());
-    if (speed)
+    if (speed && !speedDown)
         SetSpeed(MetaCore::Internals::audioTimeSyncController->_timeScale + speed * 0.05);
+    speedDown = speed != 0;
 }
