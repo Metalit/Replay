@@ -103,7 +103,7 @@
       },
       {
         "id": "metacore",
-        "versionRange": "^1.5.1",
+        "versionRange": "^1.6.0",
         "additionalData": {}
       },
       {
@@ -152,16 +152,16 @@
     {
       "dependency": {
         "id": "metacore",
-        "versionRange": "=1.5.1",
+        "versionRange": "=1.6.0",
         "additionalData": {
-          "soLink": "https://github.com/Metalit/MetaCore/releases/download/v1.5.1/libmetacore.so",
+          "soLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.0/libmetacore.so",
           "overrideSoName": "libmetacore.so",
-          "modLink": "https://github.com/Metalit/MetaCore/releases/download/v1.5.1/MetaCore.qmod",
-          "branchName": "version/v1_5_1",
+          "modLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.0/MetaCore.qmod",
+          "branchName": "version/v1_6_0",
           "cmake": true
         }
       },
-      "version": "1.5.1"
+      "version": "1.6.0"
     },
     {
       "dependency": {
