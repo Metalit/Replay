@@ -29,6 +29,8 @@ using namespace GlobalNamespace;
 
 static MetaCore::CacheMap<std::string, std::optional<std::string>, 50> ssPlayerNames;
 
+enum OldScoringType { Ignore = -1, NoScore, Normal, ArcHead, ArcTail, ChainHead, ChainLink };
+
 bool Utils::LowerVersion(std::string version, std::string compare) {
     while (true) {
         auto versionPos = version.find(".");
@@ -217,29 +219,6 @@ NoteCutInfo Utils::GetBombCutInfo(NoteController* note, Saber* saber) {
     );
 }
 
-enum OldScoringType { Ignore = -1, NoScore, Normal, ArcHead, ArcTail, ChainHead, ChainLink };
-
-bool Utils::ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType) {
-    if (replayType == -2)
-        return true;
-    if (!oldScoringType)
-        return replayType == (int) noteType;
-    switch (replayType) {
-        case OldScoringType::ArcHead:
-            return noteType == NoteData::ScoringType::ArcHead || noteType == NoteData::ScoringType::ArcHeadArcTail ||
-                   noteType == NoteData::ScoringType::ChainLinkArcHead;
-        case OldScoringType::ArcTail:
-            return noteType == NoteData::ScoringType::ArcTail || noteType == NoteData::ScoringType::ArcHeadArcTail ||
-                   noteType == NoteData::ScoringType::ChainHeadArcTail;
-        case OldScoringType::ChainHead:
-            return noteType == NoteData::ScoringType::ChainHead || noteType == NoteData::ScoringType::ChainHeadArcTail;
-        case OldScoringType::ChainLink:
-            return noteType == NoteData::ScoringType::ChainLink || noteType == NoteData::ScoringType::ChainLinkArcHead;
-        default:
-            return replayType == (int) noteType;
-    }
-}
-
 bool Utils::IsLeft(Replay::Events::Note const& note, bool hasBombCutInfo) {
     if (note.info.eventType == Replay::Events::NoteInfo::Type::MISS)
         return note.info.colorType == (int) GlobalNamespace::ColorType::ColorA;
@@ -283,42 +262,28 @@ float Utils::EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoring
     }
 }
 
-float Utils::AccuracyForDistance(float distance) {
+static float AccuracyForDistance(float distance) {
     return 1 - std::clamp(distance / (float) 0.3, (float) 0, (float) 1);
 }
 
-static ScoreModel::NoteScoreDefinition* GetScoreDefinition(int scoringType, bool oldScoringType) {
-    if (!oldScoringType)
-        return ScoreModel::GetNoteScoreDefinition(scoringType);
-    switch (scoringType) {
-        case -2:
-            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::Normal);
-        case OldScoringType::ChainHead:
-            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::ChainHead);
-        case OldScoringType::ChainLink:
-            return ScoreModel::GetNoteScoreDefinition(NoteData::ScoringType::ChainLink);
-        default:
-            return ScoreModel::GetNoteScoreDefinition(scoringType);
-    }
-}
-
-std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool oldScoringType, bool max) {
+std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool max) {
     bool goodCut = note.info.eventType == Replay::Events::NoteInfo::Type::GOOD;
     if (!goodCut && !max)
         return {0};
 
-    auto scoreDefinition = GetScoreDefinition(note.info.scoringType, oldScoringType);
+    auto scoreDefinition = ScoreModel::GetNoteScoreDefinition(note.info.scoringType);
+    if (!scoreDefinition) {
+        logger.error("Failed to find score definition for {}", note.info.scoringType);
+        return {0};
+    }
 
-    if (max && scoreDefinition)
+    if (max)
         return {
             scoreDefinition->maxBeforeCutScore,
             scoreDefinition->maxAfterCutScore,
             scoreDefinition->maxCenterDistanceCutScore,
             scoreDefinition->maxCutScore
         };
-
-    if (!scoreDefinition || !goodCut)
-        return {0};
 
     float before = std::clamp(note.noteCutInfo.beforeCutRating, (float) 0, (float) 1);
     float after = std::clamp(note.noteCutInfo.afterCutRating, (float) 0, (float) 1);
@@ -331,7 +296,28 @@ std::array<int, 4> Utils::ScoreForNote(Replay::Events::Note const& note, bool ol
     return {multBefore, multAfter, multAcc, scoreDefinition->fixedCutScore + multBefore + multAfter + multAcc};
 }
 
-int Utils::BSORNoteID(GlobalNamespace::NoteData* note) {
+static bool ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType) {
+    if (replayType == -2)
+        return true;
+    if (!oldScoringType)
+        return replayType == (int) noteType;
+    switch (replayType) {
+        case OldScoringType::ArcHead:
+            return noteType == NoteData::ScoringType::ArcHead || noteType == NoteData::ScoringType::ArcHeadArcTail ||
+                   noteType == NoteData::ScoringType::ChainLinkArcHead;
+        case OldScoringType::ArcTail:
+            return noteType == NoteData::ScoringType::ArcTail || noteType == NoteData::ScoringType::ArcHeadArcTail ||
+                   noteType == NoteData::ScoringType::ChainHeadArcTail;
+        case OldScoringType::ChainHead:
+            return noteType == NoteData::ScoringType::ChainHead || noteType == NoteData::ScoringType::ChainHeadArcTail;
+        case OldScoringType::ChainLink:
+            return noteType == NoteData::ScoringType::ChainLink || noteType == NoteData::ScoringType::ChainLinkArcHead;
+        default:
+            return replayType == (int) noteType;
+    }
+}
+
+static int BSORNoteID(GlobalNamespace::NoteData* note) {
     int colorType = (int) note->colorType;
     if (colorType < 0)
         colorType = 3;
@@ -344,8 +330,18 @@ int Utils::BSORNoteID(Replay::Events::NoteInfo const& note) {
     int colorType = note.colorType;
     if (colorType < 0)
         colorType = 3;
-
     return (note.scoringType + 2) * 10000 + note.lineIndex * 1000 + note.lineLayer * 100 + colorType * 10 + note.cutDirection;
+}
+
+bool Utils::Matches(GlobalNamespace::NoteData* data, Replay::Events::NoteInfo const& info, bool oldScoringTypes, bool checkME) {
+    if (checkME) {
+        int dataId = BSORNoteID(data);
+        int infoId = BSORNoteID(info);
+        // I still don't entirely understand this fix, but thankfully I am pretty sure it is only a bug in replays from before scoring types
+        return dataId == infoId || dataId == infoId + 30000;
+    }
+    return ScoringTypeMatches(info.scoringType, data->scoringType, oldScoringTypes) && (int) data->lineIndex == info.lineIndex &&
+           (int) data->noteLineLayer == info.lineLayer && (int) data->colorType == info.colorType && (int) data->cutDirection == info.cutDirection;
 }
 
 static std::vector<OVRInput::Button> const Buttons = {

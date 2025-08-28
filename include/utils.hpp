@@ -35,16 +35,13 @@ namespace Utils {
     GetNoteCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber, Replay::Events::CutInfo const& info);
     GlobalNamespace::NoteCutInfo GetBombCutInfo(GlobalNamespace::NoteController* note, GlobalNamespace::Saber* saber);
 
-    bool ScoringTypeMatches(int replayType, GlobalNamespace::NoteData::ScoringType noteType, bool oldScoringType);
-
     bool IsLeft(Replay::Events::Note const& note, bool hasBombCutInfo);
 
     float EnergyForNote(Replay::Events::NoteInfo const& note, bool oldScoringType);
-    float AccuracyForDistance(float distance);
-    std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool oldScoringType, bool max = false);
+    std::array<int, 4> ScoreForNote(Replay::Events::Note const& note, bool max = false);
 
-    int BSORNoteID(GlobalNamespace::NoteData* note);
     int BSORNoteID(Replay::Events::NoteInfo const& note);
+    bool Matches(GlobalNamespace::NoteData* data, Replay::Events::NoteInfo const& info, bool oldScoringTypes = false, bool checkME = false);
 
     bool IsButtonDown(Button const& button);
     int IsButtonDown(ButtonPair const& button);

@@ -356,9 +356,10 @@ void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyB
         return;
 
     auto& events = *replay.events;
-    if (!events.needsRecalculation)
+    // needsRecalculation is needed for BeatLeader replays of ME maps that lost data
+    // hasOldScoringTypes will also need recalculation in order to get the correct score definitions when doing time seeking
+    if (!events.needsRecalculation && !events.hasOldScoringTypes)
         return;
-    events.needsRecalculation = false;
 
     logger.debug("recalculating replay notes with beatmap data");
 
@@ -370,24 +371,24 @@ void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyB
     // then set its info and remove it from the pool (since multiple notes may have the same id)
     auto list = beatmapData->allBeatmapDataItems;
     for (auto i = list->head; i->next != list->head; i = i->next) {
-        auto cast = il2cpp_utils::try_cast<GlobalNamespace::NoteData>(i->item);
-        if (!cast)
+        auto noteData = il2cpp_utils::try_cast<GlobalNamespace::NoteData>(i->item).value_or(nullptr);
+        if (!noteData)
             continue;
-        auto noteData = *cast;
-        int mapNoteId = Utils::BSORNoteID(noteData);
-
-        for (auto iter = notes.begin(); iter != notes.end(); iter++) {
+        auto iter = std::find_if(notes.begin(), notes.end(), [&events, noteData](auto note) {
+            return Utils::Matches(noteData, note->info, events.hasOldScoringTypes, events.needsRecalculation);
+        });
+        if (iter != notes.end()) {
             auto& info = (*iter)->info;
-            int eventNoteId = Utils::BSORNoteID(info);
-            if (mapNoteId == eventNoteId || mapNoteId == (eventNoteId + 30000)) {
-                info.scoringType = (int) noteData->scoringType;
-                info.lineIndex = noteData->lineIndex;
-                info.lineLayer = (int) noteData->noteLineLayer;
-                info.colorType = (int) noteData->colorType;
-                info.cutDirection = (int) noteData->cutDirection;
-                notes.erase(iter);
-                break;
-            }
+            info.scoringType = (int) noteData->scoringType;
+            // shouldn't be needed on non-ME recalculation, but might as well
+            info.lineIndex = noteData->lineIndex;
+            info.lineLayer = (int) noteData->noteLineLayer;
+            info.colorType = (int) noteData->colorType;
+            info.cutDirection = (int) noteData->cutDirection;
+            notes.erase(iter);
         }
     }
+
+    events.needsRecalculation = false;
+    events.hasOldScoringTypes = false;
 }

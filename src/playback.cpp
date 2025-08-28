@@ -99,12 +99,6 @@ namespace Events {
     static float wallEndTime;
     static float wallEnergyLoss;
 
-    static bool Matches(NoteData* data, Replay::Events::NoteInfo const& info) {
-        return Utils::ScoringTypeMatches(info.scoringType, data->scoringType, events->hasOldScoringTypes) &&
-               (int) data->lineIndex == info.lineIndex && (int) data->noteLineLayer == info.lineLayer && (int) data->colorType == info.colorType &&
-               (int) data->cutDirection == info.cutDirection;
-    }
-
     static void RunNoteEvent(Replay::Events::Note const& noteEvent, NoteController* controller) {
         static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
 
@@ -141,17 +135,14 @@ namespace Events {
         for (auto iter = notes.begin(); iter != notes.end(); iter++) {
             auto controller = *iter;
             auto data = controller->noteData;
-            if (!Matches(data, info))
+            if (!Utils::Matches(data, info))
                 continue;
             RunNoteEvent(noteEvent, controller);
             if (info.eventType == Replay::Events::NoteInfo::Type::MISS)
                 notes.erase(iter);  // note will despawn and be removed in the other cases
             return;
         }
-
-        int bsorID = (noteEvent.info.scoringType + 2) * 10000 + noteEvent.info.lineIndex * 1000 + noteEvent.info.lineLayer * 100 +
-                     noteEvent.info.colorType * 10 + noteEvent.info.cutDirection;
-        logger.error("Could not find note for event! time: {}, bsor id: {}", noteEvent.time, bsorID);
+        logger.error("Could not find note for event! time: {}, bsor id: {}", noteEvent.time, Utils::BSORNoteID(noteEvent.info));
     }
 
     static void ProcessWallEvent(Replay::Events::Wall const& wallEvent) {

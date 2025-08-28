@@ -261,15 +261,15 @@ static EventsIterator FindNextEvent(Replay::Events::Data& events, float time) {
     return events.events.lower_bound(time);
 }
 
-static bool ShouldCountNote(Replay::Events::NoteInfo const& note, bool oldScoring) {
+static bool ShouldCountNote(Replay::Events::NoteInfo const& note) {
     if (note.eventType == Replay::Events::NoteInfo::Type::BOMB)
         return false;
-    return Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::Normal, oldScoring) ||
-           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcHead, oldScoring) ||
-           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcTail, oldScoring) ||
-           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ArcHeadArcTail, oldScoring) ||
-           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ChainHead, oldScoring) ||
-           Utils::ScoringTypeMatches(note.scoringType, GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail, oldScoring);
+    return note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::Normal ||
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcHead ||
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcTail ||
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ArcHeadArcTail ||
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHead ||
+           note.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainHeadArcTail;
 }
 
 #define MODIFY(var, num) \
@@ -286,13 +286,12 @@ static void CalculateNoteChanges(Replay::Events::Data& events, EventsIterator ev
 
     bool left = Utils::IsLeft(note, events.hasBombCutInfo);
     bool mistake = note.info.eventType != Replay::Events::NoteInfo::Type::GOOD;
-    bool fixed =
-        Utils::ScoringTypeMatches(note.info.scoringType, GlobalNamespace::NoteData::ScoringType::ChainLink, events.hasOldScoringTypes) ||
-        Utils::ScoringTypeMatches(note.info.scoringType, GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead, events.hasOldScoringTypes);
-    bool count = ShouldCountNote(note.info, events.hasOldScoringTypes);
+    bool fixed = note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLink ||
+                 note.info.scoringType == (int) GlobalNamespace::NoteData::ScoringType::ChainLinkArcHead;
+    bool count = ShouldCountNote(note.info);
 
-    auto [pre, post, acc, score] = Utils::ScoreForNote(note, events.hasOldScoringTypes);
-    auto [maxPre, maxPost, maxAcc, maxScore] = Utils::ScoreForNote(note, events.hasOldScoringTypes, true);
+    auto [pre, post, acc, score] = Utils::ScoreForNote(note);
+    auto [maxPre, maxPost, maxAcc, maxScore] = Utils::ScoreForNote(note, true);
 
     // chains are set to full post swing for average calculations
     if (maxPost == 0 && !fixed)
