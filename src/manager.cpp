@@ -19,6 +19,7 @@
 
 static bool replaying = false;
 static bool rendering = false;
+static bool started = false;
 static bool paused = false;
 
 static std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>> replays;
@@ -168,6 +169,7 @@ void Manager::StartReplay(bool render) {
 
     replaying = true;
     rendering = render;
+    started = false;
     paused = false;
     MetaCore::Game::SetScoreSubmission(MOD_ID, false);
     MetaCore::Input::SetHaptics(MOD_ID, false);
@@ -273,6 +275,11 @@ ON_EVENT(MetaCore::Events::MapStarted) {
     Parsing::RecalculateNotes(Manager::GetCurrentReplay(), MetaCore::Internals::beatmapData->i___GlobalNamespace__IReadonlyBeatmapData());
     Camera::SetupCamera();
     Camera::CreateReplayText();
+    if (paused) {
+        Camera::OnPause();
+        Pause::OnPause();
+    }
+    started = true;
 }
 
 ON_EVENT(MetaCore::Events::MapPaused) {
@@ -280,9 +287,11 @@ ON_EVENT(MetaCore::Events::MapPaused) {
         return;
     logger.debug("replay paused");
     paused = true;
+    MetaCore::Input::SetHaptics(MOD_ID, true);
+    if (!started)
+        return;
     Camera::OnPause();
     Pause::OnPause();
-    MetaCore::Input::SetHaptics(MOD_ID, true);
 }
 
 ON_EVENT(MetaCore::Events::MapUnpaused) {
@@ -299,6 +308,7 @@ ON_EVENT(MetaCore::Events::MapRestarted) {
     if (!replaying)
         return;
     logger.debug("replay restarted");
+    started = false;
     paused = false;
     Camera::OnRestart();
     Pause::OnUnpause();
@@ -311,6 +321,7 @@ ON_EVENT(MetaCore::Events::MapEnded) {
         return;
     logger.debug("replay ended");
     Camera::FinishReplay();
+    started = false;
     paused = false;
     cancelPresentation = !MetaCore::Internals::mapWasQuit;
 }
