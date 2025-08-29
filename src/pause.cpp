@@ -514,12 +514,14 @@ static void UpdateBaseGameState() {
     // update score multipliers
     auto multiplierCounter = scoreController->_scoreMultiplierCounter;
     multiplierCounter->_multiplier = MetaCore::Stats::GetMultiplier();
-    multiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMultiplierProgress(false) * multiplierCounter->_multiplier * 2;
+    multiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMultiplierProgressInt(false);
     multiplierCounter->_multiplierIncreaseMaxProgress = multiplierCounter->_multiplier * 2;
+    if (!System::Object::Equals(scoreController->multiplierDidChangeEvent, nullptr))
+        scoreController->multiplierDidChangeEvent->Invoke(multiplierCounter->_multiplier, multiplierCounter->normalizedProgress);
 
     auto maxMultiplierCounter = scoreController->_maxScoreMultiplierCounter;
     maxMultiplierCounter->_multiplier = MetaCore::Stats::GetMaxMultiplier();
-    maxMultiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMaxMultiplierProgress(false) * maxMultiplierCounter->_multiplier * 2;
+    maxMultiplierCounter->_multiplierIncreaseProgress = MetaCore::Stats::GetMaxMultiplierProgressInt(false);
     maxMultiplierCounter->_multiplierIncreaseMaxProgress = maxMultiplierCounter->_multiplier * 2;
 
     // update score and max score
@@ -530,7 +532,8 @@ static void UpdateBaseGameState() {
     scoreController->_immediateMaxPossibleModifiedScore = scoreController->_immediateMaxPossibleMultipliedScore * modifiers;
     if (scoreController->_immediateMaxPossibleMultipliedScore == 0)
         scoreController->_immediateMaxPossibleModifiedScore = 1;
-    scoreController->scoreDidChangeEvent->Invoke(scoreController->_multipliedScore, scoreController->_modifiedScore);
+    if (!System::Object::Equals(scoreController->scoreDidChangeEvent, nullptr))
+        scoreController->scoreDidChangeEvent->Invoke(scoreController->_multipliedScore, scoreController->_modifiedScore);
 
     // update combo
     MetaCore::Internals::comboController->_combo = MetaCore::Stats::GetCombo(MetaCore::Stats::BothSabers);
