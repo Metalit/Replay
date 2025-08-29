@@ -58,6 +58,7 @@ static UnityEngine::GameObject* cameraModel;
 static BSML::SliderSetting* timeSlider;
 static BSML::SliderSetting* speedSlider;
 
+static bool inSeek = false;
 static bool skipDown = false;
 static bool speedDown = false;
 
@@ -242,6 +243,18 @@ void Pause::OnUnpause() {
     cameraModel->active = false;
     SetThirdPersonToCameraModel();
     MetaCore::Internals::audioTimeSyncController->_inBetweenDSPBufferingTimeEstimate = 0;
+}
+
+bool Pause::AllowAnimation(GlobalNamespace::ScoreMultiplierUIController* multiplier) {
+    if (!inSeek)
+        return true;
+    multiplier->_prevMultiplier = MetaCore::Stats::GetMultiplier();
+    StringW newText = std::to_string(multiplier->_prevMultiplier);
+    for (auto text : multiplier->_multiplierTexts)
+        text->text = newText;
+    multiplier->_progressTarget = MetaCore::Stats::GetMultiplierProgress(false);
+    multiplier->_multiplierProgressImage->fillAmount = multiplier->_progressTarget;
+    return false;
 }
 
 void Pause::SetSpeed(float value) {
@@ -542,10 +555,12 @@ static void UpdateBaseGameState() {
         MetaCore::Internals::comboController->comboDidChangeEvent->Invoke(MetaCore::Internals::comboController->_combo);
 
     bool full = MetaCore::Stats::GetFullCombo(MetaCore::Stats::BothSabers);
+    for (auto name : {"Line0", "Line1"}) {
+        if (auto child = comboPanel->transform->Find(name))
+            child->gameObject->active = full;
+    }
     if (full && comboPanel->_fullComboLost)
         comboPanel->_animator->Rebind();
-    else if (!full && !comboPanel->_fullComboLost)
-        comboPanel->_animator->SetTrigger(comboPanel->_comboLostId);
     comboPanel->_fullComboLost = !full;
 }
 
@@ -554,6 +569,7 @@ void Pause::SetTime(float value) {
         return;
 
     logger.info("Setting replay time to {}", value);
+    inSeek = true;
 
     // I don't fully understand it, but there is some weirdness with the score calculation if any elements are left unfinished
     // this function is *probably* unnecessary, since the custom saber movement data finishes everything within the frame,
@@ -582,6 +598,7 @@ void Pause::SetTime(float value) {
     MetaCore::Events::Broadcast(MetaCore::Events::NoteMissed);
     MetaCore::Events::Broadcast(MetaCore::Events::BombCut);
     MetaCore::Events::Broadcast(MetaCore::Events::WallHit);
+    inSeek = false;
 }
 
 void Pause::UpdateInputs() {

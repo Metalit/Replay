@@ -23,6 +23,7 @@
 #include "camera.hpp"
 #include "config.hpp"
 #include "manager.hpp"
+#include "pause.hpp"
 #include "playback.hpp"
 
 using namespace GlobalNamespace;
@@ -252,6 +253,19 @@ MAKE_AUTO_HOOK_MATCH(
             controller->active = true;
     } else
         DeactivateVRControllersOnFocusCapture_UpdateVRControllerActiveState(self);
+}
+
+// prevent multiplier animations while seeking
+MAKE_AUTO_HOOK_MATCH(
+    ScoreMultiplierUIController_HandleMultiplierDidChange,
+    &ScoreMultiplierUIController::HandleMultiplierDidChange,
+    void,
+    ScoreMultiplierUIController* self,
+    int multiplier,
+    float progress
+) {
+    if (Pause::AllowAnimation(self))
+        ScoreMultiplierUIController_HandleMultiplierDidChange(self, multiplier, progress);
 }
 
 // fix timing during renders
