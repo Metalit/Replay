@@ -38,6 +38,7 @@ namespace BSOR {
         float speed = 0;
     };
 
+#pragma pack(1)
     struct NoteEventInfo {
         int noteID;
         float eventTime;
@@ -51,6 +52,12 @@ namespace BSOR {
         float time;
         float spawnTime;
     };
+
+    struct PauseEvent {
+        long duration;
+        float time;
+    };
+#pragma pack()
 }
 
 static bool IsLikelyValidCutInfo(Replay::Events::CutInfo& info) {
@@ -385,9 +392,13 @@ static void ParsePauses(std::ifstream& input, Replay::Data& replay) {
     auto& pauses = replay.events->pauses;
     auto& events = replay.events->events;
 
+    BSOR::PauseEvent pauseEvent;
+
     for (int i = 0; i < count; i++) {
         auto& pause = pauses.emplace_back();
-        READ_TO(pause);
+        READ_TO(pauseEvent);
+        pause.duration = pauseEvent.duration;
+        pause.time = pauseEvent.time;
         events.emplace(pause.time, Replay::Events::Reference::Pause, pauses.size() - 1);
     }
 }
