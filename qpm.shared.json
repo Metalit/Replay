@@ -7,7 +7,7 @@
     "info": {
       "name": "Replay",
       "id": "replay",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "url": null,
       "additionalData": {
         "overrideSoName": "libreplay.so",
@@ -103,7 +103,7 @@
       },
       {
         "id": "metacore",
-        "versionRange": "^1.6.1",
+        "versionRange": "^1.6.2",
         "additionalData": {}
       },
       {
@@ -152,16 +152,16 @@
     {
       "dependency": {
         "id": "metacore",
-        "versionRange": "=1.6.1",
+        "versionRange": "=1.6.2",
         "additionalData": {
-          "soLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.1/libmetacore.so",
+          "soLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.2/libmetacore.so",
           "overrideSoName": "libmetacore.so",
-          "modLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.1/MetaCore.qmod",
-          "branchName": "version/v1_6_1",
+          "modLink": "https://github.com/Metalit/MetaCore/releases/download/v1.6.2/MetaCore.qmod",
+          "branchName": "version/v1_6_2",
           "cmake": true
         }
       },
-      "version": "1.6.1"
+      "version": "1.6.2"
     },
     {
       "dependency": {
