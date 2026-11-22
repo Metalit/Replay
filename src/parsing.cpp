@@ -23,18 +23,17 @@ static std::string ReadLength(std::istream& input, int length) {
 std::string Parsing::GetFullHash(std::istream& input) {
     static constexpr int READ_BLOCK = joyee::BLOCK_SIZE * 256;
     input.seekg(0, std::ios::end);
-    size_t length = input.tellg();
+    auto end = input.tellg();
+    if (end < 0) throw Exception("Cannot determine replay size for hashing");
+    size_t remaining = static_cast<size_t>(end);
     input.seekg(0, std::ios::beg);
+    Parsing::CheckErrorState(input, "hash seek");
     joyee::MD5 md5;
-    size_t read = 0;
-    for (; read < length - READ_BLOCK; read += READ_BLOCK) {
-        md5.update(ReadLength(input, READ_BLOCK));
+    while (remaining > 0) {
+        auto count = std::min(remaining, size_t(READ_BLOCK));
+        md5.update(ReadLength(input, int(count)));
         Parsing::CheckErrorState(input, "hashing");
-    }
-    int remaining = length - read;
-    if (remaining > 0) {
-        md5.update(ReadLength(input, remaining));
-        Parsing::CheckErrorState(input, "hashing");
+        remaining -= count;
     }
     input.seekg(0, std::ios::beg);
     return md5.finalize().toString();
