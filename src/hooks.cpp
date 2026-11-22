@@ -30,7 +30,9 @@
 using namespace GlobalNamespace;
 
 
-static bool disableObstacleEntry = false;
+// Generic reference-type methods share native code with unrelated game types.
+// Scope the override to this thread and the obstacle HashSet specialization.
+static thread_local bool disableObstacleEntry = false;
 
 // TODO: move to utils
 static bool IsBadCut(NoteController* note, Saber* saber, Vector3 cutDirVec, float angle) {
@@ -120,9 +122,10 @@ MAKE_AUTO_HOOK_MATCH(
     UnityEngine::Vector3 worldPos
 ) {
     if (!Playback::DisableRealEvent(false)) {
+        auto previous = disableObstacleEntry;
+        i2c::on_scope_exit restore([previous] { disableObstacleEntry = previous; });
         disableObstacleEntry = Playback::DisableRealEvent(true);
         PlayerHeadAndObstacleInteraction_RefreshIntersectingObstacles(self, worldPos);
-        disableObstacleEntry = false;
     }
 }
 
@@ -131,9 +134,15 @@ MAKE_AUTO_HOOK_MATCH(
     ::i2c::find_method(::i2c::class_of<System::Collections::Generic::HashSet_1<ObstacleController*>*>(), {"Contains", 1})
 
 MAKE_AUTO_HOOK_FIND(
-    HashSet_Contains, HashSet_Contains_MInfo, bool, System::Collections::Generic::HashSet_1<ObstacleController*>* self, ObstacleController* item
+    HashSet_Contains, HashSet_Contains_MInfo, bool, System::Collections::Generic::HashSet_1<ObstacleController*>* self,
+    ObstacleController* item, MethodInfo const* method
 ) {
-    return disableObstacleEntry ? true : HashSet_Contains(self, item);
+    // The hidden MethodInfo argument is required by IL2CPP's shared generic
+    // body. Omitting it allowed the trampoline address to overwrite x2.
+    static auto obstacleSetClass = ::i2c::class_of<System::Collections::Generic::HashSet_1<ObstacleController*>*>();
+    if (disableObstacleEntry && self && self->klass == obstacleSetClass)
+        return true;
+    return HashSet_Contains(self, item, method);
 }
 
 // disable resorting for replayed events
@@ -147,10 +156,12 @@ MAKE_AUTO_HOOK_FIND(
     ListExtensions_InsertIntoSortedListFromEnd_MInfo,
     void,
     System::Collections::Generic::List_1<ScoringElement*>* list,
-    ScoringElement* item
+    ScoringElement* item,
+    MethodInfo const* method
 ) {
-    if (!Playback::DisableListSorting())
-        ListExtensions_InsertIntoSortedListFromEnd(list, item);
+    static auto scoringListClass = ::i2c::class_of<System::Collections::Generic::List_1<ScoringElement*>*>();
+    if (!list || list->klass != scoringListClass || !Playback::DisableListSorting())
+        ListExtensions_InsertIntoSortedListFromEnd(list, item, method);
     else
         list->Add(item);
 }
