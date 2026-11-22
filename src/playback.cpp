@@ -147,8 +147,12 @@ namespace Events {
 
     static void ProcessWallEvent(Replay::Events::Wall const& wallEvent) {
         auto obstacles = MetaCore::Internals::gameEnergyCounter->_playerHeadAndObstacleInteraction;
-        obstacles->headDidEnterObstacleEvent->Invoke(nullptr);
-        obstacles->headDidEnterObstaclesEvent->Invoke();
+        // Replay drains recorded wall energy in ProcessEnergy. Do not fabricate
+        // a per-obstacle entry: 1.46's GameEnergyCounter stores the controller in
+        // _obstacleEnterTimes, which rejects the null key we used to send here.
+        // The aggregate event still applies the recorded combo/multiplier loss.
+        if (auto entered = obstacles->headDidEnterObstaclesEvent)
+            entered->Invoke();
         float diffStartTime = std::max(wallEndTime, wallEvent.time);
         wallEndTime = std::max(wallEndTime, wallEvent.endTime);
         wallEnergyLoss += (wallEndTime - diffStartTime) * 1.3;
