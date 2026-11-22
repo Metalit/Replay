@@ -6,7 +6,7 @@
 #include "UnityEngine/Transform.hpp"
 #include "VRUIControls/VRPointer.hpp"
 #include "main.hpp"
-#include "metacore/shared/input.hpp"
+#include "metacore-bs/shared/input.hpp"
 
 DEFINE_TYPE(Replay, Grabbable);
 
@@ -27,7 +27,7 @@ void Grabbable::Update() {
 
     if (pointer->lastSelectedVrController->triggerValue > 0.9) {
         // pointerData can be null when not loaded (aka on soft restarts, generally)
-        if (controller != pointer->lastSelectedVrController.unsafePtr() && pointer->_currentPointerData) {
+        if (controller != pointer->lastSelectedVrController.unsafe_ptr() && pointer->_currentPointerData) {
             auto eventData = inputModule->GetLastPointerEventData(-1);
             // check if pointer is on the cube
             bool hovering = false;

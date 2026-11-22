@@ -13,7 +13,7 @@
 #include "config.hpp"
 #include "main.hpp"
 #include "manager.hpp"
-#include "metacore/shared/stats.hpp"
+#include "metacore-bs/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
 #include "playback.hpp"
 #include "replay.hpp"
@@ -50,7 +50,7 @@ void CameraRig::UpdateProgress() {
 
 static void SetOriginPoseToInverseTracking(UnityEngine::SpatialTracking::TrackedPoseDriver* tracker) {
     UnityEngine::Pose trackedPose;
-    if (tracker->GetPoseData(tracker->m_Device, tracker->m_PoseSource, byref(trackedPose)) == UnityEngine::SpatialTracking::PoseDataFlags::NoData)
+    if (tracker->GetPoseData(tracker->m_Device, tracker->m_PoseSource, by_ref(trackedPose)) == UnityEngine::SpatialTracking::PoseDataFlags::NoData)
         logger.warn("failed to get pose data for relative tracking calculation");
 
     Quaternion originRotation = Quaternion::Inverse(trackedPose.rotation);
@@ -112,12 +112,12 @@ CameraRig* CameraRig::Create(UnityEngine::Transform* cameraTransform) {
     headReplacement->SetParent(parent, false);
     cameraRig->fakeHead = headReplacement;
 
-    auto avatarCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::BeatAvatarEditorFlowCoordinator*>()->First([](auto x) {
+    auto avatarCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::BeatAvatarEditorFlowCoordinator*>().front([](auto x) {
         return x->_avatarDataModel != nullptr;
     });
     auto playerAvatar = avatarCoordinator->_avatarContainerGameObject->transform->GetChild(0)->GetComponent<BeatAvatarPoseController*>();
     auto customAvatar = UnityEngine::Object::Instantiate(playerAvatar);
-    UnityEngine::GameObject::SetName(customAvatar, "ReplayCustomAvatar");
+    customAvatar->name = "ReplayCustomAvatar";
     auto visualController = customAvatar->GetComponent<BeatAvatarVisualController*>();
 
     auto dataModel = avatarCoordinator->_avatarDataModel;

@@ -1,3 +1,5 @@
+#include "beatsaber-hook/shared/utils.hpp"
+
 #include "main.hpp"
 
 #include "CustomTypes/ReplaySettings.hpp"
@@ -27,7 +29,7 @@ extern "C" void setup(CModInfo* info) {
 }
 
 extern "C" void late_load() {
-    il2cpp_functions::Init();
+    i2c::functions::initialize();
     custom_types::Register::AutoRegister();
 
     // fix proximity sensor state just in case

@@ -1,7 +1,8 @@
 #include "pause.hpp"
+#include "GlobalNamespace/IBeatmapObjectController.hpp"
 
 #include "CustomTypes/Grabbable.hpp"
-#include "GlobalNamespace/AudioManagerSO.hpp"
+#include "GlobalNamespace/AudioManager.hpp"
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksController.hpp"
 #include "GlobalNamespace/BeatmapCallbacksUpdater.hpp"
@@ -37,10 +38,10 @@
 #include "UnityEngine/Time.hpp"
 #include "config.hpp"
 #include "manager.hpp"
-#include "metacore/shared/events.hpp"
+#include "metacore-bs/shared/events.hpp"
 #include "metacore/shared/il2cpp.hpp"
-#include "metacore/shared/internals.hpp"
-#include "metacore/shared/stats.hpp"
+#include "metacore-bs/shared/internals.hpp"
+#include "metacore-bs/shared/stats.hpp"
 #include "metacore/shared/strings.hpp"
 #include "metacore/shared/unity.hpp"
 #include "playback.hpp"
@@ -51,7 +52,7 @@ static bool inited = false;
 static GlobalNamespace::PauseMenuManager* pauseMenu;
 static GlobalNamespace::ComboUIController* comboPanel;
 static GlobalNamespace::NoteCutSoundEffectManager* soundManager;
-static GlobalNamespace::AudioManagerSO* audioManager;
+static GlobalNamespace::AudioManager* audioManager;
 static GlobalNamespace::GameEnergyUIPanel* energyPanel;
 
 static UnityEngine::GameObject* cameraModel;
@@ -480,7 +481,7 @@ static void FinishScoringElements() {
     MetaCore::Internals::scoreController->_sortedNoteTimesWithoutScoringElements->Clear();
     MetaCore::Internals::scoreController->LateUpdate();
     for (auto element : ListW<GlobalNamespace::ScoringElement*>(MetaCore::Internals::scoreController->_scoringElementsWithMultiplier)) {
-        if (auto goodElement = il2cpp_utils::try_cast<GlobalNamespace::GoodCutScoringElement>(element).value_or(nullptr))
+        if (auto goodElement = i2c::try_cast<GlobalNamespace::GoodCutScoringElement*>(element))
             goodElement->_cutScoreBuffer->_saberSwingRatingCounter->Finish();
     }
     MetaCore::Internals::scoreController->LateUpdate();

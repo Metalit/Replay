@@ -1,3 +1,4 @@
+#include "beatsaber-hook/shared/binary.hpp"
 #include "hooks.hpp"
 
 #include <GLES3/gl3.h>
@@ -27,7 +28,7 @@
 #include "playback.hpp"
 
 using namespace GlobalNamespace;
-using namespace il2cpp_utils::il2cpp_type_check;
+
 
 static bool disableObstacleEntry = false;
 
@@ -46,11 +47,11 @@ static bool IsBadCut(NoteController* note, Saber* saber, Vector3 cutDirVec, floa
         saber->bladeSpeedForLogic,
         cutDirVec,
         angle,
-        byref(directionOK),
-        byref(speedOK),
-        byref(saberTypeOK),
-        byref(cutDirDeviation),
-        byref(cutDirAngle)
+        by_ref(directionOK),
+        by_ref(speedOK),
+        by_ref(saberTypeOK),
+        by_ref(cutDirDeviation),
+        by_ref(cutDirAngle)
     );
     return !directionOK || !speedOK || !saberTypeOK;
 }
@@ -126,12 +127,8 @@ MAKE_AUTO_HOOK_MATCH(
 }
 
 // optionally only disable entry into obstacles
-#define HashSet_Contains_MInfo                                                                     \
-    il2cpp_utils::FindMethod(                                                                      \
-        il2cpp_no_arg_class<System::Collections::Generic::HashSet_1<ObstacleController*>*>::get(), \
-        "Contains",                                                                                \
-        std::array{ il2cpp_no_arg_type<ObstacleController*>::get() }                               \
-    )
+#define HashSet_Contains_MInfo \
+    ::i2c::find_method(::i2c::class_of<System::Collections::Generic::HashSet_1<ObstacleController*>*>(), {"Contains", 1})
 
 MAKE_AUTO_HOOK_FIND(
     HashSet_Contains, HashSet_Contains_MInfo, bool, System::Collections::Generic::HashSet_1<ObstacleController*>* self, ObstacleController* item
@@ -141,21 +138,15 @@ MAKE_AUTO_HOOK_FIND(
 
 // disable resorting for replayed events
 // (regular FindMethod still doesn't work for methods with a nested generic type)
-#define ListExtensions_InsertIntoSortedListFromEnd_MInfo          \
-    il2cpp_utils::MakeGenericMethod(                              \
-        il2cpp_utils::FindMethodUnsafe(                           \
-            il2cpp_no_arg_class<ListExtensions*>::get(),          \
-            "InsertIntoSortedListFromEnd",                        \
-            2                                                     \
-        ),                                                        \
-        std::array{ il2cpp_no_arg_class<ScoringElement*>::get() } \
-    )
+#define ListExtensions_InsertIntoSortedListFromEnd_MInfo \
+    ::i2c::make_generic(                                    \
+        ::i2c::find_method(::i2c::class_of<ListExtensions*>(), {"InsertIntoSortedListFromEnd", 2}), {::i2c::class_of<ScoringElement*>()})
 
 MAKE_AUTO_HOOK_FIND(
     ListExtensions_InsertIntoSortedListFromEnd,
     ListExtensions_InsertIntoSortedListFromEnd_MInfo,
     void,
-    List<ScoringElement*>* list,
+    System::Collections::Generic::List_1<ScoringElement*>* list,
     ScoringElement* item
 ) {
     if (!Playback::DisableListSorting())
@@ -206,33 +197,26 @@ MAKE_AUTO_HOOK_MATCH(
 }
 
 // set modifiers on replay start
-MAKE_AUTO_HOOK_MATCH(
-    MenuTransitionsHelper_StartStandardLevel,
-    &MenuTransitionsHelper::StartStandardLevel,
-    void,
-    MenuTransitionsHelper* self,
-    StringW f1,
-    ByRef<BeatmapKey> f2,
-    BeatmapLevel* f3,
-    OverrideEnvironmentSettings* f4,
-    ColorScheme* f5,
-    bool f6,
-    ColorScheme* f7,
-    GameplayModifiers* f8,
-    PlayerSpecificSettings* f9,
-    PracticeSettings* f10,
-    EnvironmentsListModel* f11,
-    StringW f12,
-    bool f13,
-    bool f14,
-    System::Action* f15,
-    System::Action_1<Zenject::DiContainer*>* f16,
-    System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f17,
-    System::Action_2<UnityW<StandardLevelScenesTransitionSetupDataSO>, LevelCompletionResults*>* f18,
-    System::Nullable_1<RecordingToolManager::SetupData> f19
-) {
-    Playback::ProcessStart(f8, f10, f9);
-    MenuTransitionsHelper_StartStandardLevel(self, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19);
+MAKE_AUTO_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, &GlobalNamespace::MenuTransitionsHelper::StartStandardLevel, void,
+                GlobalNamespace::MenuTransitionsHelper* self,
+                ::GlobalNamespace::GameMode gameMode,
+                ::by_ref<::GlobalNamespace::BeatmapKey const> beatmapKey,
+                ::GlobalNamespace::BeatmapLevel* beatmapLevel,
+                ::GlobalNamespace::OverrideEnvironmentSettings* overrideEnvironmentSettings,
+                ::GlobalNamespace::ColorScheme* playerOverrideColorScheme,
+                bool playerOverrideLightshowColors,
+                ::GlobalNamespace::GameplayModifiers* gameplayModifiers,
+                ::GlobalNamespace::PlayerSpecificSettings* playerSpecificSettings,
+                ::GlobalNamespace::PracticeSettings* practiceSettings,
+                ::GlobalNamespace::EnvironmentsListModel* environmentsListModel,
+                ::GlobalNamespace::GameplayAdditionalInformation* gameplayAdditionalInformation,
+                ::System::Action* beforeSceneSwitchToGameplayCallback,
+                ::System::Action_1<::Zenject::DiContainer*>* afterSceneSwitchToGameplayCallback,
+                ::System::Action_2<::GlobalNamespace::StandardLevelScenesTransitionSetupData*, ::GlobalNamespace::LevelCompletionResults*>* levelFinishedCallback,
+                ::System::Action_2<::GlobalNamespace::StandardLevelScenesTransitionSetupData*, ::GlobalNamespace::LevelCompletionResults*>* levelRestartedCallback,
+                ::GlobalNamespace::IBeatmapLevelData* beatmapLevelData) {
+    Playback::ProcessStart(gameplayModifiers, practiceSettings, playerSpecificSettings);
+    MenuTransitionsHelper_StartStandardLevel(self, gameMode, beatmapKey, beatmapLevel, overrideEnvironmentSettings, playerOverrideColorScheme, playerOverrideLightshowColors, gameplayModifiers, playerSpecificSettings, practiceSettings, environmentsListModel, gameplayAdditionalInformation, beforeSceneSwitchToGameplayCallback, afterSceneSwitchToGameplayCallback, levelFinishedCallback, levelRestartedCallback, beatmapLevelData);
 }
 
 // set saber positions
@@ -272,74 +256,43 @@ MAKE_AUTO_HOOK_MATCH(
 MAKE_AUTO_HOOK_MATCH(AudioTimeSyncController_Update, &AudioTimeSyncController::Update, void, AudioTimeSyncController* self) {
     auto state = self->_state;
     if (!Camera::UpdateTime(self))
-        self->_state = AudioTimeSyncController::State::Stopped;
+        self->_state = ::GlobalNamespace::IAudioTimeSource_State::Stopped;
     AudioTimeSyncController_Update(self);
     self->_state = state;
 }
 
 // prevent replays from adding to stats
-MAKE_AUTO_HOOK_MATCH(
-    LevelCompletionResults_ctor,
-    &LevelCompletionResults::_ctor,
-    void,
-    LevelCompletionResults* self,
-    GameplayModifiers* gameplayModifiers,
-    int modifiedScore,
-    int multipliedScore,
-    RankModel::Rank rank,
-    bool fullCombo,
-    float leftSaberMovementDistance,
-    float rightSaberMovementDistance,
-    float leftHandMovementDistance,
-    float rightHandMovementDistance,
-    LevelCompletionResults::LevelEndStateType levelEndStateType,
-    LevelCompletionResults::LevelEndAction levelEndAction,
-    float energy,
-    int goodCutsCount,
-    int badCutsCount,
-    int missedCount,
-    int notGoodCount,
-    int okCount,
-    int maxCutScore,
-    int totalCutScore,
-    int goodCutsCountForNotesWithFullScoreScoringType,
-    float averageCenterDistanceCutScoreForNotesWithFullScoreScoringType,
-    float averageCutScoreForNotesWithFullScoreScoringType,
-    int maxCombo,
-    float endSongTime,
-    bool invalidated
-) {
+MAKE_AUTO_HOOK_MATCH(LevelCompletionResults_ctor, &GlobalNamespace::LevelCompletionResults::_ctor, void,
+                GlobalNamespace::LevelCompletionResults* self,
+                ::GlobalNamespace::GameplayModifiers* gameplayModifiers,
+                ::GlobalNamespace::LevelScore score,
+                ::GlobalNamespace::RankModel_Rank rank,
+                bool fullCombo,
+                float_t leftSaberMovementDistance,
+                float_t rightSaberMovementDistance,
+                float_t leftHandMovementDistance,
+                float_t rightHandMovementDistance,
+                ::GlobalNamespace::LevelCompletionResultsBase_LevelEndStateType levelEndStateType,
+                ::GlobalNamespace::LevelCompletionResultsBase_LevelEndAction levelEndAction,
+                float_t energy,
+                int32_t goodCutsCount,
+                int32_t badCutsCount,
+                int32_t missedCutsCount,
+                int32_t notGoodCount,
+                int32_t okCount,
+                int32_t maxCutScore,
+                int32_t totalCutScore,
+                int32_t goodCutsCountForNotesWithFullScoreScoringType,
+                float_t averageCenterDistanceCutScoreForNotesWithFullScoreScoringType,
+                float_t averageCutScoreForNotesWithFullScoreScoringType,
+                int32_t maxCombo,
+                float_t endSongTime,
+                bool invalidated,
+                float_t startSongTime) {
     if (Manager::Replaying())
         invalidated = true;
 
-    LevelCompletionResults_ctor(
-        self,
-        gameplayModifiers,
-        modifiedScore,
-        multipliedScore,
-        rank,
-        fullCombo,
-        leftSaberMovementDistance,
-        rightSaberMovementDistance,
-        leftHandMovementDistance,
-        rightHandMovementDistance,
-        levelEndStateType,
-        levelEndAction,
-        energy,
-        goodCutsCount,
-        badCutsCount,
-        missedCount,
-        notGoodCount,
-        okCount,
-        maxCutScore,
-        totalCutScore,
-        goodCutsCountForNotesWithFullScoreScoringType,
-        averageCenterDistanceCutScoreForNotesWithFullScoreScoringType,
-        averageCutScoreForNotesWithFullScoreScoringType,
-        maxCombo,
-        endSongTime,
-        invalidated
-    );
+    LevelCompletionResults_ctor(self, gameplayModifiers, score, rank, fullCombo, leftSaberMovementDistance, rightSaberMovementDistance, leftHandMovementDistance, rightHandMovementDistance, levelEndStateType, levelEndAction, energy, goodCutsCount, badCutsCount, missedCutsCount, notGoodCount, okCount, maxCutScore, totalCutScore, goodCutsCountForNotesWithFullScoreScoringType, averageCenterDistanceCutScoreForNotesWithFullScoreScoringType, averageCutScoreForNotesWithFullScoreScoringType, maxCombo, endSongTime, invalidated, startSongTime);
 }
 
 // disable results view controller for replays
@@ -482,7 +435,9 @@ MAKE_AUTO_HOOK_MATCH(GameSongController_LateUpdate, &GameSongController::LateUpd
 }
 
 // fix distortions in renders
-MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversion, int passMode) {
+// Unity 6000.3: gles::InitializeBlitFramebuffer(BlitFramebufferDrawQuad&, BlitFramebufferColorSpaceConversion, SinglePassStereo)
+// returns whether the draw quad program is ready; the program id is still the first field of the draw quad.
+MAKE_HOOK(initialize_blit_fbo, (nullptr), bool, void* drawQuad, int conversion, int passMode) {
     int& programId = *(int*) drawQuad;
     if (Camera::reinitDistortions != -1) {
         glDeleteProgram(programId);
@@ -492,14 +447,22 @@ MAKE_HOOK_NO_CATCH(initialize_blit_fbo, 0x0, void, void* drawQuad, int conversio
     Camera::reinitDistortions = -1;
 
     if (programId != 0)
-        return;
+        return true;
 
-    initialize_blit_fbo(drawQuad, conversion, passMode);
+    return initialize_blit_fbo(drawQuad, conversion, passMode);
 }
 
 AUTO_HOOK_FUNCTION(blit_fbo) {
-    uintptr_t initialize_blit_fbo_addr = findPattern(
-        baseAddr("libunity.so"), "fd 7b ba a9 fc 6f 01 a9 fa 67 02 a9 f8 5f 03 a9 f6 57 04 a9 f4 4f 05 a9 ff 83 0b d1 58 d0 3b d5 08", 0x2000000
+    // gles::InitializeBlitFramebuffer, verified in the 1.46.0 libunity.
+    bool multiple = false;
+    uintptr_t initialize_blit_fbo_addr = i2c::binary::libunity_unique_pattern(
+        multiple,
+        "fd 0f 1b f8 fe 67 01 a9 f8 5f 02 a9 f6 57 03 a9 f4 4f 04 a9 ff 43 0b d1 57 d0 3b d5 e8 16 40 f9 e8 67 01 f9 08 00 40 b9 68 00 00 34",
+        "Replay InitializeBlitFramebuffer"
     );
-    INSTALL_HOOK_DIRECT(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
+    if (!initialize_blit_fbo_addr || multiple) {
+        logger.warn("Unique InitializeBlitFramebuffer not found in libunity.so, render distortion fix disabled");
+        return;
+    }
+    INSTALL_HOOK(logger, initialize_blit_fbo, (void*) initialize_blit_fbo_addr);
 }

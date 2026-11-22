@@ -1,3 +1,4 @@
+#include "beatsaber-hook/shared/utils.hpp"
 #include "camera.hpp"
 
 #include "BeatSaber/Settings/QualitySettings.hpp"
@@ -23,10 +24,10 @@
 #include "hollywood/shared/hollywood.hpp"
 #include "manager.hpp"
 #include "math.hpp"
-#include "metacore/shared/game.hpp"
-#include "metacore/shared/internals.hpp"
+#include "metacore-bs/shared/game.hpp"
+#include "metacore-bs/shared/internals.hpp"
 #include "metacore/shared/operators.hpp"
-#include "metacore/shared/songs.hpp"
+#include "metacore-bs/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
 #include "playback.hpp"
 #include "utils.hpp"
@@ -56,7 +57,7 @@ Hollywood::CameraCapture* videoCapture = nullptr;
 std::fstream videoOutput;
 
 static void SetGraphicsSettings() {
-    auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SettingsApplicatorSO*>()->First();
+    auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SettingsApplicatorSO*>().front();
     auto settings = BeatSaber::Settings::Settings();
     settings.quality.vrResolutionScale = 0.8;
 
@@ -98,7 +99,7 @@ static void SetGraphicsSettings() {
 }
 
 static void UnsetGraphicsSettings() {
-    auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::VRRenderingParamsSetup*>()->First();
+    auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::VRRenderingParamsSetup*>().front();
     renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
     logger.info("reset graphics settings");
 }

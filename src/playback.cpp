@@ -13,9 +13,9 @@
 #include "UnityEngine/Time.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "manager.hpp"
-#include "metacore/shared/events.hpp"
-#include "metacore/shared/internals.hpp"
-#include "metacore/shared/stats.hpp"
+#include "metacore-bs/shared/events.hpp"
+#include "metacore-bs/shared/internals.hpp"
+#include "metacore-bs/shared/stats.hpp"
 #include "utils.hpp"
 
 using namespace GlobalNamespace;
@@ -100,7 +100,7 @@ namespace Events {
     static float wallEnergyLoss;
 
     static void RunNoteEvent(Replay::Events::Note const& noteEvent, NoteController* controller) {
-        static auto sendCut = il2cpp_utils::FindMethodUnsafe(classof(NoteController*), "SendNoteWasCutEvent", 1);
+        static auto sendCut = i2c::find_method(i2c::class_of<NoteController*>(), {"SendNoteWasCutEvent", 1});
 
         bool left = Utils::IsLeft(noteEvent, events->hasBombCutInfo);
         auto sabers = MetaCore::Internals::saberManager;
@@ -116,11 +116,11 @@ namespace Events {
                     cutInfo.timeDeviation = controller->noteData->time - noteEvent.time;
                 }
                 Frames::lastCutTime = noteEvent.time;
-                il2cpp_utils::RunMethod<void, false>(controller, sendCut, byref(cutInfo));
+                i2c::run_method<void>(controller, sendCut, by_ref(cutInfo));
             }
             case Replay::Events::NoteInfo::Type::BOMB: {
                 auto cutInfo = Utils::GetBombCutInfo(controller, saber);
-                il2cpp_utils::RunMethod<void, false>(controller, sendCut, byref(cutInfo));
+                i2c::run_method<void>(controller, sendCut, by_ref(cutInfo));
                 break;
             }
             case Replay::Events::NoteInfo::Type::MISS:

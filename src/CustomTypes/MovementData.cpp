@@ -52,7 +52,7 @@ float MovementData::ComputeSwingRatingOverload() {
 }
 
 ISaberMovementData* MovementData::Create(ISaberMovementData* baseData, float before, float after) {
-    auto movementData = CRASH_UNLESS(il2cpp_utils::New<MovementData*>());
+    auto movementData = i2c::new_ctor<MovementData*>();
     movementData->baseData = baseData;
     movementData->beforeCutRating = before;
     movementData->afterCutRating = after;

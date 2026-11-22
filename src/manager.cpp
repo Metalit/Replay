@@ -1,3 +1,5 @@
+#include "GlobalNamespace/GameplayType.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicExtensions.hpp"
 #include "manager.hpp"
 
 #include "CustomTypes/ReplayMenu.hpp"
@@ -7,11 +9,11 @@
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "camera.hpp"
 #include "config.hpp"
-#include "metacore/shared/events.hpp"
-#include "metacore/shared/game.hpp"
-#include "metacore/shared/input.hpp"
-#include "metacore/shared/internals.hpp"
-#include "metacore/shared/songs.hpp"
+#include "metacore-bs/shared/events.hpp"
+#include "metacore-bs/shared/game.hpp"
+#include "metacore-bs/shared/input.hpp"
+#include "metacore-bs/shared/internals.hpp"
+#include "metacore-bs/shared/songs.hpp"
 #include "parsing.hpp"
 #include "pause.hpp"
 #include "playback.hpp"
@@ -45,7 +47,7 @@ static void SelectFromConfig(int index, bool render) {
     }
 
     auto main = MetaCore::Game::GetMainFlowCoordinator();
-    auto map = main->_beatmapLevelsModel->GetBeatmapLevel(level.ID);
+    auto map = main->_beatmapLevelsModel->GetBeatmapLevel(level.ID, false);
     auto pack = main->_beatmapLevelsModel->GetLevelPackForLevelId(level.ID);
     if (!map) {
         logger.debug("level id {} not found", level.ID);
@@ -56,7 +58,7 @@ static void SelectFromConfig(int index, bool render) {
     }
     logger.debug("found level {} ({}) for id {}", fmt::ptr(map), map->songName, level.ID);
 
-    MetaCore::Songs::SelectLevel({Utils::GetCharacteristic(level.Characteristic), level.Difficulty, level.ID}, pack);
+    MetaCore::Songs::SelectLevel({GlobalNamespace::BeatmapCharacteristicExtensions::AsEnum(Utils::GetCharacteristic(level.Characteristic)), (GlobalNamespace::BeatmapDifficulty) level.Difficulty, level.ID, GlobalNamespace::GameplayType::BeatSaber}, pack);
 
     if (tempReplays.contains(level.ReplayHash))
         Manager::SetExternalReplay("", tempReplays[level.ReplayHash]);
@@ -89,7 +91,7 @@ void Manager::SaveCurrentLevelInConfig() {
 
     level.ID = (std::string) map.levelId;
     level.Difficulty = (int) map.difficulty;
-    level.Characteristic = (std::string) map.beatmapCharacteristic->serializedName;
+    level.Characteristic = (std::string) std::string(::GlobalNamespace::BeatmapCharacteristicExtensions::SerializedName(map.characteristic));
     level.ReplayHash = info.hash;
     level.ReplayDesc = fmt::format("{} {}", info.source, Utils::GetStatusString(info));
     level.Temporary = !AreReplaysLocal();
@@ -104,7 +106,7 @@ static std::vector<LevelSelection>::iterator FindCurrentLevel(std::vector<LevelS
     if (!current.IsValid())
         return levels.end();
     for (auto level = levels.begin(); level != levels.end(); level++) {
-        if (level->ID == current.levelId && level->Characteristic == current.beatmapCharacteristic->_serializedName &&
+        if (level->ID == current.levelId && level->Characteristic == std::string(GlobalNamespace::BeatmapCharacteristicExtensions::SerializedName(current.characteristic)) &&
             level->Difficulty == (int) current.difficulty && level->ReplayHash == Manager::GetCurrentInfo().hash)
             return level;
     }
@@ -263,7 +265,7 @@ ON_EVENT(MetaCore::Events::MapSelected) {
     auto map = MetaCore::Songs::GetSelectedKey();
     replays = Parsing::GetReplays(map);
     local = true;
-    hasRotations = map.beatmapCharacteristic->_containsRotationEvents;
+    hasRotations = GlobalNamespace::BeatmapCharacteristicExtensions::ContainsRotationEvents(map.characteristic);
     Replay::MenuView::CreateShortcut();
     Replay::MenuView::SetEnabled(!replays.empty());
 }

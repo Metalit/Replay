@@ -16,7 +16,7 @@
 #include "config.hpp"
 #include "main.hpp"
 #include "manager.hpp"
-#include "metacore/shared/songs.hpp"
+#include "metacore-bs/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
 #include "metacore/shared/unity.hpp"
 #include "parsing.hpp"
@@ -112,7 +112,7 @@ static std::string GetLayeredText(std::string const& label, std::string const& t
     return fmt::format("<i><uppercase><color=#bdbdbd>{}</color></uppercase>{}{}</i>", label, newline ? "\n" : "", text);
 }
 
-static UI::Toggle* AddConfigValueToggle(Transform* parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+static UI::Toggle* AddConfigValueToggle(Transform* parent, ConfigUtils::ValueOf<bool> auto& configValue, auto callback) {
     auto object = BSML::Lite::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), [&configValue, callback](bool value) {
         configValue.SetValue(value);
         callback(value);
@@ -136,7 +136,7 @@ void Replay::MenuView::DidActivate(bool firstActivation, bool addedToHierarchy, 
     SetPreferred(mainLayout, 80, std::nullopt);
 
     auto levelBarTemplate =
-        Resources::FindObjectsOfTypeAll<LevelBar*>()->First([](LevelBar* x) { return x->transform->parent->name == "PracticeViewController"; });
+        Resources::FindObjectsOfTypeAll<LevelBar*>().front([](LevelBar* x) { return x->transform->parent->name == "PracticeViewController"; });
     levelBar = Object::Instantiate(levelBarTemplate, mainLayout->transform);
     levelBar->name = "ReplayLevelBarSimple";
     SetPreferred(levelBar, std::nullopt, 20);
@@ -228,7 +228,7 @@ void Replay::MenuView::UpdateUI(bool getData) {
         });
     }
 
-    levelBar->Setup(level, beatmap.difficulty, beatmap.beatmapCharacteristic);
+    levelBar->Setup(level, beatmap.difficulty, beatmap.characteristic);
     float songLength = level->songDuration;
 
     auto& info = Manager::GetCurrentInfo();
@@ -258,8 +258,8 @@ void Replay::MenuView::UpdateUI(bool getData) {
     increment->set_Value(selectedReplay);
     increment->maxValue = Manager::GetReplaysCount();
     auto buttons = increment->transform->GetChild(1)->GetComponentsInChildren<UI::Button*>();
-    buttons->First()->interactable = selectedReplay != increment->minValue;
-    buttons->Last()->interactable = selectedReplay != increment->maxValue;
+    buttons.front()->interactable = selectedReplay != increment->minValue;
+    buttons.back()->interactable = selectedReplay != increment->maxValue;
 
     increment->gameObject->SetActive(increment->minValue != increment->maxValue);
 }

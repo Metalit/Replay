@@ -1,3 +1,4 @@
+#include "GlobalNamespace/BeatmapCharacteristicExtensions.hpp"
 #include "utils.hpp"
 
 #include "BGLib/Polyglot/Localization.hpp"
@@ -19,9 +20,9 @@
 #include "UnityEngine/Resources.hpp"
 #include "assets.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
-#include "metacore/shared/game.hpp"
+#include "metacore-bs/shared/game.hpp"
 #include "metacore/shared/maps.hpp"
-#include "metacore/shared/songs.hpp"
+#include "metacore-bs/shared/songs.hpp"
 #include "metacore/shared/strings.hpp"
 #include "web-utils/shared/WebUtils.hpp"
 
@@ -106,7 +107,7 @@ std::string Utils::GetCharacteristicName(std::string serializedName) {
 std::string Utils::GetMapString() {
     std::string songName = MetaCore::Songs::GetSelectedLevel()->songName;
     std::string songAuthor = MetaCore::Songs::GetSelectedLevel()->songAuthorName;
-    std::string characteristic = GetCharacteristicName(MetaCore::Songs::GetSelectedKey().beatmapCharacteristic);
+    std::string characteristic = GetCharacteristicName(std::string(GlobalNamespace::BeatmapCharacteristicExtensions::SerializedName(MetaCore::Songs::GetSelectedKey().characteristic)));
     std::string difficulty = GetDifficultyName(MetaCore::Songs::GetSelectedKey().difficulty);
     return fmt::format("{} - {} ({} {})", songAuthor, songName, characteristic, difficulty);
 }
