@@ -92,7 +92,7 @@
       },
       {
         "id": "hollywood",
-        "versionRange": "^1.3.1",
+        "versionRange": "^1.3.3",
         "additionalData": {}
       },
       {
@@ -429,13 +429,13 @@
     {
       "dependency": {
         "id": "hollywood",
-        "versionRange": "=1.3.1",
+        "versionRange": "=1.3.3",
         "additionalData": {
           "overrideSoName": "libhollywood.so",
           "cmake": true
         }
       },
-      "version": "1.3.1"
+      "version": "1.3.3"
     }
   ]
 }

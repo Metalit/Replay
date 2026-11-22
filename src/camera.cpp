@@ -1,5 +1,8 @@
 #include "beatsaber-hook/shared/utils.hpp"
 #include "camera.hpp"
+#include "beatsaber-hook/shared/safeptr.hpp"
+#include <limits>
+#include <stdexcept>
 
 #include "BeatSaber/Settings/QualitySettings.hpp"
 #include "BeatSaber/Settings/Settings.hpp"
@@ -45,19 +48,22 @@ static Quaternion baseCameraRotation;
 
 int Camera::reinitDistortions = -1;
 
-static Replay::CameraRig* cameraRig = nullptr;
-UnityEngine::Camera* mainCamera = nullptr;
+static safe_ptr<Replay::CameraRig*> cameraRig;
+static safe_ptr<UnityEngine::Camera*> mainCamera;
 int oldCullingMask = 0;
 int uiCullingMask = 1 << 5;
 
 static bool moving = false;
 
-Hollywood::AudioCapture* audioCapture = nullptr;
-Hollywood::CameraCapture* videoCapture = nullptr;
+static safe_ptr<Hollywood::AudioCapture*> audioCapture;
+static safe_ptr<Hollywood::CameraCapture*> videoCapture;
+static std::vector<safe_ptr<UnityEngine::AudioListener*>> disabledListeners;
 std::fstream videoOutput;
 
 static void SetGraphicsSettings() {
-    auto applicator = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SettingsApplicatorSO*>().front();
+    auto applicators = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::SettingsApplicatorSO*>();
+    if (applicators.empty() || !applicators.front()) return;
+    auto applicator = applicators.front();
     auto settings = BeatSaber::Settings::Settings();
     settings.quality.vrResolutionScale = 0.8;
 
@@ -99,26 +105,48 @@ static void SetGraphicsSettings() {
 }
 
 static void UnsetGraphicsSettings() {
-    auto renderSetup = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::VRRenderingParamsSetup*>().front();
+    auto setups = UnityEngine::Resources::FindObjectsOfTypeAll<GlobalNamespace::VRRenderingParamsSetup*>();
+    if (setups.empty() || !setups.front() || !setups.front()->_applicator) return;
+    auto renderSetup = setups.front();
     renderSetup->_applicator->Apply(GlobalNamespace::SceneType::Menu, "");
     logger.info("reset graphics settings");
 }
 
-static void SetupRecording() {
-    SetGraphicsSettings();
+static bool SetupRecording() {
+    int preset = getConfig().Resolution.GetValue();
+    int width = getConfig().OverrideWidth.GetValue();
+    int height = getConfig().OverrideHeight.GetValue();
+    int fps = getConfig().FPS.GetValue();
+    int bitMult = getConfig().HEVC.GetValue() ? 1000 : 2000;
+    int bitrate = getConfig().Bitrate.GetValue();
+    if (((width <= 0 || height <= 0) && (preset < 0 || size_t(preset) >= Resolutions.size())) ||
+        fps <= 0 || bitrate <= 0 || bitrate > std::numeric_limits<int>::max() / bitMult) {
+        logger.error("Invalid recording settings; continuing replay without recording");
+        return false;
+    }
+    if (width <= 0) width = Resolutions[preset].first;
+    if (height <= 0) height = Resolutions[preset].second;
 
     logger.info("Setting up recording");
     fileName = MetaCore::Strings::SanitizedPath(Utils::GetMapString());
     logger.info("Using filename: {}", fileName);
 
-    logger.info("Keeping screen on");
-    Hollywood::SetScreenOn(true);
-
     logger.info("Beginning video capture");
-    auto customCamera = UnityEngine::Object::Instantiate(mainCamera);
+    auto customCamera = UnityEngine::Object::Instantiate(mainCamera.ptr());
     customCamera->tag = "Untagged";
     customCamera->gameObject->active = false;
     customCamera->enabled = true;
+    auto failed = [&]() {
+        logger.error("Recording setup failed; continuing replay without recording");
+        // Components added while inactive may never receive Unity's OnDestroy.
+        if (videoCapture) videoCapture->Stop();
+        if (audioCapture) audioCapture->Save();
+        UnityEngine::Object::DestroyImmediate(customCamera->gameObject);
+        videoCapture.clear();
+        audioCapture.clear();
+        videoOutput.close();
+        return false;
+    };
 
     int kept = 0;
     while (customCamera->transform->childCount > kept) {
@@ -149,37 +177,41 @@ static void SetupRecording() {
 
     customCamera->stereoTargetEye = UnityEngine::StereoTargetEyeMask::None;
 
-    int width = getConfig().OverrideWidth.GetValue();
-    int height = getConfig().OverrideHeight.GetValue();
-
-    if (width <= 0)
-        width = Resolutions[getConfig().Resolution.GetValue()].first;
-    if (height <= 0)
-        height = Resolutions[getConfig().Resolution.GetValue()].second;
-
     videoCapture = customCamera->gameObject->AddComponent<Hollywood::CameraCapture*>();
+    videoOutput.clear();
     videoOutput.open(TmpVidPath, std::ios::out | std::ios::binary);
+    if (!videoOutput) return failed();
     videoCapture->onOutputUnit = [](uint8_t* data, size_t len) {
         videoOutput.write((char*) data, len);
+        if (!videoOutput) throw std::runtime_error("Video output write failed");
     };
-    int bitMult = getConfig().HEVC.GetValue() ? 1000 : 2000;
     videoCapture->Init(
         width, height, getConfig().FPS.GetValue(), getConfig().Bitrate.GetValue() * bitMult, getConfig().FOV.GetValue(), getConfig().HEVC.GetValue()
     );
 
-    UnityEngine::Time::set_captureDeltaTime(1 / (float) getConfig().FPS.GetValue());
-
-    Hollywood::SetSyncTimes(true);
+    if (!videoCapture->IsRecording()) return failed();
 
     logger.info("Beginning audio capture");
 
-    auto audioListener = customCamera->GetComponentInChildren<UnityEngine::AudioListener*>();
+    auto audioListener = customCamera->GetComponentInChildren<UnityEngine::AudioListener*>(true);
+    if (!audioListener) return failed();
     audioCapture = audioListener->gameObject->AddComponent<Hollywood::AudioCapture*>();
     audioCapture->OpenFile(TmpAudPath);
+    if (!audioCapture->IsRendering()) return failed();
+
+    SetGraphicsSettings();
+    UnityEngine::Time::set_captureDeltaTime(1 / (float) fps);
+    Hollywood::SetSyncTimes(true);
+    Hollywood::SetScreenOn(true);
 
     // make sure other audio listeners are disabled
-    for (auto listener : UnityEngine::Object::FindObjectsOfType<UnityEngine::AudioListener*>())
-        listener->enabled = listener == audioListener;
+    for (auto listener : UnityEngine::Object::FindObjectsOfType<UnityEngine::AudioListener*>()) {
+        if (listener != audioListener && listener->enabled) {
+            disabledListeners.emplace_back(listener);
+            listener->enabled = false;
+        }
+    }
+    audioListener->enabled = true;
 
     customCamera->gameObject->active = true;
 
@@ -192,6 +224,7 @@ static void SetupRecording() {
     mainCamera->cullingMask = uiCullingMask;
 
     Camera::reinitDistortions = 0;
+    return true;
 }
 
 static Replay::Transform const& GetHead() {
@@ -218,7 +251,7 @@ static void ResetBasePosition() {
 static void SetMoving(bool value) {
     if (moving == value)
         return;
-    if (!value) {
+    if (!value && cameraRig) {
         getConfig().ThirdPerPos.SetValue(cameraRig->GetPosition());
         getConfig().ThirdPerRot.SetValue(cameraRig->GetRotation().eulerAngles);
     }
@@ -275,6 +308,11 @@ void Camera::SetupCamera() {
     logger.debug("setting up camera");
     // set culling matrix for moved camera modes and for rendering
     mainCamera = UnityEngine::Camera::get_main();
+    if (!mainCamera) {
+        logger.error("Replay could not find the main camera");
+        Manager::StopRendering();
+        return;
+    }
 
     auto mat = UnityEngine::Matrix4x4::Ortho(-99999, 99999, -99999, 99999, 0.001, 99999);
     mat = (mat * MatrixTranslate(Vector3::forward() * -49999.5)) * mainCamera->worldToCameraMatrix;
@@ -286,24 +324,25 @@ void Camera::SetupCamera() {
         mask &= ~(1 << 6);
     else
         mask &= ~(1 << 3);
-    if (!mainCamera->GetComponent<GlobalNamespace::MainCameraCullingMask*>()->_initData->showDebris)
+    auto culling = mainCamera->GetComponent<GlobalNamespace::MainCameraCullingMask*>();
+    if (culling && culling->_initData && !culling->_initData->showDebris)
         mask &= ~(1 << 9);
     mainCamera->cullingMask = mask;
 
-    if (Manager::Rendering())
-        SetupRecording();
+    if (Manager::Rendering() && !SetupRecording())
+        Manager::StopRendering();
 
     cameraRig = Replay::CameraRig::Create(mainCamera->transform);
     ResetBasePosition();
     moving = false;
 }
 
-static void FinishMux() {
-    if (getConfig().CleanFiles.GetValue()) {
+static void FinishMux(bool published) {
+    if (published && getConfig().CleanFiles.GetValue()) {
         if (fileexists(TmpVidPath))
-            std::filesystem::remove(TmpVidPath);
+            { std::error_code error; std::filesystem::remove(TmpVidPath, error); }
         if (fileexists(TmpAudPath))
-            std::filesystem::remove(TmpAudPath);
+            { std::error_code error; std::filesystem::remove(TmpAudPath, error); }
     }
 
     logger.info("Removing screen on");
@@ -319,14 +358,16 @@ static void DoMux() {
     while (fileexists(outputFile))
         outputFile = fmt::format("{}/{}_{}.mp4", RendersFolder, fileName, num++);
 
-    Hollywood::MuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath, getConfig().FPS.GetValue());
+    bool published = false;
+    bool muxed = Hollywood::TryMuxFilesSync(TmpVidPath, TmpAudPath, TmpOutPath, getConfig().FPS.GetValue());
 
-    if (fileexists(TmpOutPath)) {
+    if (muxed && fileexists(TmpOutPath)) {
         // idk how but I got a "no such file or directory" error here once
         int tries = 2;
         while (tries-- > 0) {
             try {
                 std::filesystem::rename(TmpOutPath, outputFile);
+                published = true;
                 break;
             } catch (std::exception const& e) {
                 logger.error("filesystem error renaming file {} -> {}: {}", TmpOutPath, outputFile, e.what());
@@ -334,7 +375,8 @@ static void DoMux() {
             }
         }
     }
-    FinishMux();
+    if (!published) logger.error("Mux failed; raw audio/video files were preserved");
+    FinishMux(published);
 }
 
 static void WaitThenMux() {
@@ -345,23 +387,28 @@ static void WaitThenMux() {
         BSML::MainThreadScheduler::ScheduleAfterTime(5, DoMux);
     else {
         logger.error("Cannot mux. Video exists: {} Audio exists: {}", vidExists, audExists);
-        FinishMux();
+        FinishMux(false);
     }
 }
 
 void Camera::FinishReplay() {
-    mainCamera = nullptr;
+    Hollywood::SetSyncTimes(false);
+    if (Manager::Rendering()) UnityEngine::Time::set_captureDeltaTime(0);
+    for (auto& listener : disabledListeners)
+        if (listener) listener->enabled = true;
+    disabledListeners.clear();
+    mainCamera.clear();
     oldCullingMask = 0;
 
     if (audioCapture)
-        UnityEngine::Object::DestroyImmediate(audioCapture);
-    audioCapture = nullptr;
+        UnityEngine::Object::DestroyImmediate(audioCapture.ptr());
+    audioCapture.clear();
     if (videoCapture)
         UnityEngine::Object::DestroyImmediate(videoCapture->gameObject);
-    videoCapture = nullptr;
+    videoCapture.clear();
     if (cameraRig)
-        UnityEngine::Object::DestroyImmediate(cameraRig);
-    cameraRig = nullptr;
+        UnityEngine::Object::DestroyImmediate(cameraRig.ptr());
+    cameraRig.clear();
 
     if (Manager::Rendering()) {
         Hollywood::SetSyncTimes(false);
@@ -380,6 +427,7 @@ void Camera::OnPause() {
     if (mainCamera && Manager::Rendering())
         mainCamera->cullingMask = oldCullingMask;
     SetMoving(false);
+    if (!cameraRig) return;
     cameraRig->SetTrackingEnabled(true, false);
     cameraRig->progress->active = false;
 }
@@ -387,15 +435,25 @@ void Camera::OnPause() {
 void Camera::OnUnpause() {
     if (mainCamera && Manager::Rendering())
         mainCamera->cullingMask = uiCullingMask;
+    if (!cameraRig) return;
     cameraRig->SetTrackingEnabled(false, false);
     cameraRig->progress->active = Manager::Rendering();
 }
 
 void Camera::OnRestart() {
     OnPause();
-
-    cameraRig = nullptr;
-    mainCamera = nullptr;
+    Hollywood::SetSyncTimes(false);
+    UnityEngine::Time::set_captureDeltaTime(0);
+    if (audioCapture) UnityEngine::Object::DestroyImmediate(audioCapture.ptr());
+    audioCapture.clear();
+    if (videoCapture) UnityEngine::Object::DestroyImmediate(videoCapture->gameObject);
+    videoCapture.clear();
+    videoOutput.close();
+    for (auto& listener : disabledListeners)
+        if (listener) listener->enabled = true;
+    disabledListeners.clear();
+    cameraRig.clear();
+    mainCamera.clear();
     oldCullingMask = 0;
 }
 

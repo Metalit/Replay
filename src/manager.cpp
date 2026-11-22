@@ -8,6 +8,7 @@
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "camera.hpp"
+#include "hollywood/shared/hollywood.hpp"
 #include "config.hpp"
 #include "metacore-bs/shared/events.hpp"
 #include "metacore-bs/shared/game.hpp"
@@ -193,6 +194,11 @@ void Manager::StartReplay(bool render) {
         for (auto& callback : callbacks)
             callback(data, size);
     }
+}
+
+void Manager::StopRendering() {
+    rendering = false;
+    Hollywood::SetScreenOn(false);
 }
 
 void Manager::CameraFinished() {

@@ -22,6 +22,7 @@ namespace Manager {
 
     void StartReplay(bool render);
     void CameraFinished();
+    void StopRendering();
 
     Replay::Data& GetCurrentReplay();
     Replay::Info& GetCurrentInfo();
