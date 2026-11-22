@@ -21,8 +21,8 @@
 #include "main.hpp"
 #include "manager.hpp"
 #include "metacore/shared/delegates.hpp"
-#include "metacore/shared/songs.hpp"
-#include "metacore/shared/ui.hpp"
+#include "metacore-bs/shared/songs.hpp"
+#include "metacore-bs/shared/ui.hpp"
 #include "metacore/shared/unity.hpp"
 #include "utils.hpp"
 
@@ -101,7 +101,7 @@ static std::pair<std::string, std::string> split(std::string const& str, auto de
     return std::make_pair(str.substr(0, pos), str.substr(pos + 1, std::string::npos));
 }
 
-static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<ButtonPair>& configValue) {
+static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ValueOf<ButtonPair> auto& configValue) {
     auto strs = split(configValue.GetName(), "|");
     auto value = configValue.GetValue();
     CreateInputDropdowns(
@@ -140,7 +140,7 @@ static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUt
     );
 }
 
-static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<Button>& configValue) {
+static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUtils::ValueOf<Button> auto& configValue) {
     auto value = configValue.GetValue();
     CreateInputDropdowns(
         parent,
@@ -161,7 +161,7 @@ static void AddConfigValueDropdown(BSML::Lite::TransformWrapper parent, ConfigUt
     );
 }
 
-static BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ConfigValue<bool>& configValue, auto callback) {
+static BSML::ToggleSetting* AddConfigValueToggle(BSML::Lite::TransformWrapper parent, ConfigUtils::ValueOf<bool> auto& configValue, auto callback) {
     auto object = BSML::Lite::CreateToggle(parent, configValue.GetName(), configValue.GetValue(), [&configValue, callback](bool value) mutable {
         configValue.SetValue(value);
         callback(value);
@@ -321,8 +321,8 @@ static void AddCoverlessCell(BSML::CustomListTableData* list, LevelSelection con
     std::string author = beatmap->songAuthorName;
     std::string mapper = "";
     std::string desc = "";
-    if (!beatmap->allMappers.Empty())
-        mapper = fmt::format(" [{}]", beatmap->allMappers->First());
+    if (!beatmap->allMappers.empty())
+        mapper = fmt::format(" [{}]", beatmap->allMappers.front());
     if (!level.ReplayDesc.empty())
         desc = fmt::format(" - {}", level.ReplayDesc);
     std::string subtext = fmt::format("{}{}{}", author, mapper, desc);

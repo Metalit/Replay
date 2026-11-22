@@ -1,3 +1,6 @@
+#include "beatsaber-hook/shared/utils.hpp"
+
+#include <filesystem>
 #include "main.hpp"
 
 #include "CustomTypes/ReplaySettings.hpp"
@@ -20,14 +23,15 @@ extern "C" void setup(CModInfo* info) {
 
     getConfig().Init(modInfo);
 
-    if (!direxists(RendersFolder))
+    std::error_code directoryError;
+    if (!std::filesystem::is_directory(RendersFolder, directoryError))
         mkpath(RendersFolder);
 
     logger.info("Completed setup!");
 }
 
 extern "C" void late_load() {
-    il2cpp_functions::Init();
+    i2c::functions::initialize();
     custom_types::Register::AutoRegister();
 
     // fix proximity sensor state just in case

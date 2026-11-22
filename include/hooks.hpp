@@ -1,6 +1,9 @@
 #pragma once
 
-#include "beatsaber-hook/shared/utils/hooking.hpp"
+#include <vector>
+
+#include "beatsaber-hook/shared/hooking.hpp"
+#include "paper2_scotland2/shared/logger.hpp"
 #include "main.hpp"
 
 class Hooks {
@@ -43,57 +46,13 @@ struct FunctionToMethod<C, R (*)(T, Ts...)> {
     static Auto_Install_##name_ Auto_Install_Instance_##name_;           \
     void Auto_Install_##name_::Install()
 
-#define AUTO_INSTALL_ORIG(name_) \
-    AUTO_HOOK_FUNCTION(Hook_##name_) { ::Hooking::InstallOrigHook<Hook_##name_>(logger); }
+// beatsaber-hook 9: hooks are declared and registered through the autohooks package.
+#include "autohooks/shared/hooks.hpp"
 
-#define AUTO_INSTALL(name_) \
-    AUTO_HOOK_FUNCTION(Hook_##name_) { ::Hooking::InstallHook<Hook_##name_>(logger); }
+#define MAKE_AUTO_HOOK_MATCH(name_, method, retval, ...) MAKE_LATE_HOOK_MATCH(name_, method, retval, __VA_ARGS__)
+#define MAKE_AUTO_HOOK_FIND(name_, info, retval, ...) MAKE_LATE_HOOK(name_, (info), retval, __VA_ARGS__)
+#define MAKE_AUTO_ORIG_HOOK_MATCH(name_, method, retval, ...) MAKE_LATE_ORIG_HOOK_MATCH(name_, method, retval, __VA_ARGS__)
+#define MAKE_AUTO_HOOK_ORIG_MATCH(name_, method, retval, ...) MAKE_LATE_ORIG_HOOK_MATCH(name_, method, retval, __VA_ARGS__)
 
-#define MAKE_AUTO_HOOK_MATCH(name_, mPtr, retval, ...)                                                                                           \
-    struct Hook_##name_ {                                                                                                                        \
-        static constexpr auto matchTest = []<class T>(T t) { return requires { static_cast<T>(mPtr); }; };                                       \
-        using funcType = retval (*)(__VA_ARGS__);                                                                                                \
-        using mType = FunctionToMethod<matchTest, funcType>::type;                                                                               \
-        static constexpr auto matches = matchTest((mType) nullptr);                                                                              \
-        static_assert(MATCH_HOOKABLE_ASSERT(static_cast<mType>(mPtr)));                                                                          \
-        constexpr static const char* name() { return #name_; }                                                                                   \
-        static const MethodInfo* getInfo() { return ::il2cpp_utils::il2cpp_type_check::MetadataGetter<static_cast<mType>(mPtr)>::methodInfo(); } \
-        static funcType* trampoline() { return &name_; }                                                                                         \
-        static inline retval (*name_)(__VA_ARGS__) = nullptr;                                                                                    \
-        static funcType hook() { return &::Hooking::HookCatchWrapper<&hook_##name_, funcType>::wrapper; }                                        \
-        static retval hook_##name_(__VA_ARGS__);                                                                                                 \
-    };                                                                                                                                           \
-    static_assert(Hook_##name_::matches, "Hook method signature does not match!");                                                               \
-    AUTO_INSTALL(name_)                                                                                                                          \
-    retval Hook_##name_::hook_##name_(__VA_ARGS__)
-
-#define MAKE_AUTO_ORIG_HOOK_MATCH(name_, mPtr, retval, ...)                                                                                      \
-    struct Hook_##name_ {                                                                                                                        \
-        static constexpr auto matchTest = []<class T>(T t) { return requires { static_cast<T>(mPtr); }; };                                       \
-        using funcType = retval (*)(__VA_ARGS__);                                                                                                \
-        using mType = FunctionToMethod<matchTest, funcType>::type;                                                                               \
-        static constexpr auto matches = matchTest((mType) nullptr);                                                                              \
-        static_assert(MATCH_HOOKABLE_ASSERT(static_cast<mType>(mPtr)));                                                                          \
-        constexpr static const char* name() { return #name_; }                                                                                   \
-        static const MethodInfo* getInfo() { return ::il2cpp_utils::il2cpp_type_check::MetadataGetter<static_cast<mType>(mPtr)>::methodInfo(); } \
-        static funcType* trampoline() { return &name_; }                                                                                         \
-        static inline retval (*name_)(__VA_ARGS__) = nullptr;                                                                                    \
-        static funcType hook() { return &::Hooking::HookCatchWrapper<&hook_##name_, funcType>::wrapper; }                                        \
-        static retval hook_##name_(__VA_ARGS__);                                                                                                 \
-    };                                                                                                                                           \
-    static_assert(Hook_##name_::matches, "Hook method signature does not match!");                                                               \
-    AUTO_INSTALL_ORIG(name_)                                                                                                                     \
-    retval Hook_##name_::hook_##name_(__VA_ARGS__)
-
-#define MAKE_AUTO_HOOK_FIND(name_, mInfo, retval, ...)                                                    \
-    struct Hook_##name_ {                                                                                 \
-        using funcType = retval (*)(__VA_ARGS__);                                                         \
-        constexpr static const char* name() { return #name_; }                                            \
-        static const MethodInfo* getInfo() { return mInfo; }                                              \
-        static funcType* trampoline() { return &name_; }                                                  \
-        static inline retval (*name_)(__VA_ARGS__) = nullptr;                                             \
-        static funcType hook() { return &::Hooking::HookCatchWrapper<&hook_##name_, funcType>::wrapper; } \
-        static retval hook_##name_(__VA_ARGS__);                                                          \
-    };                                                                                                    \
-    AUTO_INSTALL(name_)                                                                                   \
-    retval Hook_##name_::hook_##name_(__VA_ARGS__)
+// Installs the autohooks hooks together with this mod's other registered install functions.
+inline bool const PortAutoHooksRegistered = (::Hooks::AddInstallFunc(+[] { INSTALL_LATE_HOOKS(); }), true);

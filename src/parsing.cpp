@@ -1,3 +1,5 @@
+#include "beatsaber-hook/shared/utils.hpp"
+#include "GlobalNamespace/BeatmapCharacteristicExtensions.hpp"
 #include "parsing.hpp"
 
 #include <regex>
@@ -8,7 +10,7 @@
 #include "System/Collections/Generic/LinkedList_1.hpp"
 #include "config.hpp"
 #include "md5.hpp"
-#include "metacore/shared/songs.hpp"
+#include "metacore-bs/shared/songs.hpp"
 #include "utils.hpp"
 
 static std::string ReadLength(std::istream& input, int length) {
@@ -21,18 +23,17 @@ static std::string ReadLength(std::istream& input, int length) {
 std::string Parsing::GetFullHash(std::istream& input) {
     static constexpr int READ_BLOCK = joyee::BLOCK_SIZE * 256;
     input.seekg(0, std::ios::end);
-    size_t length = input.tellg();
+    auto end = input.tellg();
+    if (end < 0) throw Exception("Cannot determine replay size for hashing");
+    size_t remaining = static_cast<size_t>(end);
     input.seekg(0, std::ios::beg);
+    Parsing::CheckErrorState(input, "hash seek");
     joyee::MD5 md5;
-    size_t read = 0;
-    for (; read < length - READ_BLOCK; read += READ_BLOCK) {
-        md5.update(ReadLength(input, READ_BLOCK));
+    while (remaining > 0) {
+        auto count = std::min(remaining, size_t(READ_BLOCK));
+        md5.update(ReadLength(input, int(count)));
         Parsing::CheckErrorState(input, "hashing");
-    }
-    int remaining = length - read;
-    if (remaining > 0) {
-        md5.update(ReadLength(input, remaining));
-        Parsing::CheckErrorState(input, "hashing");
+        remaining -= count;
     }
     input.seekg(0, std::ios::beg);
     return md5.finalize().toString();
@@ -87,17 +88,17 @@ static std::string const BSORSuffix = ".bsor";
 static std::string const SSSuffix = ".dat";
 
 static std::string GetReqlaysPath() {
-    static auto path = getDataDir("Replay") + "replays/";
+    static auto path = get_data_dir("Replay") + "replays/";
     return path;
 }
 
 static std::string GetBSORsPath() {
-    static auto path = getDataDir("bl") + "replays/";
+    static auto path = get_data_dir("bl") + "replays/";
     return path;
 }
 
 static std::string GetSSReplaysPath() {
-    static auto path = getDataDir("ScoreSaber") + "replays/";
+    static auto path = get_data_dir("ScoreSaber") + "replays/";
     return path;
 }
 
@@ -106,7 +107,7 @@ static void GetReqlays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pai
 
     std::string hash = MetaCore::Songs::GetHash(beatmap);
     std::string diff = std::to_string((int) beatmap.difficulty);
-    std::string mode = beatmap.beatmapCharacteristic->compoundIdPartName;
+    std::string mode = GlobalNamespace::BeatmapCharacteristicExtensions::CompoundIdPartName(beatmap.characteristic);
     std::string reqlayName = GetReqlaysPath() + hash + diff + mode;
     tests.emplace_back(reqlayName + ReqlaySuffix1);
     tests.emplace_back(reqlayName + ReqlaySuffix2);
@@ -127,7 +128,7 @@ static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<
     std::string diffName = GlobalNamespace::BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
     if (diffName == "Unknown")
         diffName = "Error";
-    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
+    std::string characteristic = std::string(::GlobalNamespace::BeatmapCharacteristicExtensions::SerializedName(beatmap.characteristic));
 
     std::string hash = beatmap.levelId;
     if (hash.starts_with("custom_level_"))
@@ -152,7 +153,7 @@ static void GetBSORs(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<
 
 static void GetSSReplays(GlobalNamespace::BeatmapKey beatmap, std::vector<std::pair<std::string, std::shared_ptr<Replay::Data>>>& replays) {
     std::string diffName = GlobalNamespace::BeatmapDifficultySerializedMethods::SerializedName(beatmap.difficulty);
-    std::string characteristic = beatmap.beatmapCharacteristic->serializedName;
+    std::string characteristic = std::string(::GlobalNamespace::BeatmapCharacteristicExtensions::SerializedName(beatmap.characteristic));
     std::string levelHash = beatmap.levelId;
 
     if (levelHash.find("custom_level_") == std::string::npos)
@@ -371,7 +372,7 @@ void Parsing::RecalculateNotes(Replay::Data& replay, GlobalNamespace::IReadonlyB
     // then set its info and remove it from the pool (since multiple notes may have the same id)
     auto list = beatmapData->allBeatmapDataItems;
     for (auto i = list->head; i->next != list->head; i = i->next) {
-        auto noteData = il2cpp_utils::try_cast<GlobalNamespace::NoteData>(i->item).value_or(nullptr);
+        auto noteData = i2c::try_cast<GlobalNamespace::NoteData*>(i->item);
         if (!noteData)
             continue;
         auto iter = std::find_if(notes.begin(), notes.end(), [&events, noteData](auto note) {

@@ -9,7 +9,7 @@
             "android": {
                 "application": {
                     "package": "com.beatgames.beatsaber",
-                    "activity": "com.unity3d.player.UnityPlayerActivity"
+                    "activity": "com.unity3d.player.UnityPlayerGameActivity"
                 },
                 "lldbConfig": {
                     "sourceMaps": [],
@@ -27,7 +27,7 @@
             "android": {
                 "application": {
                     "package": "com.beatgames.beatsaber",
-                    "activity": "com.unity3d.player.UnityPlayerActivity"
+                    "activity": "com.unity3d.player.UnityPlayerGameActivity"
                 },
                 "lldbConfig": {
                     "sourceMaps": [],

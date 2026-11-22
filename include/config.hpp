@@ -1,6 +1,11 @@
 #pragma once
 
+#include "UnityEngine/Vector3.hpp"
 #include "config-utils/shared/config-utils.hpp"
+
+#include <map>
+#include <string>
+#include <vector>
 
 inline std::vector<std::pair<int, int>> Resolutions = {{640, 480}, {1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}};
 inline std::vector<std::string_view> CameraModes = {"Normal", "Smooth Camera", "Third Person"};
@@ -9,31 +14,37 @@ enum struct CameraMode { Headset, Smooth, ThirdPerson };
 enum struct InputButton { None, SideTrigger, FrontTrigger, LowerButton, UpperButton, JoystickUp, JoystickDown, JoystickLeft, JoystickRight };
 enum struct InputController { None, Left, Right };
 
-DECLARE_JSON_STRUCT(Button) {
-    VALUE(int, Button);
-    VALUE(int, Controller);
+// config-utils 3 (reflectcpp) serializes plain structs; member names match the
+// config-utils 2 JSON structs so existing configs still load.
+struct Button {
+    int Button = 0;
+    int Controller = 0;
 };
 
-DECLARE_JSON_STRUCT(ButtonPair) {
-    VALUE(int, ForwardButton);
-    VALUE(int, ForwardController);
-    VALUE(int, BackButton);
-    VALUE(int, BackController);
+struct ButtonPair {
+    int ForwardButton = 0;
+    int ForwardController = 0;
+    int BackButton = 0;
+    int BackController = 0;
 };
 
-DECLARE_JSON_STRUCT(LevelSelection) {
-    VALUE(std::string, ID);
-    VALUE(int, Difficulty);
-    VALUE(std::string, Characteristic);
-    VALUE(std::string, ReplayDesc);
-    VALUE(std::string, ReplayHash);
-    VALUE(bool, Temporary);
+struct LevelSelection {
+    std::string ID;
+    int Difficulty = 0;
+    std::string Characteristic;
+    std::string ReplayDesc;
+    std::string ReplayHash;
+    bool Temporary = false;
 };
 
-DECLARE_JSON_STRUCT(ThirdPerPreset) {
-    VALUE(ConfigUtils::Vector3, Position);
-    VALUE(ConfigUtils::Vector3, Rotation);
+struct ThirdPerPreset {
+    UnityEngine::Vector3 Position = {0, 0, 0};
+    UnityEngine::Vector3 Rotation = {0, 0, 0};
 };
+
+// config-utils 2 provided StringKeyedMap.
+template <class T>
+using StringKeyedMap = std::map<std::string, T>;
 
 DECLARE_CONFIG(Config) {
     CONFIG_VALUE(Version, int, "Config Version", 2);

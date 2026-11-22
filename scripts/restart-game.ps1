@@ -1,6 +1,6 @@
 adb shell am force-stop com.beatgames.beatsaber
 Start-Sleep 1
-adb shell am start com.beatgames.beatsaber/com.unity3d.player.UnityPlayerActivity
+adb shell am start com.beatgames.beatsaber/com.unity3d.player.UnityPlayerGameActivity
 $str = &adb shell dumpsys power | Select-String "mHoldingDisplaySuspendBlocker"
 $on = $str.ToString().Contains("true")
 if (-not $on) {
